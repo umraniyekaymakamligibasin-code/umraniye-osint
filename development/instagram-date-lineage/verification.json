@@ -1,0 +1,9 @@
+{
+  "status": "prepared_requires_interactive_sudo",
+  "linuxIsolatedTestsPassed": 18,
+  "existingClassifierSelftestPassed": true,
+  "liveInstalled": false,
+  "historicalReplay": false,
+  "apiRequests": 0,
+  "servicesRestarted": false
+}
