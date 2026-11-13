@@ -1,3 +1,4 @@
+import {createInstitutionHost} from './institution-coordination/server/institution-host.mjs';
 import {createContentModeration} from './content-moderation.mjs';
 import {readFile} from 'node:fs/promises';
 import {createPortalAPI} from './portal-api.mjs';
@@ -34,5 +35,11 @@ export function createPortalShell(base,env,{origin,socialItems}){
   if(request.method==='POST'&&r.ok&&u.pathname.startsWith('/api/admin/'))portal.invalidate();
   if(r.headers.get('content-type')?.includes('text/html'))return new Response(styled(await r.text()),{status:r.status,headers:r.headers});return r;
  }};
- return {worker,invalidate:portal.invalidate};
+ const institutional=createInstitutionHost({base:worker,db:env.DB,origin,actor:portal.actor,
+ serviceRequestAllowed:async request=>{
+ const p=new URL(request.url).pathname;
+ // These fixed routes retain their existing constant-time secret validation inside lab.worker.
+ return request.method==='POST'&&['/api/admin/integrations/browser-facebook','/api/admin/integrations/browser-worker'].includes(p);
+ }});
+ return {worker:institutional,invalidate:portal.invalidate};
 }
