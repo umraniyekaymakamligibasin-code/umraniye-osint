@@ -12,7 +12,7 @@ export function publicationTime(value,now=Date.now()){
  }
  // Never infer a zone from the execution host. Explicit ISO zone or RFC feed zone is required.
  const iso=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/i.test(raw);
- const rfc=/\b(?:GMT|UTC|[+-]\d{4})\s*$/i.test(raw);
+ const rfc=/(?:\b(?:GMT|UTC)|[+-]\d{4})\s*$/i.test(raw);
  const ms=(iso||rfc)?Date.parse(raw):NaN;
  if(!Number.isFinite(ms))return {publishedAt:null,precision:'unknown',reason:'Geçersiz tarih veya saat dilimi eksik'};
  if(iso){const day=raw.slice(0,10),d=new Date(day+'T00:00:00Z'),parts=raw.match(/T(\d{2}):(\d{2})(?::(\d{2}))?/i),offset=raw.match(/([+-])(\d{2}):(\d{2})$/);if(!Number.isFinite(+d)||d.toISOString().slice(0,10)!==day||Number(parts[1])>23||Number(parts[2])>59||Number(parts[3]||0)>59||offset&&(Number(offset[2])>14||Number(offset[3])>59||Number(offset[2])===14&&Number(offset[3])!==0))return {publishedAt:null,precision:'unknown',reason:'Geçersiz takvim tarihi veya saat'};}
