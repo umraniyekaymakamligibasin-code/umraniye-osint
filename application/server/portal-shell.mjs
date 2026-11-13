@@ -39,7 +39,7 @@ export function createPortalShell(base,env,{origin,socialItems}){
  serviceRequestAllowed:async request=>{
  const p=new URL(request.url).pathname;
  // These fixed routes retain their existing constant-time secret validation inside lab.worker.
- return request.method==='POST'&&['/api/admin/integrations/browser-facebook','/api/admin/integrations/browser-worker'].includes(p);
+ return ['GET','POST'].includes(request.method)&&['/api/admin/integrations/browser-facebook','/api/admin/integrations/browser-worker'].includes(p);
  }});
  return {worker:institutional,invalidate:portal.invalidate};
 }
