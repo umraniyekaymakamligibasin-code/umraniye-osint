@@ -1,0 +1,62 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1792789027726,
+      "tag": "0000_new_ben_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1792790159475,
+      "tag": "0001_spooky_patch",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792945333550,
+      "tag": "0002_flat_hellfire_club",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1792950982645,
+      "tag": "0003_deep_typhoid_mary",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1792951506697,
+      "tag": "0004_fresh_hex",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1792952851389,
+      "tag": "0005_talented_hydra",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792953204636,
+      "tag": "0006_melted_agent_brand",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793005066652,
+      "tag": "0007_hard_sunset_bain",
+      "breakpoints": true
+    }
+  ]
+}
