@@ -21,7 +21,8 @@ export function createBrowserLogin({dataDir,launch=spawn,available=()=>access(ro
   if(action==='close'){if(process&&provider!==account.provider)throw Error('login_busy');terminate();return {ok:true};}
   if(action==='logout'){
    if(process)throw Error('login_busy');
-   await new Promise((resolve,reject)=>{const c=launch(root+'/venv/bin/python',[root+'/login-session.py',account.provider,'--logout'],{env:{...processEnv(),OSINT_BROWSER_DATA:dataDir},stdio:'ignore',windowsHide:true});c.once('error',reject);c.once('exit',code=>code===0?resolve():reject(Error('logout_failed')))});return {ok:true};
+   // Asılı kalan bir çıkış betiği HTTP isteğini ve aktif istek sayacını süresiz tutmasın.
+   await new Promise((resolve,reject)=>{const c=launch(root+'/venv/bin/python',[root+'/login-session.py',account.provider,'--logout'],{env:{...processEnv(),OSINT_BROWSER_DATA:dataDir},stdio:'ignore',windowsHide:true});const timer=setTimeout(()=>{c.kill('SIGKILL');reject(Error('logout_timeout'))},60000);timer.unref?.();c.once('error',e=>{clearTimeout(timer);reject(e)});c.once('exit',code=>{clearTimeout(timer);code===0?resolve():reject(Error('logout_failed'))})});return {ok:true};
   }
   throw Error('invalid_action');
  }

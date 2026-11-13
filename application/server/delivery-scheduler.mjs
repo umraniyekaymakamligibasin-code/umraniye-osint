@@ -6,7 +6,7 @@ export function createDeliveryScheduler(work,{onError=()=>{}}={}){
   if(!task){
    task=Promise.resolve().then(async()=>{
     while(requested&&!closed){requested=false;try{await work();}catch(error){onError(error);}}
-   }).finally(()=>{task=null;});
+   }).finally(()=>{task=null;if(requested&&!closed)request();});
   }
   return task;
  }

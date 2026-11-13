@@ -37,11 +37,12 @@ async function readNewsCandidatesUnlocked(source,candidates,{fetchDetail,parseDe
  for(const item of candidates){
   const old=state.rows[item.url];
   const fingerprint=JSON.stringify([item.title,item.description,item.publishedAt]);
-  if(!old)state.rows[item.url]={item:{...item,firstSeenAt:item.firstSeenAt||new Date(now).toISOString()},fingerprint,seen:now,status:'pending',attempts:0,next:0};
-  else if(old.fingerprint!==fingerprint){Object.assign(old,{item:{...item,firstSeenAt:old.item.firstSeenAt},fingerprint,status:'pending',attempts:0,next:0})}
-  else if(old.status==='accepted'&&old.result)stats.alreadyRead++;
+  if(!old)state.rows[item.url]={item:{...item,firstSeenAt:item.firstSeenAt||new Date(now).toISOString()},fingerprint,seen:now,lastSeen:now,status:'pending',attempts:0,next:0};
+  else if(old.fingerprint!==fingerprint){Object.assign(old,{item:{...item,firstSeenAt:old.item.firstSeenAt},fingerprint,status:'pending',attempts:0,next:0,lastSeen:now})}
+  else{old.lastSeen=now;if(old.status==='accepted'&&old.result)stats.alreadyRead++;}
  }
- for(const [url,row]of Object.entries(state.rows))if(now-row.seen>172800000&&row.status!=='pending')delete state.rows[url];
+ // Akışta hâlâ duran bir haber 48 saat sonra silinip yeniden "yeni" sayılmasın; süre, akışta son görülmeden itibaren işler.
+ for(const [url,row]of Object.entries(state.rows))if(now-(row.lastSeen||row.seen)>172800000&&row.status!=='pending')delete state.rows[url];
  const queue=Object.values(state.rows).filter(r=>r.status==='pending'&&(r.next||0)<=now).sort((a,b)=>candidateScore(b.item,now)-candidateScore(a.item,now));
  for(const row of queue.slice(0,limit)){
   if(!allowed(row.item.url)){row.next=now+3600000;stats.robotsBlocked++;continue}

@@ -89,7 +89,7 @@ async function editorialApprove(request,actor){
  if(title.length<12||title.length>240||description.length<40||description.length>2500)return reply({error:'Başlık (12–240) ve doğrulanmış haber metni (40–2500) gerekli'},400);
  const suppliedDate=String(input.publishedAt||original.publishedAt||'').trim(),parsedPublication=publicationTime(suppliedDate,now());const p=parsedPublication.precision==='instant'?parsedPublication.publishedAt:null;
  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(p)||!Number.isFinite(Date.parse(p)))return reply({error:'Doğrulanmış yayın tarihi gerekli; keşif tarihi kullanılamaz'},400);
- if(!retainedEvent({publishedAt:p},retentionCutoff(now())))return reply({error:'Yayın tarihi altı aylık saklama süresinin dışında'},400);
+ if(!retainedEvent({publishedAt:p},retentionCutoff(now())))return reply({error:'Yayın tarihi iki aylık saklama süresinin dışında'},400);
  const publishedMs=Date.parse(p);if(publishedMs>now()+60000)return reply({error:'Yayın tarihi gelecekte olamaz'},400);
  if(input.confirm!==true)return reply({error:'Manuel haber onayı gerekli'},400);
  const key=existingApproval?.item_key||editorialHash(cleanUrl),approvedAt=new Date(now()).toISOString();
@@ -97,10 +97,10 @@ async function editorialApprove(request,actor){
  const result=await env.DB.prepare(`INSERT OR IGNORE INTO osint_editorial_approvals
  (item_key,original_url,platform,title,description,source_name,published_at,approved_at,approved_by)
  VALUES(?,?,?,?,?,?,?,?,?)`).bind(key,cleanUrl,String(original.provider||'unknown').slice(0,20),title,description,String(original.sourceName||'Sosyal Medya').slice(0,140),p,approvedAt,String(actor.email||'admin').slice(0,140)).run();
- if(!result.meta?.changes){const existing=await env.DB.prepare('SELECT approved_by FROM osint_editorial_approvals WHERE item_key=?').bind(key).first();if(String(existing?.approved_by||'').startsWith('osint-auto-')){await env.DB.prepare('UPDATE osint_editorial_approvals SET title=?,description=?,published_at=?,approved_at=?,approved_by=? WHERE item_key=?').bind(title,description,p,approvedAt,String(actor.email||'admin'),key).run();prioritizedNewsCache=null;return reply({ok:true,newsUrl:origin+'/haber/onaylanan/'+key,telegramStatus:'not_queued_manual_upgrade',detail:'Otomatik ön değerlendirme kaydı manuel onaya yükseltildi; Telegram gönderimi başlatılmadı.'});}return reply({error:'Bu haber daha önce onaylandı; Telegram tekrar gönderilmez',alreadyApproved:true},409);}
+ if(!result.meta?.changes){const existing=await env.DB.prepare('SELECT approved_by FROM osint_editorial_approvals WHERE item_key=?').bind(key).first();if(String(existing?.approved_by||'').startsWith('osint-auto-')){await env.DB.prepare('UPDATE osint_editorial_approvals SET title=?,description=?,published_at=?,approved_at=?,approved_by=? WHERE item_key=?').bind(title,description,p,approvedAt,String(actor.email||'admin'),key).run();invalidatePrioritizedNews();return reply({ok:true,newsUrl:origin+'/haber/onaylanan/'+key,telegramStatus:'not_queued_manual_upgrade',detail:'Otomatik ön değerlendirme kaydı manuel onaya yükseltildi; Telegram gönderimi başlatılmadı.'});}return reply({error:'Bu haber daha önce onaylandı; Telegram tekrar gönderilmez',alreadyApproved:true},409);}
  await env.DB.prepare('INSERT INTO audit(id,actor,action,target,created_at) VALUES(?,?,?,?,?)')
   .bind(randomUUID(),String(actor.email||'admin'),'Sosyal medya haberi onaylandı',key,approvedAt).run();
- prioritizedNewsCache=null;
+ invalidatePrioritizedNews();
  // Always publish approved editorial item; send only through existing Telegram eligibility, freshness, and deduplication pipeline.
  let telegramStatus='not_queued';
  const configValue=await config();
@@ -278,7 +278,9 @@ async function editorialApprove(request,actor){
   }catch{await env.DB.prepare('UPDATE lab_runs SET status=?,ended_at=? WHERE id=?').bind('failed',new Date(now()).toISOString(),id).run();log(JSON.stringify({event:'lab_collection_failed',at:new Date(now()).toISOString()}));}
  }
  function run(){if(closed)return Promise.resolve();if(running)return running;running=cycle().finally(()=>{running=null});return running;}
- let prioritizedNewsCache=null;
+ let prioritizedNewsCache=null,prioritizedNewsPending=null,prioritizedNewsGeneration=0;
+ function invalidatePrioritizedNews(){prioritizedNewsCache=null;prioritizedNewsPending=null;prioritizedNewsGeneration++;}
+ async function analyzeNews(events){const analyzed=[];for(const e of newsRecords(events)){analyzed.push(applyLocalScopeSafety({...e,...prioritize(e,now())}));if(analyzed.length%8===0)await new Promise(resolve=>setImmediate(resolve));}return analyzed;}
  let keywordReviewTask=null,keywordReviewPending=false,keywordReviewState={status:'idle'};
  function scheduleKeywordReview(){
   keywordReviewPending=true;keywordReviewState={status:'queued',revision:centralRevision(),notificationReplay:false};
@@ -454,7 +456,7 @@ async function editorialApprove(request,actor){
    }
    if(u.pathname==='/api/admin/integrations/keywords'){
     if(request.method==='GET')return reply({...await centralKeywordState(env.DB),keywordReview:keywordReviewState});
-    try{const text=await request.text();if(text.length>12000)return reply({error:'İstek çok büyük'},413);const state=await manageCentralKeyword(env.DB,JSON.parse(text));research.invalidateSocialCache();prioritizedNewsCache=null;scheduleKeywordReview();return reply({...state,keywordReview:keywordReviewState,saved:true});}catch(e){return reply({error:e.message==='revision_conflict'?'Liste değişti; yenileyin':e.message},e.message==='revision_conflict'?409:400);}
+    try{const text=await request.text();if(text.length>12000)return reply({error:'İstek çok büyük'},413);const state=await manageCentralKeyword(env.DB,JSON.parse(text));research.invalidateSocialCache();invalidatePrioritizedNews();scheduleKeywordReview();return reply({...state,keywordReview:keywordReviewState,saved:true});}catch(e){return reply({error:e.message==='revision_conflict'?'Liste değişti; yenileyin':e.message},e.message==='revision_conflict'?409:400);}
    }
    if(u.pathname==='/api/admin/integrations/shared-rules'){
     if(request.method==='GET')return reply({revision:centralRevision(),data:{scope:'umraniye_only',nationalNewsEnabled:false,requiresLocalContext:true,groups:Object.fromEntries((centralProfile('x')||[]).map(g=>[g.id,{name:g.name,priority:g.priority,enabled:g.enabled,keywords:g.terms}]))}});
@@ -505,7 +507,7 @@ async function editorialApprove(request,actor){
   const response=await base.fetch(request,env,ctx);
   if(response.ok&&u.pathname==='/yonetim'&&response.headers.get('Content-Type')?.includes('text/html'))return response;
   if(response.ok&&response.headers.get('Content-Type')?.includes('application/json')&&['/api/config','/api/workspace','/api/admin/config'].includes(u.pathname)){
-   const data=await response.json();if(data.initialData?.events){if(u.pathname==='/api/config'&&prioritizedNewsCache&&prioritizedNewsCache.expires>now())data.initialData.events=prioritizedNewsCache.events;else{const analyzed=[];for(const e of newsRecords(data.initialData.events)){analyzed.push(applyLocalScopeSafety({...e,...prioritize(e,now())}));if(analyzed.length%8===0)await new Promise(resolve=>setImmediate(resolve));}data.initialData.events=analyzed;if(u.pathname==='/api/config')prioritizedNewsCache={events:data.initialData.events,expires:now()+10000};}}if(data.events)data.events=newsRecords(data.events).map(e=>applyLocalScopeSafety({...e,...prioritize(e,now())}));/* UMRANIYE_IG_INTELLIGENCE_V1 */ const approvedNews=await editorialEvents();if(approvedNews.length){if(Array.isArray(data.initialData?.events))data.initialData.events=[...approvedNews,...data.initialData.events.filter(e=>!approvedNews.some(a=>a.url===e.url))];if(Array.isArray(data.events))data.events=[...approvedNews,...data.events.filter(e=>!approvedNews.some(a=>a.url===e.url))];}if(Array.isArray(data.initialData?.events))data.initialData.events.sort(compareRecordsNewest);if(Array.isArray(data.events))data.events.sort(compareRecordsNewest);return new Response(JSON.stringify(data),{status:response.status,headers:response.headers});
+   const data=await response.json();if(data.initialData?.events){if(u.pathname==='/api/config'&&prioritizedNewsCache&&prioritizedNewsCache.expires>now())data.initialData.events=prioritizedNewsCache.events;else if(u.pathname==='/api/config'){/* Önbellek süresi dolunca eşzamanlı istekler aynı analizi paylaşır; her biri tüm listeyi yeniden hesaplamaz. */if(!prioritizedNewsPending){const generation=prioritizedNewsGeneration;let task;task=prioritizedNewsPending=analyzeNews(data.initialData.events).then(events=>{if(generation===prioritizedNewsGeneration)prioritizedNewsCache={events,expires:now()+10000};return events;}).finally(()=>{if(prioritizedNewsPending===task)prioritizedNewsPending=null;});}data.initialData.events=await prioritizedNewsPending;}else data.initialData.events=await analyzeNews(data.initialData.events);}if(data.events)data.events=newsRecords(data.events).map(e=>applyLocalScopeSafety({...e,...prioritize(e,now())}));/* UMRANIYE_IG_INTELLIGENCE_V1 */ const approvedNews=await editorialEvents();if(approvedNews.length){if(Array.isArray(data.initialData?.events))data.initialData.events=[...approvedNews,...data.initialData.events.filter(e=>!approvedNews.some(a=>a.url===e.url))];if(Array.isArray(data.events))data.events=[...approvedNews,...data.events.filter(e=>!approvedNews.some(a=>a.url===e.url))];}if(Array.isArray(data.initialData?.events))data.initialData.events.sort(compareRecordsNewest);if(Array.isArray(data.events))data.events.sort(compareRecordsNewest);return new Response(JSON.stringify(data),{status:response.status,headers:response.headers});
   }
   return response;
  }
