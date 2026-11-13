@@ -5,7 +5,8 @@
 > sorun ve cevaba göre devam edin. Canlı sunucuya bir şey kurmadan önce kod sahibinden açık onay alın.
 > `main` dalına doğrudan kod göndermeyin, force push yapmayın (nedeni aşağıda).
 
-Son güncelleme: 13 Kasım 2026 · Durum: üç aşamanın da PR'ı açık; inceleme, seçim ve kod sahibinin kararları bekleniyor.
+Son güncelleme: 13 Kasım 2026 · Durum: üç aşama tamamlandı, PR'lar açık. Sizden beklenen: inceleme,
+tasarım seçimi, issue'lardaki soruların cevabı, birleştirme ve sunucuya kurulum.
 
 ---
 
@@ -159,6 +160,33 @@ temizlendi.
 istisnası, 4 haneli kurumsal PIN, şifre özeti tur sayısı, kurum şifresini gösterme, `TRUST_CLOUDFLARE`,
 legacy uygulamanın kapatılması, root çalışan yayımlayıcılar, paket kurulumunda özet doğrulaması,
 kısa şifreli mevcut hesaplar.
+
+---
+
+## 6a. Son kontrol (birleştirilmeden önce yapıldı)
+
+PR'lar önerilen sırayla (#3 → tasarım → #10) geçici bir dalda birleştirilip birlikte denendi:
+
+- **Çakışma yok:** #3 + #10 ile tasarım A, B veya C'nin her biri çakışmasız birleşiyor. Tasarım
+  PR'ları birbiriyle çakışır; zaten yalnız biri birleştirilmeli.
+- **Sözdizimi:** Depodaki tüm dosyalar denetlendi (206 JS/MJS, 102 Python, 11 kabuk betiği, HTML
+  içindeki 21 betik); hata yok. X/Facebook kural manifest'leri uygulama dosyalarıyla tutarlı.
+- **Testler (ağ erişimi kapalı):** X 10/10, X geliştirme kopyası 10/10, Facebook 18/18, Facebook
+  geliştirme kopyası 9/9, Instagram okuma kalitesi 29/29, Instagram tarih 18/18, Instagram medya
+  öz testi, kurum koordinasyonu 7 doğrulama betiği + e-posta testi, Facebook/X arka uç testleri ve
+  servis rotası testi: hepsi geçti.
+- **Uygulama:** Birleşik kod yerelde çalıştırıldı. Tarayıcıda şunlar denendi: giriş ekranı (logo
+  yükleniyor), yönetici girişi, ana sayfa, Haber Gündemi ve 5 sekme, "Sonraki", olay dosyası, sosyal
+  medya, bildirimler, arşiv, geri düğmesi, `/calisma` dönem geçişleri, yönetim paneli, içerik denetim
+  merkezi. Sayfa hatası ve konsol hatası çıkmadı.
+- **Güvenlik denemeleri:** Başka siteden gelen POST reddediliyor; sahte kimlik başlığı yönetici yetkisi
+  vermiyor; kapatılan otomasyon rotaları 404; ekip girişinde IP sınırı çalışıyor.
+- **Satır sonları:** 1. aşamada iki dosyanın satır sonlarını yanlışlıkla değiştirmiştim; `app.html`
+  PR'da baştan sona değişmiş görünüyordu. Düzeltildi, PR'larda yalnız gerçek değişiklikler görünüyor.
+- **Yapılamayanlar:** Canlı sunucuda deneme; gerçek veriyle önce/sonra hız ölçümü; systemd birim
+  dosyalarının `systemd-analyze` ile doğrulanması; görsel üreticisi (`image-tools`) ve sosyal medya
+  entegrasyonlarının (`OSINT_LAB_ENABLED`) yerelde çalıştırılması. Bu yüzden **ilk kurulumun deneme
+  ortamında yapılması** önerilir.
 
 ---
 
