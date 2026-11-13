@@ -26,10 +26,10 @@ sync secret scanner enabled; investigate a rejection instead of bypassing it.
 Source code implementing credential management is allowed only after inspection.
 
 An existing checkout is located at
-C:/Users/haaka/Documents/Codex/2026-11-13/https-github-com-umraniyekaymakamligibasin-code-umraniye/work/repository.
+<yerel-klasör>/repository.
 It may contain unrelated uncommitted work. Inspect its status before using it and
 never stage, discard, overwrite, or publish another chat's unfinished changes.
 
-Server access, where available, uses basin@100.79.234.33. Do not print SSH key
+Server access, where available, uses basin@<sunucu-ip>. Do not print SSH key
 contents or assume old credentials remain valid. GitHub sync authorization does not
 authorize unrelated changes to live services or data.

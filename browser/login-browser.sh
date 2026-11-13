@@ -14,7 +14,7 @@ runuser -u osintdeneme -- Xvfb "$display" -screen 0 1280x900x24 -nolisten tcp & 
 sleep 2
 runuser -u osintdeneme -- x11vnc -display "$display" -localhost -rfbport 5901 -nopw -forever -shared -quiet & pids+=("$!")
 runuser -u osintdeneme -- websockify --web=/usr/share/novnc 127.0.0.1:6080 127.0.0.1:5901 & pids+=("$!")
-echo 'Windows PowerShell: ssh -N -L 6080:127.0.0.1:6080 basin@100.79.234.33'
+echo "Windows PowerShell: ssh -N -L 6080:127.0.0.1:6080 basin@${OSINT_SSH_HOST:-<sunucu-ip>}"
 echo 'Sonra Windows tarayıcı: http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale'
 echo 'Platformun kendi ekranında giriş yapın. Bitince tarayıcı penceresini kapatın. Şifre sohbete veya OSINT paneline girilmez.'
 runuser -u osintdeneme -- env DISPLAY="$display" PLAYWRIGHT_BROWSERS_PATH=/opt/umraniye-osint-browser/browsers OSINT_BROWSER_DATA=/var/lib/umraniye-osint-deneme /opt/umraniye-osint-browser/venv/bin/python /opt/umraniye-osint-browser/collector.py --login-index "$index"

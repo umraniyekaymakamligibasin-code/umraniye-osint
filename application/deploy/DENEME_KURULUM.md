@@ -20,7 +20,7 @@ Bu denemede canlı servisi durdurmayın, canlı veri klasörünü kopyalama hede
 Tailscale Windows'ta bağlı kalsın. **Yeni Windows PowerShell** açın; Linux'a bağlı pencereyi açık bırakın. Aşağıdaki komut Windows'ta çalışır:
 
 ```powershell
-scp "C:\Users\haaka\Documents\Codex\2026-10-23\bu\outputs\Umraniye_OSINT_Deneme_2026-11-02.zip" basin@100.79.234.33:/home/basin/
+scp "<yerel-klasör>\Umraniye_OSINT_Deneme_2026-11-02.zip" basin@<sunucu-ip>:/home/basin/
 ```
 
 ZIP'i başka konuma taşıdıysanız komuttaki kaynak yolunu değiştirin. Linux şifresini yalnız kendi terminalinizde girin. %100 olmasını bekleyin.
