@@ -2,8 +2,10 @@ const tabs=document.getElementById('tabs'),list=document.getElementById('items')
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeUrl=u=>{try{let x=new URL(u,location.origin);return ['https:','http:'].includes(x.protocol)?x.href:null}catch{return null}};
 const label={active:'Görünür haberler',filtered:'Otomatik elenenler',queue:'Bildirim kuyruğu',removed:'Kaldırılanlar'};
-async function load(){status.textContent=label[tab]+' yükleniyor…';list.replaceChildren();
-try{const r=await fetch('/api/moderation/items?bucket='+tab,{credentials:'same-origin'});if(!r.ok)throw Error('Sunucu hata kodu: '+r.status);const data=await r.json();
+// Hızlı sekme geçişinde geç gelen eski yanıt yeni sekmenin listesine eklenmesin; önceki istek iptal edilir.
+let loadSeq=0,loadController=null;
+async function load(){const seq=++loadSeq,current=tab;loadController?.abort();const controller=loadController=new AbortController();status.textContent=label[current]+' yükleniyor…';list.replaceChildren();
+try{const r=await fetch('/api/moderation/items?bucket='+current,{credentials:'same-origin',signal:controller.signal});if(seq!==loadSeq)return;if(!r.ok)throw Error('Sunucu hata kodu: '+r.status);const data=await r.json();if(seq!==loadSeq)return;
 status.textContent=label[tab]+' · '+data.total+' kayıt'+(data.total>data.items.length?' (ilk '+data.items.length+' gösteriliyor)':'');
 if(!data.items.length){list.textContent='Bu bölümde kayıt bulunmuyor.';return;}
 for(const item of data.items){const el=document.createElement('article');el.className='item';
@@ -20,7 +22,7 @@ let reason='';
 button.disabled=true;try{const response=await fetch('/api/moderation/action',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({action:a,item,reason})});const result=await response.json();if(!response.ok)throw Error(result.error||'İşlem başarısız');await load();}catch(e){button.disabled=false;alert(e.message)}});
 el.__moderationItem=item;list.append(el);
 }
-}catch(e){status.textContent='Kayıtlar alınamadı: '+e.message}}
+}catch(e){if(seq===loadSeq&&e?.name!=='AbortError')status.textContent='Kayıtlar alınamadı: '+e.message}}
 tabs.addEventListener('click',e=>{const button=e.target.closest('[data-tab]');if(!button)return;tab=button.dataset.tab;for(const b of tabs.querySelectorAll('button'))b.classList.toggle('active',b===button);load()});load();
 // bulk-select-feature-v2
 ;(()=>{

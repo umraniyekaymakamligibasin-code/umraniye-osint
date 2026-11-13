@@ -9,15 +9,16 @@ class ReaderTests(unittest.TestCase):
             with self.assertRaises(reader.GuardStop):t.request('GET',url,{},cookies)
         with self.assertRaises(reader.GuardStop):t.get('https://www.facebook.com',{},proxy='http://invalid')
     def test_budget_and_deadline(self):
-        t=reader.BoundedTransport();reader.BoundedTransport.requests_made=6;reader.BoundedTransport.started=time.monotonic()
+        # Explicit budget: a stale default must never turn this into a live Facebook request.
+        t=reader.BoundedTransport();reader.BoundedTransport.max_requests=6;reader.BoundedTransport.requests_made=6;reader.BoundedTransport.started=time.monotonic()
         with self.assertRaisesRegex(reader.GuardStop,'request_budget_reached'):t.get('https://www.facebook.com',{})
         reader.BoundedTransport.requests_made=0;reader.BoundedTransport.started=time.monotonic()-36
         with self.assertRaisesRegex(reader.GuardStop,'time_budget_reached'):t.get('https://www.facebook.com',{})
     def test_metadata_preserves_source_date_and_reel_url(self):
         p=Obj(post_id='1234567890123456789',text='Ümraniye test metni',permalink='https://www.facebook.com/reel/2345678901234567890/',page_name='Fixture',created_time=1794500000)
-        e=reader.normalized(p,{'page_name':'Fixture','page_url':'https://www.facebook.com/fixture'})
+        e=reader.normalized(p,{'source_id':'fb1','page_name':'Fixture','page_url':'https://www.facebook.com/fixture'})
         self.assertIsInstance(e['id'],str);self.assertTrue(e['publishedAt'].endswith('+00:00'));self.assertNotEqual(e['publishedAt'],e['collectedAt']);self.assertIn('/reel/',e['url'])
-        p.created_time=None;self.assertIsNone(reader.normalized(p,{'page_name':'Fixture','page_url':'https://www.facebook.com/fixture'})['publishedAt'])
+        p.created_time=None;self.assertIsNone(reader.normalized(p,{'source_id':'fb1','page_name':'Fixture','page_url':'https://www.facebook.com/fixture'})['publishedAt'])
     def test_http_throttle_stops_immediately(self):
         t=reader.BoundedTransport();reader.BoundedTransport.requests_made=0;reader.BoundedTransport.started=time.monotonic()
         response=Obj(status_code=429)

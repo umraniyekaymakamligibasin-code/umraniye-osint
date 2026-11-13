@@ -14,10 +14,29 @@ if (!TOKEN || !CHAT) {
 
 const db = new DatabaseSync(DB, { readOnly: true });
 const all = () => db.prepare(
-  'SELECT id,title,created_at FROM alert_log ORDER BY created_at,id'
+  'SELECT id,event_id,title,created_at FROM alert_log ORDER BY created_at,id'
 ).all();
 
+// Uyarı satırı yalnız event_id taşır; haber ayrıntısı son anlık görüntülerden okunur.
+// Bulunamazsa formatAlert satırdaki başlıkla devam eder.
+function eventsById(ids) {
+  const wanted = new Set(ids.map(String));
+  const found = new Map();
+  if (!wanted.size) return found;
+  for (const row of db.prepare('SELECT data FROM snapshots ORDER BY updated_at DESC LIMIT 100').all()) {
+    let data;
+    try { data = JSON.parse(row.data); } catch { continue; }
+    for (const item of data?.events || []) {
+      const id = String(item?.id ?? '');
+      if (wanted.has(id) && !found.has(id)) found.set(id, item);
+    }
+    if (found.size === wanted.size) break;
+  }
+  return found;
+}
+
 let sent;
+let running = null;
 
 if (!existsSync(STATE)) {
   sent = new Set(all().map(r => r.id));
@@ -33,11 +52,35 @@ function save() {
   renameSync(tmp, STATE);
 }
 
-async function check() {
-  for (const row of all()) {
+// 30 sn'lik zamanlayıcı, yavaş bir gönderim turu bitmeden yeniden tetiklenebilir.
+// Çakışan turlar aynı uyarıyı iki kez göndermesin diye tek tur çalışır.
+function check() {
+  if (running) return running;
+  running = sendPending().finally(() => { running = null; });
+  return running;
+}
+
+// Bir kesinti sonrası birikmiş eski uyarılar sırayla gönderilirse yeni uyarılar saatlerce
+// bekler. Belirli bir süreden eski uyarılar gönderilmeden atlanır.
+const MAX_ALERT_AGE_MS = 3 * 60 * 60 * 1000;
+
+async function sendPending() {
+  let pending = all().filter(row => !sent.has(row.id));
+  if (!pending.length) return;
+  const cutoff = Date.now() - MAX_ALERT_AGE_MS;
+  const stale = pending.filter(row => Date.parse(row.created_at) < cutoff);
+  if (stale.length) {
+    for (const row of stale) sent.add(row.id);
+    save();
+    console.log('Eski uyarilar gonderilmeden atlandi:', stale.length);
+    pending = pending.filter(row => !sent.has(row.id));
+    if (!pending.length) return;
+  }
+  const events = eventsById(pending.map(row => row.event_id));
+  for (const row of pending) {
     if (sent.has(row.id)) continue;
 
-    const formatted = formatAlert(row, event);
+    const formatted = formatAlert(row, events.get(String(row.event_id)));
     const message = formatted.message;
 
     try {
@@ -72,5 +115,5 @@ async function check() {
   }
 }
 
-await check();
+await check().catch(console.error);
 setInterval(() => check().catch(console.error), 30000);

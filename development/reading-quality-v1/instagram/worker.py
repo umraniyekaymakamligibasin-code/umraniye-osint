@@ -16,6 +16,10 @@ GRAPH = 'https://graph.facebook.com/v27.0/'
 BRIDGE = 'http://127.0.0.1:3001/api/admin/integrations/browser-worker'
 HANDLE = re.compile(r'^[a-z0-9_.]{1,30}$')
 LINK = re.compile(r'^https://(?:www\.)?instagram\.com/(?:p|reel)/[A-Za-z0-9_-]+/?$')
+# Same window the panel uses for Instagram (Telegram eligibility and automatic evaluation: 3 hours).
+# Each source is read only every few rounds, so the former 1-hour cut-off silently dropped posts
+# that were discovered 1-3 hours after publication.
+FRESH_SECONDS = 3 * 3600
 
 
 def now():
@@ -192,7 +196,7 @@ class Worker:
         status = reason or 'pending'
         if item and published < self.credentials['enabledSince']:
             status = 'baseline'
-        elif item and now() - published > 3600:
+        elif item and now() - published > FRESH_SECONDS:
             status = 'stale'
         self.db.execute('INSERT OR REPLACE INTO posts VALUES(?,?,?,?,?,?,?)',
                         (media_id, handle, post.get('permalink'), published, old[1] if old else now(), status,
@@ -202,7 +206,7 @@ class Worker:
 
     def drain(self):
         # Recheck current source state and freshness, including after a local outage.
-        self.db.execute("UPDATE posts SET status='stale' WHERE status='pending' AND published<?", (now() - 3600,))
+        self.db.execute("UPDATE posts SET status='stale' WHERE status='pending' AND published<?", (now() - FRESH_SECONDS,))
         self.db.commit()
         if not self.handles:
             return {'status': 'no_active_sources', 'submitted': 0}
@@ -259,6 +263,13 @@ class Worker:
             report['retryAt'] = iso(gate['retryAt']) if gate.get('retryAt') else None
             report['pauseReason'] = 'token_renewal_required' if gate.get('authRequired') else 'meta_rate_limit'
             report['pauseCode'] = gate.get('code')
+            if not gate.get('authRequired'):
+                # A Meta API pause does not involve the local panel bridge: still deliver posts already read,
+                # otherwise they wait for the pause to end (and could age out of the freshness window).
+                try:
+                    report['ingestion'].append(self.drain())
+                except Exception as error:
+                    report['ingestion'].append({'status': 'bridge_pending_retry', 'errorType': type(error).__name__})
             report['pending'] = self.db.execute("SELECT count(*) FROM posts WHERE status='pending'").fetchone()[0]
             if gate.get('authRequired'):
                 try:

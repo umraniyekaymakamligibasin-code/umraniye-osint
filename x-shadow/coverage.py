@@ -81,8 +81,11 @@ async def read_queries(api,plans,output,limit,con,normalize):
     # Drain one older page per round, while every round still starts with new posts.
     if con:
         known={p['key']:p for p in plans}
-        for key,high,encoded in con.execute('SELECT key,high_id,backlog FROM coverage_queries WHERE backlog IS NOT NULL').fetchall():
-            if key not in known:continue
+        rows=[r for r in con.execute('SELECT key,high_id,backlog FROM coverage_queries WHERE backlog IS NOT NULL').fetchall() if r[0] in known]
+        # Newest gap first: only recent posts remain admissible, so table order must
+        # not let one query's old backlog starve a busier query's fresh gap.
+        rows.sort(key=lambda r:int(json.loads(r[2])['max']),reverse=True)
+        for key,high,encoded in rows:
             b=json.loads(encoded);q=known[key]['query']+' max_id:'+b['max']
             if int(b['since']):q+=' since_id:'+b['since']
             before=len(output)

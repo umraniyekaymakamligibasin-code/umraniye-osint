@@ -45,6 +45,14 @@ class CoverageTests(unittest.TestCase):
             self.assertIn('since_id:105',api.queries[0]);self.assertIn('max_id:101',api.queries[1])
             self.assertEqual(c.execute('SELECT count(*) FROM coverage_candidates').fetchone()[0],6)
             self.assertIsNone(c.execute('SELECT backlog FROM coverage_queries').fetchone()[0]);c.close()
+    def test_newest_backlog_gap_drained_first(self):
+        with tempfile.TemporaryDirectory() as d:
+            c=db(Path(d)/'s.db');p=coverage.plans([{'kind':'olay','terms':['yangın']}],[],0,worker.utcnow())
+            old,new=p[0],p[1] # rows are rewritten in plan order, so table order favours 'old'
+            c.execute('INSERT INTO coverage_queries VALUES(?,?,?)',(old['key'],'500',json.dumps({'since':'0','max':'100'})))
+            c.execute('INSERT INTO coverage_queries VALUES(?,?,?)',(new['key'],'900',json.dumps({'since':'500','max':'800'})));c.commit()
+            api=FakeAPI([[],[],[]]);asyncio.run(coverage.read_queries(api,p,[],2,c,normalize))
+            self.assertIn('max_id:800',api.queries[-1]);c.close()
     def test_hard_result_cap_closes_generator(self):
         api=FakeAPI([[1,2,3,4]]);out=[]
         batch=asyncio.run(coverage.fetch(api,'q',2,out,normalize))
@@ -67,5 +75,15 @@ class CoverageTests(unittest.TestCase):
         self.assertEqual(worker.adapter(test_shadow.snapshot(),[e])['result'][0]['reason'],'outside_fresh_window')
         e=test_shadow.record('Sakarya Karasu ilçesinde Ümraniye Caddesi üzerinde yangın çıktı ve ekipler söndürdü.')
         self.assertEqual(worker.adapter(test_shadow.snapshot(),[e])['result'][0]['decision'],'rejected')
+    def test_only_access_failures_pause_reader(self):
+        from unittest.mock import patch
+        import coverage_fixtures as fixtures
+        NoAccountError=type('NoAccountError',(Exception,),{})
+        for fail,paused in ((TimeoutError(),False),(RuntimeError('unexpected'),False),(NoAccountError(),True)):
+            with tempfile.TemporaryDirectory() as d:
+                state=Path(d);(state/'snapshot.json').write_text(json.dumps(fixtures.snapshot()),encoding='utf-8');(state/'accounts.sqlite').touch()
+                async def failing(*args):raise fail
+                with patch.object(worker,'collect',side_effect=failing):r=worker.run(state,True)
+                self.assertEqual(r['status'],worker.status_error(fail));self.assertEqual('retryAt' in r,paused)
 
 if __name__=='__main__':unittest.main(verbosity=2)

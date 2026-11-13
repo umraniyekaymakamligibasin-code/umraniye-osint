@@ -25,7 +25,8 @@ export function createHttpServer(worker,env,{origin,port=3000,host='127.0.0.1',t
    if(!['GET','HEAD','POST'].includes(req.method))return reject(405,'Yöntem desteklenmiyor',{'Allow':'GET, HEAD, POST'});
    const peer=req.socket.remoteAddress||'unknown',forwardedIP=req.headers['cf-connecting-ip'];
    const ip=trustCloudflare&&['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)&&typeof forwardedIP==='string'&&isIP(forwardedIP)?forwardedIP:peer;
-   if(limit(ip,false)||(['/api/login','/api/admin/login','/api/team/login'].includes(path)&&limit(ip,true)))return reject(429,'Çok fazla istek. Daha sonra yeniden deneyin.',{'Retry-After':'60'});
+   const media=['GET','HEAD'].includes(req.method)&&(path.startsWith('/assets/')||path==='/favicon.png'||path==='/api/portal/thumbnail');
+   if(limit(ip,media?'media':false)||(['/api/login','/api/admin/login','/api/team/login'].includes(path)&&limit(ip,true)))return reject(429,'Çok fazla istek. Daha sonra yeniden deneyin.',{'Retry-After':'60'});
    if(browserProxy&&path.startsWith(browserProxy.prefix)){await browserProxy.handle(req,res);return;}
    if(req.method==='POST'&&req.headers['sec-fetch-site']==='cross-site')return reject(403,'İstek kaynağı reddedildi');
    const bodyLimit=requestBodyLimit(path);

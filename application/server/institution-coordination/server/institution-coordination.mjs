@@ -17,6 +17,12 @@ const STATUS_TRANSITIONS = {
   resolved: new Set(['assessing']),
   dismissed: new Set(['assessing'])
 };
+// Store/vault validation errors are expected input problems, not server faults.
+// Without this map every one of them became a generic 500 'request_failed'.
+const CLIENT_ERRORS = new Map([
+  ['valid_email_required', 400], ['recipient_confirmation_required', 400], ['password_16_to_128_required', 400],
+  ['institution_not_found', 404], ['account_not_found', 404], ['password_changed_outside_vault', 409]
+]);
 const id = () => randomUUID();
 const now = () => new Date().toISOString();
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
@@ -263,13 +269,17 @@ export function createInstitutionCoordination(adapters) {
       if (path.startsWith('/admin/')) {
         if (!(await adapters.isCentralAdmin(actor))) return json({ error: 'not_found' }, 404);
         if (request.method !== 'GET' && !(await adapters.verifyCsrf(request, actor))) return json({ error: 'csrf_failed' }, 403);
-        return adminRoute(path, request, actorKey, requestId);
+        // await: a returned (un-awaited) promise would bypass this try/catch, so admin errors
+        // escaped the error mapping below and surfaced as the outer server's generic 500.
+        return await adminRoute(path, request, actorKey, requestId);
       }
       return json({ error: 'not_found' }, 404);
     } catch (error) {
       const message = String(error?.message || 'request_failed');
       if (message === 'Unauthenticated') return json({ error: 'authentication_required' }, 401);
       if (message === 'Request too large' || message === 'Invalid JSON body') return json({ error: 'invalid_request' }, 400);
+      if (CLIENT_ERRORS.has(message)) return json({ error: message }, CLIENT_ERRORS.get(message));
+      if (message.startsWith('username_collision_')) return json({ error: 'username_collision' }, 409);
       // Deliberately do not return/log SQL errors, body contents, tokens or emails.
       adapters.onError?.({ requestId, code: 'institution_api_error' });
       return json({ error: 'request_failed', requestId }, 500);

@@ -92,6 +92,10 @@ async def collect(account_db,plans,output,limit=40,con=None):
     if not accounts[0].active:raise RuntimeError('session_inactive')
     await read_queries(api,plans,output,limit,con,normalize)
 
+# Only account/session/access failures pause the reader. A spent time budget or a
+# transient reader error keeps partial results and retries on the normal timer.
+ACCESS_FAILURES={'rate_limited_or_account_unavailable','access_error','session_inactive','session_missing','one_independent_account_required'}
+
 def status_error(exc):
     kind=type(exc).__name__
     if kind=='NoAccountError':return 'rate_limited_or_account_unavailable'
@@ -153,9 +157,9 @@ def run(state,live=False):
             report['promotionBlocker']='existing_application_bridge_not_verified'
             # Rotate after partial failures as successful queries already committed checkpoints.
             setmeta(con,'cursor',cursor+1)
-            if failure:
+            if failure in ACCESS_FAILURES:
                 failures=getmeta(con,'failures')+1;setmeta(con,'failures',failures);setmeta(con,'retryAt',time.time()+min(21600,600*2**min(failures-1,6)));report['retryAt']=getmeta(con,'retryAt')
-            else:setmeta(con,'failures',0);setmeta(con,'retryAt',0)
+            elif not failure:setmeta(con,'failures',0);setmeta(con,'retryAt',0)
             return report
         except Exception as exc:
             report.update(status=str(exc) if isinstance(exc,RuntimeError) and str(exc) in ('snapshot_stale','unsafe_configuration') else status_error(exc),errorCount=1)
