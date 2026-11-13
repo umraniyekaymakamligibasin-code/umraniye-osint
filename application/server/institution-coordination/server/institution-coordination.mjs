@@ -180,9 +180,41 @@ export function createInstitutionCoordination(adapters) {
         await audit(db, actorKey, tenant.institution_id, 'view', 'case', item.id, requestId);
         const history=await all(db,`SELECT action,from_value,to_value,note_redacted,created_at FROM coord_case_history
           WHERE coord_case_id=? AND institution_id=? AND action!='view' ORDER BY created_at DESC,id DESC LIMIT 100`,item.id,tenant.institution_id);
-        return json({ case: {...item,role:tenant.role}, sources, history });
+        const referrals=await all(db,`SELECT r.mode,i.display_name target,r.created_at FROM coord_referrals r JOIN coord_institutions i ON i.id=r.target_institution_id WHERE r.source_case_id=? AND r.source_institution_id=? ORDER BY r.created_at DESC`,item.id,tenant.institution_id);
+        return json({ case: {...item,role:tenant.role}, sources, history, referrals });
       }
 
+
+      const referralMatch=path.match(/^\/cases\/([A-Za-z0-9_-]{1,120})\/(referral-targets|refer)$/);
+      if(referralMatch){
+        const body=request.method==='POST'?await parseBody(request):{};
+        const tenant=await resolveMembership(db,actorKey,text(body.institution||url.searchParams.get('institution'),80));
+        if(!tenant||!ROLE_WRITES.has(tenant.role))return json({error:'case_not_found'},404);
+        const source=await first(db,`${CASE_SELECT} AND c.id=? LIMIT 1`,tenant.institution_id,referralMatch[1]);
+        if(!source)return json({error:'case_not_found'},404);
+        const targets=await all(db,`SELECT i.id,i.code,i.display_name,t.id topic_id,t.code topic,t.display_name topic_name
+          FROM coord_institutions i JOIN coord_institution_topic_grants g ON g.institution_id=i.id AND g.granted=1
+          JOIN coord_topics t ON t.id=g.topic_id AND t.enabled=1 AND t.approval_status='approved'
+          WHERE i.id!=? AND i.enabled=1 AND i.approval_status='approved' ORDER BY i.display_name,t.display_name`,tenant.institution_id);
+        if(referralMatch[2]==='referral-targets'&&request.method==='GET')return json({targets:targets.map(({id,topic_id,...r})=>r)});
+        if(referralMatch[2]!=='refer'||request.method!=='POST')return json({error:'method_not_allowed'},405);
+        if(!await adapters.verifyCsrf(request,actor))return json({error:'csrf_failed'},403);
+        const target=targets.find(t=>t.code===body.targetInstitution&&t.topic===body.topic);
+        if(!target||!['transfer','support'].includes(body.mode))return json({error:'target_scope_not_available'},409);
+        const full=await first(db,'SELECT * FROM coord_cases WHERE id=? AND institution_id=?',source.id,tenant.institution_id);
+        const known=await first(db,'SELECT id FROM coord_cases WHERE source_event_id=? AND institution_id=? ORDER BY created_at LIMIT 1',full.source_event_id,target.id);
+        const targetId=known?.id||id(),at=now(),referralId=id();
+        const statements=[];
+        if(!known)statements.push(db.prepare(`INSERT INTO coord_cases(id,institution_id,topic_id,source_event_id,source_revision,idempotency_key,title,summary_redacted,neighborhood,location_precision,first_published_at,first_seen_at,confidence,status,priority,sensitivity,created_at,updated_at)
+          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?,?)`).bind(targetId,target.id,target.topic_id,full.source_event_id,full.source_revision,JSON.stringify([target.id,full.source_event_id,target.topic_id]),full.title,full.summary_redacted,full.neighborhood,full.location_precision,full.first_published_at,full.first_seen_at,full.confidence,full.priority,full.sensitivity,at,at));
+        statements.push(db.prepare(`INSERT INTO coord_referrals VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(source_case_id,target_institution_id) DO NOTHING`).bind(referralId,source.id,targetId,tenant.institution_id,target.id,actorKey,body.mode,at));
+        if(!known)statements.push(db.prepare(`INSERT INTO coord_case_sources(id,coord_case_id,source_url,source_name,platform,published_at,added_at)
+          SELECT ?||id,?,source_url,source_name,platform,published_at,? FROM coord_case_sources WHERE coord_case_id=?`).bind(referralId,targetId,at,source.id));
+        statements.push(db.prepare(`INSERT INTO coord_case_history(id,coord_case_id,institution_id,actor_account_id,action,to_value,created_at)
+          SELECT ?,?,?,?,'assignment_updated',?,? WHERE EXISTS(SELECT 1 FROM coord_referrals WHERE id=?)`).bind(id(),source.id,tenant.institution_id,actorKey,(body.mode==='transfer'?'Görev devri: ':'Destek kurumu: ')+target.display_name,at,referralId));
+        await db.batch(statements);
+        return json({ok:true,alreadyAssigned:!!known});
+      }
       const noteMatch=path.match(/^\/cases\/([A-Za-z0-9_-]{1,120})\/notes$/);
       if(noteMatch&&request.method==='POST'){
         if(!await adapters.verifyCsrf(request,actor))return json({error:'csrf_failed'},403);
