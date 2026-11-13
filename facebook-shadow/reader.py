@@ -13,6 +13,7 @@ class BoundedTransport:
     max_requests=8
     requests_made=0
     started=0
+    partial=None
     def __init__(self,timeout=8):
         import requests
         self.session=requests.Session();self.session.trust_env=False
@@ -58,10 +59,24 @@ def normalized(post,source):
     if not re.fullmatch(r'[A-Za-z0-9_:-]{1,150}',sid):return None
     return {'id':sid,'facebookPostId':sid,'facebookSourceId':source['source_id'],'url':url,'title':text[:160],'description':text,'fullText':text,'author':str(post.page_name or source['page_name']),'sourceName':source['page_name'],'sourcePageUrl':source['page_url'],'publishedAt':published,'collectedAt':dt.datetime.now(dt.timezone.utc).isoformat(),'platform':'facebook','source':'facebook','reader':'fbgql','locationVerified':False}
 
+def salvage(result,source):
+    # GuardStop is a BaseException, so fbgql cannot keep feed pages read before a later
+    # page hits the request/time budget. Those posts are real observations: keep them.
+    if result['posts'] or not BoundedTransport.partial:return
+    result['posts']=[e for p in BoundedTransport.partial[:12] if (e:=normalized(p,source))]
+    # The budget status is kept so the worker still defers this source and reads the rest next round.
+    if result['posts']:result['partial']=True
+
 def read(source):
     from fbgql import Scraper,ScrapeJob,runner,policy
     runner.SyncTransport=BoundedTransport
     policy.MAX_EMPTY_RETRIES=0;policy.MAX_TRANSPORT_RETRIES=1
+    if not getattr(runner._append_unique,'tracks_partial',False):
+        original=runner._append_unique
+        def tracked(posts,new):
+            original(posts,new);BoundedTransport.partial=posts
+        tracked.tracks_partial=True;runner._append_unique=tracked
+    BoundedTransport.partial=None
     BoundedTransport.requests_made=0;BoundedTransport.max_requests=max(1,min(8,int(source.get('requestBudget',8))));BoundedTransport.started=time.monotonic()
     result={'status':'not_started','posts':[],'reader':'fbgql','upstreamCommit':COMMIT,'anonymous':True,'commentsEnabled':False,'browserStarted':False}
     try:
@@ -78,8 +93,8 @@ def read(source):
             except GuardStop as err:
                 if str(err) in ('rate_limited','public_access_blocked','human_verification_required'):raise
         result['status']='read_completed' if result['posts'] else 'empty_or_layout_changed'
-    except GuardStop as e:result['status']=str(e)
-    except Exception as e:result.update(status='reader_error',errorType=type(e).__name__)
+    except GuardStop as e:result['status']=str(e);salvage(result,source)
+    except Exception as e:result.update(status='reader_error',errorType=type(e).__name__);salvage(result,source)
     result['requests']=BoundedTransport.requests_made;result['durationSeconds']=round(time.monotonic()-BoundedTransport.started,3)
     return result
 

@@ -25,4 +25,18 @@ class FacebookTests(unittest.TestCase):
   c=sqlite3.connect(':memory:');worker.setup(c);e={'id':'123','fullText':'tam haber metni','description':'tam haber metni','title':'tam haber','collectedAt':'2026-11-13T12:00:00Z'}
   worker.retain(c,e);e.update(fullText='',description='',collectedAt='2026-11-13T12:10:00Z');saved=worker.retain(c,e)
   self.assertEqual(saved['fullText'],'tam haber metni');self.assertEqual(saved['firstSeenAt'],'2026-11-13T12:00:00Z');self.assertEqual(c.execute('SELECT count(*) FROM candidates').fetchone()[0],1);c.close()
+ def test_budget_stop_keeps_already_read_feed_pages(self):
+  from unittest.mock import patch
+  try:from fbgql import runner
+  except ModuleNotFoundError:self.skipTest('fbgql vendor copy is not present in this directory')
+  from fbgql.models import Post
+  now=int(time.time());calls=[]
+  page=[Post(post_id=str(i),feedback_id=None,text='Ümraniye haber '+str(i),permalink='https://www.facebook.com/test/posts/'+str(i),comment_count=0,created_time=now) for i in range(1,4)]
+  def timeline(uid,cursor,*args):
+   calls.append(cursor)
+   if cursor:raise reader.GuardStop('request_budget_reached')
+   return page,'next'
+  with patch.object(runner,'_resolve_page_id_candidates',return_value=['100']),patch.object(runner,'_post_timeline',side_effect=timeline),patch.object(runner,'time',O(sleep=lambda s:None)):
+   r=reader.read({'source_id':'fb1','page_name':'Yerel Haber','page_url':'https://www.facebook.com/test/','requestBudget':8})
+  self.assertEqual(calls,[None,'next']);self.assertEqual(r['status'],'request_budget_reached');self.assertTrue(r['partial']);self.assertEqual([e['id'] for e in r['posts']],['1','2','3'])
 if __name__=='__main__':unittest.main(verbosity=2)
