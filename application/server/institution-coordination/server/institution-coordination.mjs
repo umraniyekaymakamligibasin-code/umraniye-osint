@@ -116,7 +116,7 @@ const CASE_SELECT = `SELECT c.id,c.title,c.summary_redacted,c.neighborhood,c.loc
   FROM coord_cases c JOIN coord_topics t ON t.id=c.topic_id
   JOIN coord_institution_topic_grants g ON g.institution_id=c.institution_id AND g.topic_id=c.topic_id AND g.granted=1
   JOIN coord_institutions i ON i.id=c.institution_id AND i.enabled=1 AND i.approval_status='approved'
-  WHERE c.institution_id=? AND t.enabled=1 AND t.approval_status='approved' AND c.sensitivity='ordinary' AND t.sensitivity='ordinary'`;
+  WHERE c.institution_id=? AND t.enabled=1 AND t.approval_status='approved'`;
 
 /** Handle only /api/institution/*; return null for unrelated routes. */
 export function createInstitutionCoordination(adapters) {
@@ -190,9 +190,9 @@ export function createInstitutionCoordination(adapters) {
         const targetStatus = text(body.status, 32);
         if (!STATUS.has(targetStatus)) return json({ error: 'invalid_status' }, 400);
         const existing = await first(db, `SELECT c.id,c.status FROM coord_cases c
-          JOIN coord_topics t ON t.id=c.topic_id AND t.enabled=1 AND t.approval_status='approved' AND t.sensitivity='ordinary'
+          JOIN coord_topics t ON t.id=c.topic_id AND t.enabled=1 AND t.approval_status='approved'
           JOIN coord_institution_topic_grants g ON g.institution_id=c.institution_id AND g.topic_id=c.topic_id AND g.granted=1
-          WHERE c.id=? AND c.institution_id=? AND c.sensitivity='ordinary'`, statusMatch[1], tenant.institution_id);
+          WHERE c.id=? AND c.institution_id=?`, statusMatch[1], tenant.institution_id);
         if (!existing) return json({ error: 'case_not_found' }, 404);
         if (!STATUS_TRANSITIONS[existing.status]?.has(targetStatus)) return json({ error: 'invalid_status_transition' }, 409);
         if (typeof db.batch !== 'function') return json({ error: 'transaction_unavailable' }, 503);
@@ -260,7 +260,8 @@ export function createInstitutionCoordination(adapters) {
       const recipientCounts = await all(db, `SELECT i.code institution,COUNT(r.id) AS verified_active_recipients
         FROM coord_institutions i LEFT JOIN coord_mail_recipients r ON r.institution_id=i.id AND r.active=1 AND r.verified_at IS NOT NULL AND r.verified_by IS NOT NULL
         GROUP BY i.id ORDER BY i.display_name`);
-      return json({ institutions, topics, grants, members, recipientCounts });
+      const accounts=await all(db,'SELECT id,username,name,active FROM team_accounts ORDER BY username');
+      return json({ institutions, topics, grants, members, recipientCounts, accounts });
     }
     const enableMatch = path.match(/^\/admin\/institutions\/([A-Za-z0-9_-]{1,100})\/approval$/);
     if (enableMatch && request.method === 'POST') {
@@ -284,7 +285,7 @@ export function createInstitutionCoordination(adapters) {
       const approved = body.approvalStatus === 'approved' ? 'approved' : body.approvalStatus === 'rejected' ? 'rejected' : 'pending';
       const sensitivity = ['ordinary','restricted','high'].includes(body.sensitivity) ? body.sensitivity : 'high';
       const ref = text(body.approvalReference, 180);
-      const enabled = body.enabled === true && approved === 'approved' && sensitivity === 'ordinary' && !!ref ? 1 : 0;
+      const enabled = body.enabled === true && approved === 'approved' && !!ref ? 1 : 0;
       if (approved === 'approved' && !ref) return json({ error: 'approval_reference_required' }, 400);
       const result = await run(db, `UPDATE coord_topics SET approval_status=?,approval_reference=?,sensitivity=?,enabled=?,updated_at=? WHERE code=?`, approved, approved === 'approved' ? ref : null, sensitivity, enabled, now(), topicApprovalMatch[1]);
       if (!result?.meta?.changes && !result?.changes) return json({ error: 'topic_not_found' }, 404);
@@ -300,7 +301,7 @@ export function createInstitutionCoordination(adapters) {
       const institution = await first(db, `SELECT id,enabled,approval_status FROM coord_institutions WHERE code=?`, grantMatch[1]);
       const topic = await first(db, `SELECT id,enabled,approval_status,sensitivity FROM coord_topics WHERE code=?`, grantMatch[2]);
       if (!institution || !topic) return json({ error: 'scope_not_available' }, 404);
-      if (granted && (institution.enabled!==1 || institution.approval_status!=='approved' || topic.enabled!==1 || topic.approval_status!=='approved' || topic.sensitivity!=='ordinary')) return json({error:'scope_not_approved'},409);
+      if (granted && (institution.enabled!==1 || institution.approval_status!=='approved' || topic.enabled!==1 || topic.approval_status!=='approved')) return json({error:'scope_not_approved'},409);
       await run(db, `INSERT INTO coord_institution_topic_grants(institution_id,topic_id,granted,approval_reference,updated_by,updated_at)
         VALUES(?,?,?,?,?,?) ON CONFLICT(institution_id,topic_id) DO UPDATE SET granted=excluded.granted,
         approval_reference=excluded.approval_reference,updated_by=excluded.updated_by,updated_at=excluded.updated_at`, institution.id, topic.id, granted, ref || null, actorKey, now());
