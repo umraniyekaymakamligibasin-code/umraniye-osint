@@ -64,11 +64,16 @@ print('X yedek aktarimi geri alindi; kayitlar ve oturumlar korundu.')
    dirs[:]=[n for n in dirs if not n.startswith('.') and n not in {'node_modules','backups','data','logs','profiles','venv'} and not (pathlib.Path(folder)/n).is_symlink()]
    for name in names:
     src=pathlib.Path(folder)/name
-    if not src.is_symlink() and (src.suffix in {'.mjs','.js','.cjs'} or name=='package.json'):
+    if not src.is_symlink() and (src.suffix in {'.mjs','.js','.cjs','.html','.png'} or name=='package.json'):
      dest=clone/src.relative_to(APP);dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(src,dest)
   write(clone/'server/browser-research.mjs',files[target]);write(stage/'test_backend.mjs',base64.b64decode(PAYLOAD['test_backend.mjs']))
   test=run(['node',str(stage/'test_backend.mjs'),str(clone/'server/browser-research.mjs')],60)
-  if test.returncode:raise RuntimeError('backend_tests_failed_no_install')
+  if test.returncode:
+   # This is an isolated fixture run, never a live credential-bearing request.
+   detail=(test.stderr or test.stdout)[-2500:]
+   (backup/'backend-test-failure.txt').write_text(detail)
+   print('Backend kontrol ayrintisi: '+str(backup/'backend-test-failure.txt'))
+   raise RuntimeError('backend_tests_failed_no_install')
  STATE.mkdir(mode=0o700,exist_ok=True);STATE.chmod(0o700)
  changed=False
  try:
