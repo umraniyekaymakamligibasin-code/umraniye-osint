@@ -1,0 +1,48 @@
+{
+  "at": "2026-11-12T18:44:01.785329+00:00",
+  "source": "https://github.com/bsho5/fbgql",
+  "commit": "28e03ae84012be44d37a67014fcfcfcc420c9ee9",
+  "license": "MIT",
+  "offlineTests": {
+    "passed": 9,
+    "failed": 0,
+    "dependencies": "pip check passed",
+    "pythonSyntax": "passed",
+    "nodeSyntax": "passed"
+  },
+  "liveFromLocalComputer": [
+    {
+      "source": "https://www.facebook.com/profile.php?id=100091870376627",
+      "status": "read_completed",
+      "posts": 3,
+      "datedLinkedPosts": 3,
+      "requests": 1,
+      "durationSeconds": 0.778
+    },
+    {
+      "source": "https://www.facebook.com/umraniyehaberlerii",
+      "status": "read_completed",
+      "posts": 3,
+      "datedLinkedPosts": 3,
+      "requests": 2,
+      "durationSeconds": 3.181
+    }
+  ],
+  "additionalLiveRead": {
+    "source": "https://www.facebook.com/asayisberkemaltr",
+    "status": "read_completed",
+    "requests": 2,
+    "datedLinkedPostsSeen": true,
+    "reelURLSeen": true
+  },
+  "existingFacebookChanged": false,
+  "productionWrites": 0,
+  "telegramWrites": 0,
+  "browserStarted": false,
+  "accountCookiesProvided": false,
+  "installedOnServer": false,
+  "serverAccess": "SSH key rejected",
+  "serverIPReadVerified": false,
+  "newPostVisibleInPanelVerified": false,
+  "scope": "independent shadow experiment, no automatic startup"
+}
