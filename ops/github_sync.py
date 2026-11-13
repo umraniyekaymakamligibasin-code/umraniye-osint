@@ -15,7 +15,7 @@ ROOTS = {
     'telegram': '/opt/umraniye-telegram',
 }
 SKIP = {'node_modules','venv','image-tools','browsers','__pycache__','backups','profiles','browser-profiles','data','logs','credentials','sessions','dist'}
-EXT = {'.mjs','.js','.ts','.tsx','.jsx','.py','.html','.css','.sql','.md','.txt','.lock','.toml','.yaml','.yml','.sh','.service','.timer','.svg','.woff','.woff2','.ttf','.png','.jpg','.ico'}
+EXT = {'.mjs','.js','.cjs','.ts','.tsx','.jsx','.py','.html','.css','.sql','.md','.txt','.lock','.toml','.yaml','.yml','.sh','.service','.service.saved','.timer','.conf','.ini','.xml','.svg','.woff','.woff2','.ttf','.png','.jpg','.ico'}
 JSON_NAMES = {'package.json','package-lock.json','tsconfig.json','config.example.json','rules-manifest.json','RELEASE.json'}
 SECRET = re.compile(rb'-----BEGIN (?:OPENSSH |RSA |EC )?PRIVATE KEY-----|(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})|\b\d{8,12}:[A-Za-z0-9_-]{30,}\b|\bAKIA[0-9A-Z]{16}\b')
 ASSIGNED_SECRET = re.compile(rb'''(?im)^\s*(?:export\s+)?(?:const\s+|let\s+|var\s+)?(?:[A-Z_]*(?:PASSWORD|SECRET|API_KEY|ACCESS_TOKEN|BOT_TOKEN)[A-Z_]*)\s*[:=]\s*["']([^"'\r\n]{8,})["']''')
