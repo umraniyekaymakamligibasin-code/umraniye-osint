@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS institutional_pin(id INTEGER PRIMARY KEY CHECK(id=1),salt TEXT NOT NULL,hash TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1,default_pin INTEGER NOT NULL DEFAULT 1,updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS institutional_pin_limits(owner_key TEXT PRIMARY KEY,attempts INTEGER NOT NULL DEFAULT 0,locked_until INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS institutional_sessions(token_hash TEXT PRIMARY KEY,owner_binding TEXT NOT NULL,pin_version INTEGER NOT NULL,last_seen INTEGER NOT NULL,expires_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS institutional_sessions_expiry ON institutional_sessions(expires_at);
+CREATE TABLE IF NOT EXISTS institutional_reviews(record_id TEXT NOT NULL REFERENCES lab_items(id) ON DELETE CASCADE,source_key TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'BEKLIYOR',priority TEXT NOT NULL DEFAULT 'P3',note TEXT NOT NULL DEFAULT '',decision TEXT NOT NULL DEFAULT '',actor TEXT NOT NULL,updated_at TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,PRIMARY KEY(record_id,source_key));

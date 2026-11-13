@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Instagram Yönetimi | Ümraniye OSINT</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Arial;color:#172333;background:#f6f7fa}
+*{box-sizing:border-box}body{margin:0}.top{background:#112b43;color:white;padding:24px max(20px,calc((100vw - 1050px)/2))}
+.top h1{font-size:24px;margin:5px 0}.top small{color:#bad2df}.wrap{max-width:1050px;margin:28px auto;padding:0 20px}
+.panel{background:#fff;border:1px solid #dee5ea;border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 12px #0b213008}
+.info{color:#546377;line-height:1.5}.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+input{padding:11px 12px;border:1px solid #b6c3cf;border-radius:8px;font:inherit;min-width:230px;flex:1}
+button,.back{font:inherit;border-radius:8px;border:1px solid #bcc8d2;background:white;padding:9px 12px;cursor:pointer}
+button.primary{background:#173e61;color:#fff;border-color:#173e61}button:hover{filter:brightness(.96)}button:disabled{opacity:.5;cursor:wait}
+.item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 0;border-top:1px solid #edf0f4}
+.item .name{font-weight:600;overflow-wrap:anywhere}.item .buttons{display:flex;gap:8px;flex-wrap:wrap;justify-content:end}
+small.muted{display:block;color:#798597}.state{padding:10px 12px;background:#f5f8fb;border-radius:8px;margin-top:12px}
+.badge{color:#08734c;background:#e4f6ef;padding:4px 9px;border-radius:30px;font-size:12px}
+.badge.off{color:#6a7280;background:#edf0f3}@media(max-width:580px){.item{align-items:start;flex-direction:column}.item .buttons{justify-content:start}}
+</style></head><body>
+<header class="top"><small>ÜMRANİYE KAYMAKAMLIĞI OSINT TAKİP SİSTEMİ</small><h1>Instagram Yönetimi</h1><small>Basın ve Halkla İlişkiler Müdürlüğü · Sosyal Medya İzleme</small></header>
+<main class="wrap"><section class="panel"><h2>Instagram API</h2><p>Etkin profesyonel hesaplar doğrudan API ile okunur.</p><a href="/yonetim#instagram">API bağlantısı, kaynak sağlığı ve anahtar süresini görüntüle</a></section><a class="back" href="/yonetim/entegrasyonlar">← Entegrasyonlara dön</a>
+<section class="panel"><h2>İzlenen Instagram hesapları <span id="count"></span></h2>
+<p class="info">Yalnızca burada kayıtlı ve etkin hesapların doğrudan profil gönderileri taranır. Keşfet, genel arama, önerilen içerikler ve “Takip Ettikleri” penceresi kullanılmaz. Düzenlemeler bir sonraki taramada uygulanır.</p>
+<div class="toolbar"><input id="handle" maxlength="31" placeholder="Instagram hesap adı (örn. dudullu.haber)" autocomplete="off" spellcheck="false"><button id="add" class="primary">Hesap ekle</button><button id="reload">Yenile</button></div>
+<div id="msg" class="state" role="status" aria-live="polite">Yükleniyor…</div></section>
+<section class="panel"><h2>Hesap listesi</h2><div id="items"></div></section></main>
+<script>
+'use strict';
+const api='/api/admin/integrations/instagram-targets';let current=null;
+const $=id=>document.getElementById(id);
+const msg=(value)=>{$('msg').textContent=value;};
+async function load(){const r=await fetch(api,{credentials:'same-origin',cache:'no-store'});if(!r.ok)throw Error('Liste okunamadı: HTTP '+r.status);current=await r.json();render();}
+function render(){const enabled=current.accounts.filter(a=>a.enabled).length;
+ $('count').textContent='('+enabled+' etkin / '+current.accounts.length+' toplam)';
+ const list=$('items');list.replaceChildren();
+ for(const account of current.accounts){
+   const row=document.createElement('div');row.className='item';
+   const info=document.createElement('div'),name=document.createElement('div'),state=document.createElement('span');
+   name.className='name';name.textContent='@'+account.handle;
+   state.className='badge'+(account.enabled?'':' off');state.textContent=account.enabled?'Etkin':'Pasif';
+   info.append(name,state);row.append(info);
+   const actions=document.createElement('div');actions.className='buttons';
+   const toggle=document.createElement('button');toggle.textContent=account.enabled?'Pasifleştir':'Etkinleştir';
+   toggle.addEventListener('click',()=>change(account.enabled?'disable':'enable',account.handle));
+   const remove=document.createElement('button');remove.textContent='Kaldır';
+   remove.addEventListener('click',()=>{if(confirm('@'+account.handle+' listeden kaldırılsın mı?'))change('remove',account.handle);});
+   actions.append(toggle,remove);row.append(actions);list.append(row);
+ }
+ if(!current.accounts.length)list.textContent='Henüz kayıtlı hesap yok.';
+}
+async function change(action,handle){
+ if(!current)return;
+ $('add').disabled=true;msg('İşlem gerçekleştiriliyor…');
+ try{const response=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({action,handle,revision:current.revision})});
+ const data=await response.json();if(!response.ok)throw Error(data.error||'İşlem başarısız');current=data;render();$('handle').value='';msg('Liste güncellendi. Değişiklikler bir sonraki taramada geçerli olacaktır.');}
+ catch(e){msg(e.message||'Bir hata oluştu');}
+ finally{$('add').disabled=false;}
+}
+$('add').addEventListener('click',()=>{const h=$('handle').value.trim().replace(/^@/,'').toLowerCase();if(!/^[a-z0-9._]{1,30}$/.test(h)){msg('Geçerli bir Instagram kullanıcı adı yazın.');return;}change('add',h);});
+$('handle').addEventListener('keydown',e=>{if(e.key==='Enter')$('add').click()});
+$('reload').addEventListener('click',()=>load().then(()=>msg('Liste yenilendi.')).catch(e=>msg(e.message)));
+load().then(()=>msg('Hazır. Yeni hesap ekleyebilir veya mevcut hesapları düzenleyebilirsiniz.')).catch(e=>msg(e.message));
+</script></body></html>

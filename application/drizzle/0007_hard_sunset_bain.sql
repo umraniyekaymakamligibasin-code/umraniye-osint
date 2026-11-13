@@ -1,0 +1,1 @@
+ALTER TABLE `case_records` ADD `event_data` text DEFAULT '{}' NOT NULL;

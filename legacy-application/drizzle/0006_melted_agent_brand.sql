@@ -1,0 +1,1 @@
+ALTER TABLE `personal_records` ADD `operation_id` text DEFAULT '' NOT NULL;

@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+node_modules/
+__pycache__/
+*.pyc
+*.sqlite*
+*.db
+*.log
+*.pem
+*.key
+venv/
+.venv/
+browser-profiles/
+credentials/
+*.sync-tmp

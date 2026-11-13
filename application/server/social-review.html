@@ -1,0 +1,45 @@
+<!doctype html><html lang="tr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sosyal Medya İnceleme Kuyruğu</title><!-- OSINT_FACEBOOK_REVIEW_V2 --><style>body{font:16px system-ui;background:#f5f6f8;color:#18212f;max-width:1050px;margin:auto;padding:24px}a{color:#b91c24}article{background:white;border:1px solid #e6e8ec;border-radius:12px;margin:16px 0;padding:20px}p{white-space:pre-wrap;overflow-wrap:anywhere}small{color:#667085}select,button{padding:10px;margin:8px}h1{font-size:26px}</style><a href="/yonetim">Yönetim paneline dön</a><h1>Sosyal Medya İnceleme Kuyruğu</h1><p>Konumu, yayın tarihi veya haber metni kesinleştirilemeyen paylaşımlar. Bu kayıtlar yönetici tarafından haber metni ve yayın tarihi doğrulanarak onaylanırsa Haber Gündemi'ne alınır. Telegram yalnızca güncel ve bildirim kurallarına uygun onaylı haberlerde denenir. Görsel açıklaması otomatik üretilmiş olabilir; doğrulanmış haber metni değildir.</p><select id="filter"><option value="">Tüm platformlar</option><option value="instagram">Instagram</option><option value="x">X</option><option value="facebook">Facebook</option></select><button id="reload">Listeyi yenile</button><p id="state" role="status">Kayıtlar yükleniyor…</p><main id="rows"></main><script>
+let items=[];const el=id=>document.getElementById(id),labels={location_missing:'Konum için inceleme gerekli',date_missing:'Yayın tarihi okunamadı',date_missing_or_invalid:'Yayın tarihi doğrulanamadı',facebook_date_missing:'Facebook yayın tarihi belirsiz · yalnızca inceleme',facebook_local_review:'Yerel Facebook paylaşımı · inceleme gerekli',facebook_record_review:'Facebook kaynak kaydı · inceleme',facebook_unbridged:'Facebook kaydı · OSINT aktarımı doğrulanmadı',media_text_missing:'Medya içeriğinin metni okunamadı'};
+function date(value){if(!value)return 'Belirtilmemiş';const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString('tr-TR',{timeZone:'Europe/Istanbul'}):'Tarih belirsiz';}
+function node(tag,text){const n=document.createElement(tag);n.textContent=text;return n;}
+function render(){const rows=items.filter(e=>(!el('filter').value||e.provider===el('filter').value) && (e.provider!=='instagram'||document.getElementById('ig-smart-mode')?.value==='all'||!['auto','archive'].includes((window.__igDecisions||{})[String(e.url||'').split('?')[0]]?.decision)));el('state').textContent=rows.length+' kayıt · Facebook: son 48 saat, belirsiz tarih: son 3 saatte keşfedilenler (yalnızca inceleme)';el('rows').replaceChildren();for(const e of rows){const a=node('article','');a.append(node('h2',e.title||'Metni alınamayan paylaşım'),node('small',({x:'X',instagram:'Instagram',facebook:'Facebook'}[e.provider]||'Kaynak')+' · '+(e.sourceName||'Hesap belirtilmemiş')+' · '+(labels[e.reason]||'İnceleme gerekli')),node('p',e.fullText||e.description||'Paylaşımın haber metni alınamadı.'),node('small','Yayın: '+date(e.publishedAt)+' · İlk tespit: '+date(e.firstSeenAt)));if(e.mediaAlt)a.append(node('p','Görsel açıklaması (teyitsiz): '+e.mediaAlt));try{const u=new URL(e.url);if(u.protocol==='https:'&&['x.com','www.instagram.com','facebook.com','www.facebook.com','m.facebook.com'].includes(u.hostname)){const link=node('a','Orijinal paylaşımı aç');link.href=u.href;link.target='_blank';link.rel='noopener noreferrer';a.append(node('p',''),link);}}catch{}a.append(reviewEditor(e));el('rows').append(a);}}
+// OSINT_EDITORIAL_APPROVAL_UI_V1
+function reviewEditor(item){
+ const pane=document.createElement('div');pane.style='padding:12px;margin-top:16px;border-top:1px solid #ddd';
+ const open=node('button','Onayla ve Haber Gündemi’ne al');open.type='button';pane.append(open);
+ const editor=document.createElement('div');editor.hidden=true;
+ const title=node('label','Haber başlığı');const titleInput=document.createElement('input');titleInput.value=String(item.title||'').slice(0,240);titleInput.maxLength=240;titleInput.style='width:100%;padding:9px;margin:5px 0 12px';title.append(titleInput);
+ const body=node('label','Doğrulanmış haber metni');const textInput=document.createElement('textarea');textInput.value=String(item.fullText||item.description||'').slice(0,2500);textInput.maxLength=2500;textInput.rows=5;textInput.style='width:100%;padding:9px;margin:5px 0 12px';body.append(textInput);
+ const published=node('label','Kaynakta doğrulanan yayın zamanı (ISO 8601; ör. 2026-11-09T12:30:00+03:00)');const dateInput=document.createElement('input');dateInput.type='text';dateInput.value=String(item.publishedAt||'');dateInput.placeholder='2026-11-09T12:30:00+03:00';dateInput.style='width:100%;padding:9px;margin:5px 0 12px';published.append(dateInput);
+ const note=node('small','Eski haberler Haber Gündemi’ne alınabilir; ancak Telegram’a geçmiş haber bildirimi gönderilmez. Tarihi belirsiz kayıtları doğrulamadan onaylamayın.');
+ const approve=node('button','Haberi onayla · Telegram koşullarını kontrol et');approve.type='button';const feedback=node('p','');feedback.setAttribute('role','status');
+ editor.append(title,body,published,note,document.createElement('br'),approve,feedback);pane.append(editor);
+ open.onclick=()=>{editor.hidden=!editor.hidden;open.textContent=editor.hidden?'Onayla ve Haber Gündemi’ne al':'Düzenleyiciyi gizle';};
+ approve.onclick=async()=>{
+  if(!confirm('Bu paylaşım incelendi ve haber metni doğrulandı mı? Onaylandığında Haber Gündemi’ne eklenir. Bildirim yalnızca güncellik ve Telegram kurallarına uygunsa gönderilir.'))return;
+  approve.disabled=true;feedback.textContent='Kaydediliyor…';
+  try{
+   const r=await fetch('/api/admin/integrations/social-review/approve',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:item.url,title:titleInput.value,description:textInput.value,publishedAt:dateInput.value,confirm:true})});
+   const d=await r.json();if(!r.ok&&d.alreadyApproved){items=items.filter(entry=>entry.url!==item.url);render();await load();el('state').textContent='Haber daha önce onaylanmış; kuyruktan çıkarıldı.';return;}if(!r.ok)throw Error(d.error||'Onay kaydedilemedi');
+   feedback.textContent='Haber eklendi. Telegram durumu: '+d.telegramStatus+'.';
+   const link=node('a','Onaylanan haberi aç');link.href=d.newsUrl;link.target='_blank';link.rel='noopener';feedback.append(document.createTextNode(' '),link);approve.remove();items=items.filter(entry=>entry.url!==item.url);render();await load();el('state').textContent='Haber onaylandı ve inceleme kuyruğundan çıkarıldı.';
+  }catch(e){feedback.textContent=e.message;approve.disabled=false;}
+ };
+ return pane;
+}
+
+async function load(){el('reload').disabled=true;try{const r=await fetch('/api/admin/integrations/social-review',{credentials:'same-origin',cache:'no-store'});if(!r.ok)throw Error(r.status===401?'Yönetici oturumunuzu açın.':'İnceleme kayıtları alınamadı.');const d=await r.json();items=d.items||[];render();}catch(e){el('state').textContent=e.message;}finally{el('reload').disabled=false;}}
+el('filter').onchange=render;el('reload').onclick=load;load();
+</script><script>/* UMRANIYE_IG_INTELLIGENCE_UI_V1 */
+(async()=>{const box=document.createElement('section');box.style='background:#fff;border:1px solid #e6e8ec;border-radius:12px;padding:16px;margin:14px 0';box.setAttribute('aria-label','Instagram otomatik ön değerlendirme');
+const header=document.createElement('h2');header.textContent='Instagram · Otomatik haber ön değerlendirmesi';box.append(header);
+const line=document.createElement('p');line.textContent='Sonuçlar alınıyor…';box.append(line);
+const h=document.querySelector('h1');if(h)h.insertAdjacentElement('afterend',box);
+const sel=document.createElement('select');sel.id='ig-smart-mode';const a=document.createElement('option');a.value='review';a.textContent='İnceleme gerekenler';sel.append(a);const b=document.createElement('option');b.value='all';b.textContent='Tüm gönderiler';sel.append(b);sel.onchange=()=>{if(window.render)window.render()};box.append(sel);
+try{const r=await fetch('/api/admin/integrations/instagram-intelligence',{credentials:'same-origin',cache:'no-store'});if(!r.ok)throw Error('Henüz çalışmadı');const d=await r.json();
+line.textContent='İncelenen: '+(d.read||0)+' · Toplam otomatik iç haber: '+(d.autoTotal||0)+' · Bu tur yeni: '+(d.autoInserted||0)+' · İncelemelik: '+(d.review||0)+' · Elenen: '+(d.archive||0)+' · Manuel örnek: '+(d.manualInstagramApprovals||0)+' · Son çalışma: '+(d.at||'belirsiz');
+window.__igDecisions=Object.fromEntries((d.decisions||[]).map(x=>[x.url,x]));if(window.render)window.render();
+const note=document.createElement('small');note.textContent='Otomatik seçilenler kaynak bildirimidir; bağımsız olarak teyit edilmiş sayılmaz. Telegram gönderilmez.';box.append(note);
+}catch{line.textContent='Otomatik haber sınıflandırıcısının henüz raporu yok.';}
+})();</script>
+</html>

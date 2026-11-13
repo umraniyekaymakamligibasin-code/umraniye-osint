@@ -1,0 +1,9 @@
+{
+  "shadow": true,
+  "telegram": false,
+  "productionWrites": false,
+  "queriesPerRound": 2,
+  "resultsPerQuery": 10,
+  "timeoutSeconds": 90,
+  "freshnessMinutes": 60
+}

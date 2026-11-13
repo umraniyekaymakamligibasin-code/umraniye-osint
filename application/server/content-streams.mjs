@@ -1,0 +1,8 @@
+import{analyzeGeoText,geoNormalize}from './geo-dictionary.mjs';
+import {isUmraniyesporContent} from './filters/umraniyespor.mjs';
+const platforms={x:['x.com','twitter.com'],facebook:['facebook.com'],instagram:['instagram.com']};
+export function socialPlatform(e){try{const u=new URL(e.url);if(!['https:','http:'].includes(u.protocol)||u.username||u.password)return null;const host=u.hostname.replace(/^(?:www\.|m\.)/,'');return Object.entries(platforms).find(([,hosts])=>hosts.includes(host))?.[0]||null;}catch{return null;}}
+export function isSocialRecord(e){const p=socialPlatform(e);return !!p&&(!e.platform||e.platform===p);}
+export function isNewsRecord(e){return !socialPlatform(e)&&!e.social&&!['x','facebook','instagram'].includes(e.platform);}
+export function withCorrelation(e){const g=analyzeGeoText(e.title+' '+(e.fullText||e.description||'')),t=geoNormalize(e.title+' '+(e.fullText||e.description||'')),kind=[['yangin',/\byangin\w*/],['kaza',/\bkaza(?:si|sinda|ya|lari)?\b/],['sel',/su baskini|\bsel\b/],['cokme',/\bcoktu\b|\bgocuk\b/]].find(([,r])=>r.test(t))?.[0],ms=Date.parse(e.publishedAt);if(!kind||!g.localContextEstablished||g.matches.length!==1||!Number.isFinite(ms))return e;const key=g.matches[0].id+'|'+kind+'|'+Math.floor(ms/(3*3600000));let hash=2166136261;for(const c of key)hash=Math.imul(hash^c.charCodeAt(0),16777619);return {...e,correlationCandidateId:'event-candidate-'+(hash>>>0).toString(36),correlationStatus:'candidate_requires_review'};}
+export function newsRecords(rows){return rows.filter(e=>isNewsRecord(e)&&!isUmraniyesporContent(e)).map(e=>withCorrelation({...e,sources:(e.sources||[]).filter(isNewsRecord)}));}

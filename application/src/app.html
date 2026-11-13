@@ -1,0 +1,550 @@
+<!doctype html>
+
+<html lang="tr">
+
+<head>
+
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+
+<meta name="theme-color" content="#ce0000"><link rel="icon" type="image/png" href="/favicon.png"><title>Ümraniye OSINT · Haber Gündemi</title>
+
+<meta name="description" content="Ümraniye için açık kaynak gündem takibi, kaynak inceleme ve günlük brifing paneli.">
+
+<style>:root{--ink:#203047;--muted:#69768a;--green:#bd2638;--green-light:#fdf0f2;--paper:#f5f7fa;--line:#e5eaf0;--orange:#b57828;--nav:#fff;--sans:'Segoe UI Variable','Segoe UI',Arial,sans-serif;color-scheme:light}
+
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}[hidden]{display:none!important}button,input,select,textarea{font:inherit}button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}button{cursor:pointer;color:inherit}button:disabled{cursor:wait;opacity:.8}button svg{pointer-events:none}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid #d98896;outline-offset:4px}a{color:var(--green)}svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}h1,h2,h3,p{overflow-wrap:anywhere}button{border:0}input,select,textarea{min-width:0}summary{cursor:pointer}
+
+.shell{min-height:100vh}.sidebar{position:fixed;inset:0 auto 0 0;width:248px;padding:30px 18px 20px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;z-index:45;overflow-y:auto}.brand{display:flex;align-items:center;gap:11px;padding:0 8px 36px}.brand-mark{flex-shrink:0}.brand-mark img{width:48px;height:48px;object-fit:contain;display:block}.brand strong{font-size:18px;font-weight:700;letter-spacing:-.7px;color:#1d2a3e;white-space:nowrap}.brand strong span{color:var(--green);font-size:13px;letter-spacing:1px;margin-left:2px}.brand small{display:block;font-size:8px;letter-spacing:1.5px;color:#8791a0;font-weight:600;margin-top:4px}.nav-label{font-size:10px;font-weight:700;letter-spacing:1.4px;color:#98a1ad;padding:0 15px;margin:0 0 12px}.nav-btn{display:flex;align-items:center;gap:13px;width:100%;min-height:46px;padding:11px 14px;margin-bottom:4px;border-radius:10px;text-decoration:none;background:transparent;text-align:left;font-size:13px;font-weight:550;color:#637083;line-height:1.5;transition:background .15s,color .15s}.nav-btn svg{width:19px;height:19px}.nav-btn>span{flex:1;min-width:0}.nav-btn b{font-size:10px;padding:1px 7px;border-radius:6px;background:#f0f3f7;color:#8994a2;font-weight:600;line-height:1.8}.nav-btn:hover{background:#f5f7fa;color:#28394f}.nav-btn.active{background:#fbecee;color:#ae2032}.nav-btn.active svg{stroke-width:2}.nav-btn.active b{background:#f5dce1;color:#af2638}.breaking-nav{color:#ad4c56}.nav-divider{height:1px;background:var(--line);margin:19px 12px}.sidebar-bottom{margin-top:auto;padding:28px 9px 0}.user{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:18px}.avatar{width:33px;height:33px;display:grid;place-items:center;border-radius:10px;background:#f1f4f8;color:#7c899c;font-size:10px;flex-shrink:0}.user strong{display:block;font-size:10px;font-weight:600;color:#69768a}.user small{font-size:9px;color:#a0a8b3;display:block;margin-top:2px}.sidebar-backdrop,.bottom-nav{display:none}
+
+.workspace{margin-left:248px;min-height:100vh}.topbar{height:78px;background:#fff;border-bottom:1px solid var(--line);padding:0 42px;display:flex;align-items:center;gap:22px}.breadcrumb{color:#8b95a3;font-size:11px;white-space:nowrap}.breadcrumb>span,.breadcrumb>strong{display:none}.top-right{display:flex;align-items:center;gap:23px;flex:1;justify-content:flex-end}.search{display:flex;align-items:center;gap:10px;background:#f6f8fa;border:1px solid #edf0f4;border-radius:10px;padding:9px 12px;width:clamp(250px,32vw,430px);height:42px;color:#9ca5b3}.search svg{width:17px;height:17px}.search:focus-within{background:#fff;border-color:#d29aa4;box-shadow:0 0 0 3px #bd26380b}.search input{border:0;outline:0;background:transparent;width:100%;font-size:12px;color:var(--ink)}.search input::placeholder{color:#9ba5b2}.search kbd{font:9px var(--sans);color:#a5adba;background:#fff;border:1px solid #e8ecf1;border-radius:4px;white-space:nowrap;padding:1px 4px}.today{font-size:11px;color:#8994a3;white-space:nowrap}.icon-btn{width:39px;height:39px;display:inline-grid;place-items:center;background:#fff;border:1px solid var(--line);border-radius:11px;color:#7c889a}.icon-btn:hover{background:#f5f7fa}.mobile-menu,.mobile-emblem{display:none}
+
+.main{max-width:1230px;margin:auto;padding:38px 44px 24px}.page-heading{display:flex;align-items:center;justify-content:space-between;gap:30px;margin-bottom:20px}.eyebrow{font-size:9px;font-weight:700;letter-spacing:1.8px;color:#b75b68;margin-bottom:8px}.page-heading h1{font-size:32px;line-height:1.3;font-weight:700;letter-spacing:-1.2px;margin:0;color:#1a2c43}.page-heading p{font-size:13px;line-height:1.8;color:#8390a1;margin:9px 0 0}.actions{display:flex;align-items:center;gap:9px;flex-shrink:0}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;min-height:42px;background:#fff;border:1px solid #e2e7ee;border-radius:10px;color:#566479;font-size:12px;font-weight:600;text-decoration:none;line-height:1.5}.btn svg{width:16px;height:16px}.btn:hover{background:#f8fafc;border-color:#c9d1dd}.btn-primary{background:var(--green);border-color:var(--green);color:white;box-shadow:0 3px 7px #bd263815}.btn-primary:hover{background:#a92031;border-color:#a92031}.actions #refresh-btn{min-width:115px}.statusbar{display:flex;align-items:center;gap:10px;font-size:10px;color:#8d98a8;margin:0 0 25px;min-height:20px}.statusbar .left{display:flex;align-items:center;gap:8px}.statusbar svg{width:14px;height:14px;color:#8ca197}.summary-overview{border:1px solid var(--line);border-radius:11px;background:#fff;margin:0 0 25px}.summary-overview>summary{padding:11px 16px;font-size:11px;font-weight:550;color:#7f8b9d;list-style-position:inside}.summary-overview>summary>span{float:right;color:#a2aab7;font-size:10px;font-weight:400}.summary-overview[open]>summary{border-bottom:1px solid var(--line)}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:14px;gap:10px}.stat{background:#f7f9fc;border:1px solid transparent;border-radius:9px;text-align:left;padding:14px;line-height:1.5}.stat:hover{border-color:#dfb3bc}.stat-label{display:flex;gap:7px;align-items:center;color:#8994a4;font-size:10px}.stat-label svg{width:14px;height:14px}.stat-value{display:flex;gap:5px;align-items:baseline;margin:8px 0}.stat-value strong{font-size:26px;font-weight:650;color:#32435d}.stat-value small,.stat-note{font-size:9px;color:#a2abb7}.stat.accent .stat-value strong{color:#ba3e4e}.side-panel{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:0 22px 20px}.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:23px}.side-panel .panel{border:0;padding:14px 0 0}.side-panel .brief-card h2{font-size:17px;line-height:1.5;margin:8px 0}.side-panel .brief-icon{display:none}.side-panel p,.side-panel .small-copy{font-size:11px;color:#8994a5}.side-panel>.small-copy{grid-column:1/-1;font-size:10px;color:#a5adba}.panel-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.panel-title h2{font-size:12px;display:flex;gap:7px;align-items:center;margin:0}.panel-title svg{width:14px;height:14px}.panel-title small{font-size:8px;color:#a4acb7}.topic-row{display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#8290a2;padding:5px 0}.topic-name{display:flex;align-items:center;gap:7px}.topic-dot{width:4px;height:4px;background:#c1717e;border-radius:50%}.mini-bar{height:2px;background:#f2f4f7;margin:0 0 4px}.mini-bar span{display:block;background:#e6c2ca;height:100%}
+
+.view{display:none}.view.active{display:block}.content-layout{display:block}.tabs{display:flex;align-items:center;gap:4px;padding:5px;background:#eaf0f5;border:1px solid #e6ecf2;border-radius:12px;margin-bottom:18px;width:max-content;max-width:100%;overflow:auto}.tab{border:0;background:transparent;border-radius:8px;padding:9px 17px;color:#8390a2;font-size:12px;font-weight:550;white-space:nowrap;line-height:1.6;transition:background .15s}.tab b{font-size:9px;margin-left:4px;color:#a2aaba;font-weight:500}.tab.active{background:white;color:#253950;box-shadow:0 1px 4px #263a5010}.tab.breaking-tab{color:#ac5764}.tab.breaking-tab.active{color:#b02538}.breaking-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:#b82b40;margin:0 5px 1px 0}.feed-tools{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:15px;position:relative;min-height:39px}.period-note{font-size:12px;color:#7b899c;margin:0;line-height:1.7}.advanced-filters>summary{list-style:none;display:flex;gap:7px;align-items:center;padding:8px 12px;border:1px solid #e0e6ee;background:#fff;border-radius:8px;font-size:11px;color:#69788e}.advanced-filters>summary::-webkit-details-marker{display:none}.advanced-filters>summary svg{width:14px;height:14px}.advanced-filters>summary span{background:#f9e8ec;color:#b22a3d;font-size:9px;border-radius:4px;padding:0 5px}.advanced-filters[open]>summary{border-color:#d6a6b0;color:#af293c}.filters{display:flex;flex-wrap:wrap;gap:9px;position:absolute;right:0;top:47px;z-index:15;width:min(650px,calc(100vw - 310px));padding:18px;border:1px solid #e0e6ee;border-radius:12px;background:white;box-shadow:0 12px 40px #22324a17}.filters select{padding:10px 12px;min-height:40px;border:1px solid #e1e6ed;background:#fafbfd;border-radius:8px;color:#627187;font-size:12px;flex:1 1 160px;max-width:100%}.filter-btn{display:flex;gap:7px;align-items:center;padding:9px 12px;background:#f7f9fb;border:1px solid var(--line);border-radius:8px;font-size:11px;color:#79879a}.filter-btn svg{width:15px;height:15px}.filter-btn.on{color:#a72438;background:#fdf0f3;border-color:#ebc6ce}.text-btn{background:none;border:0;padding:4px 0;color:#a74859;font-size:12px;font-weight:550;cursor:pointer;line-height:1.7;text-align:left}.text-btn:hover{color:#8c1b2e}.feed-meta{display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#9aa5b4;margin:0 1px 12px}.sort-note{display:inline-flex;gap:5px;align-items:center}.sort-note svg{width:12px;height:12px}#national-policy{margin-top:0;margin-bottom:15px}.events{display:grid;gap:13px}.event-card{padding:22px 24px 17px;border:1px solid #e3e9f0;background:#fff;border-radius:13px;transition:border-color .15s,box-shadow .15s;cursor:pointer;overflow:hidden}.event-card:hover{border-color:#c9d3e0;box-shadow:0 5px 20px #263e5906}.event-card:focus-within{border-color:#d2a0ab}.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:13px}.tags{display:flex;align-items:center;flex-wrap:wrap;gap:6px}.tag{font-size:10px;font-weight:500;line-height:1.6;color:#8490a0;background:#f3f6f9;border:1px solid #eef1f5;padding:3px 7px;border-radius:5px}.card-time{font-size:11px;line-height:1.8;color:#7c8a9d;white-space:nowrap;padding:2px 0;font-variant-numeric:tabular-nums}.urgent-label{font-size:10px;line-height:1.6;color:#b52940;background:#fcebf0;padding:4px 8px;border-radius:5px;font-weight:600}.card-title{display:block;width:100%;text-align:left;border:0;padding:0;margin:0;background:transparent;font-size:18px;font-weight:650;line-height:1.55;letter-spacing:-.35px;color:#26394f;cursor:pointer}.card-title:hover{color:#a8273b}.card-description{font-size:13px;color:#8490a0;line-height:1.8;margin:8px 0 17px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;max-width:100%}.card-bottom{display:flex;align-items:center;justify-content:space-between;gap:15px;border-top:1px solid #f1f4f7;padding-top:11px}.source-info{display:flex;gap:7px;align-items:center;font-size:10px;color:#a2abb7;min-width:0}.source-avatar{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:7px;background:#f6f0f2;color:#bc7d89;font-size:8px;flex-shrink:0}.source-name{font-size:10px;color:#7f8ca0;overflow:hidden;text-overflow:ellipsis;max-width:330px;white-space:nowrap}.card-tools{display:flex;gap:12px;align-items:center;flex-shrink:0}.status{font-size:9px;color:#a1aab7}.status.done{color:#689383}.bookmark{display:grid;place-items:center;width:36px;height:36px;background:transparent;border:1px solid transparent;border-radius:9px;color:#9aa7b8}.bookmark:hover{background:#f8f1f3;color:#b0354b;border-color:#f0dce1}.bookmark svg{width:18px;height:18px}.bookmark.saved{background:#fbecef;color:#b32a3e}.load-more{width:100%;margin-top:20px;min-height:46px;background:#fff}.empty{padding:55px 25px;text-align:center;border:1px dashed #d6dee9;border-radius:13px;background:#fff}.empty>svg{width:31px;height:31px;color:#b1bdcc}.empty h3{font-size:18px;font-weight:600;margin:15px 0 8px}.empty p{max-width:430px;margin:0 auto 18px;color:#929dad;font-size:12px}.footer{margin-top:33px;padding-top:19px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:10px;color:#a0abba}.footer a{font-size:10px;color:#8b97a7;text-decoration:none}
+
+.source-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.source-card{background:white;border:1px solid var(--line);border-radius:12px;padding:22px;text-align:left}.source-head{display:flex;align-items:center;gap:12px}.source-head h3{margin:0;font-size:17px}.source-head small{font-size:11px;color:#9aa7b7}.source-card p{font-size:12px;color:#8b98a8;line-height:1.8}.panel-link{font-size:11px;color:var(--green)}.public-map{border:1px solid var(--line);border-radius:13px;background:#fff;overflow:hidden}.public-map svg{width:100%;height:auto;max-height:560px}.public-map [data-neighborhood]{cursor:pointer}.public-map [data-neighborhood]:hover circle{stroke:var(--green);stroke-width:2}.notice{background:#f8f5eb;border:1px solid #eae3cb;color:#928363;border-radius:10px;padding:15px 18px;font-size:12px;line-height:1.8;margin-bottom:20px}.small-copy{font-size:11px;color:#8d99aa;line-height:1.9}.brief-document{background:#fff;border:1px solid var(--line);border-radius:14px;padding:35px;max-width:100%}.brief-document h2{font-size:27px;letter-spacing:-.7px;margin:8px 0 15px;font-weight:650}.brief-document h3{font-size:16px;margin-top:28px}.brief-document p{font-size:13px;color:#8390a1;line-height:1.9}.brief-event{padding:20px 0;border-top:1px solid var(--line)}.brief-event strong{font-size:16px;font-weight:600}.brief-event small{display:block;font-size:11px;color:#98a3b1;margin-top:7px}.brief-event a{font-size:12px}.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}.detail-data{padding:15px;border:1px solid var(--line);background:#fff;border-radius:10px}.detail-data small{display:block;color:#9ca7b6;font-size:10px;margin-bottom:5px}.detail-data strong{font-size:13px;font-weight:550}.overlay{position:fixed;inset:0;z-index:70;background:#18283e66;backdrop-filter:blur(3px);display:none}.overlay.open{display:block}.drawer{position:absolute;inset:0 0 0 auto;width:min(650px,100%);background:#f8fafc;overflow:auto;box-shadow:-15px 0 70px #16233820}.drawer-top{position:sticky;top:0;z-index:2;background:#f8fafcf5;backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:15px;padding:17px 28px;color:#929faf;font-size:10px;letter-spacing:.8px}.drawer-body{padding:28px}.drawer-body h2{font-size:26px;line-height:1.5;letter-spacing:-.7px;font-weight:650;margin:20px 0 14px}.drawer-body h3{font-size:14px;margin:27px 0 13px}.drawer-description{color:#8491a2;font-size:14px;line-height:1.85}.detail-source{padding:17px;border:1px solid var(--line);border-radius:10px;background:white;margin:10px 0}.detail-source>a{display:block;font-size:13px;font-weight:550;text-decoration:none}.detail-source small{display:block;font-size:11px;color:#9aa6b7;margin-top:6px}.detail-source p{font-size:12px;color:#8a97a9;line-height:1.9;margin-bottom:0}.form-label{display:block;font-size:12px;font-weight:550;color:#7e8ca0;margin:18px 0 8px}.field{width:100%;border:1px solid #dfe5ed;border-radius:9px;padding:12px;background:#fff;color:#53637b;font-size:13px}textarea.field{min-height:120px;resize:vertical;line-height:1.8}.drawer-actions{display:flex;gap:9px;flex-wrap:wrap;margin:17px 0}.timeline{border-left:1px solid #dce3ec;padding-left:18px;margin:23px 0}.timeline-item{font-size:12px;color:#8795a8;line-height:1.9;margin-bottom:19px;position:relative}.timeline-item:before{content:'';position:absolute;left:-22px;top:7px;width:7px;height:7px;border-radius:50%;background:#c98492;border:2px solid #f8fafc}.timeline-item p{margin:5px 0}.toast{position:fixed;bottom:25px;left:calc(50% + 100px);transform:translateX(-50%);background:#223249;color:#fff;padding:14px 20px;border-radius:11px;font-size:12px;line-height:1.6;box-shadow:0 8px 30px #16273f20;z-index:90;display:none;max-width:85vw}.toast.show{display:block}.notification-popover{position:fixed;right:34px;top:69px;width:330px;padding:23px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 40px #21334d12;border-radius:13px;z-index:55;display:none}.notification-popover.open{display:block}.notification-popover h3{font-size:14px;margin:0 0 13px}.notification-popover p{font-size:12px;color:#8c98a9}.loading-spinner{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+
+@media(min-width:1700px){.main{max-width:1350px;padding-top:44px}.event-card{padding:25px 28px}.card-title{font-size:20px}.card-description{font-size:14px}.topbar{padding:0 max(44px,calc((100vw - 1350px - 248px)/2))}}
+
+@media(max-width:1150px){.sidebar{width:222px;padding:26px 12px 18px}.workspace{margin-left:222px}.brand{gap:8px;padding-left:8px}.brand strong{font-size:16px}.brand strong span{font-size:11px}.brand-mark img{width:43px;height:43px}.brand small{font-size:7px}.main{padding:30px 28px}.topbar{padding:0 28px}.breadcrumb{display:none}.top-right{justify-content:space-between;gap:16px}.search{width:100%;max-width:450px}.today{display:none}.page-heading h1{font-size:29px}.filters{width:min(570px,calc(100vw - 280px))}.tab{padding:8px 13px}.actions .btn{padding:10px 12px}.source-name{max-width:250px}}
+
+@media(max-width:850px){.sidebar{width:205px;padding-left:10px;padding-right:10px}.workspace{margin-left:205px}.brand{gap:6px;padding-left:3px}.brand strong{font-size:15px}.brand strong span{font-size:10px}.brand small{font-size:6.5px}.nav-btn{padding:10px 11px;gap:10px;font-size:12px}.brand-mark img{width:39px;height:39px}.main{padding:28px 22px}.page-heading{align-items:flex-start;gap:18px}.page-heading h1{font-size:27px}.actions{flex-direction:column-reverse;align-items:stretch}.actions .btn{min-height:36px;font-size:10px;padding:8px 10px}.actions #refresh-btn{min-width:110px}.stats{grid-template-columns:1fr 1fr}.side-panel{grid-template-columns:1fr}.source-grid{grid-template-columns:1fr}.tab{padding:8px 11px;font-size:11px}.card-top{gap:10px}.card-time{font-size:10px}.card-title{font-size:17px}.source-name{max-width:180px}.filters{width:calc(100vw - 250px)}}
+
+@media(max-width:680px){.sidebar{width:268px;transform:translateX(-100%);transition:transform .2s;padding:28px 18px 24px;z-index:65}.sidebar.mobile-open{transform:translateX(0);box-shadow:12px 0 45px #1e2f4c20}.sidebar.mobile-open~.sidebar-backdrop{display:block;position:fixed;inset:0;background:#1d304a55;backdrop-filter:blur(2px);z-index:60;border:0;width:100%;height:100%}.brand{gap:10px;padding:0 8px 30px}.brand-mark img{width:48px;height:48px}.brand strong{font-size:18px}.brand strong span{font-size:13px}.brand small{font-size:8px}.nav-btn{font-size:13px;min-height:45px;padding:11px 14px}.workspace{margin-left:0}.topbar{position:sticky;top:0;z-index:35;height:68px;padding:0 16px;gap:10px;box-shadow:0 2px 7px #263a5003}.mobile-menu{display:grid;width:36px;height:36px;flex-shrink:0}.mobile-emblem{display:block;width:31px;height:31px;object-fit:contain;flex-shrink:0}.top-right{gap:8px;min-width:0}.search{height:37px;padding:7px 9px;border-radius:8px;gap:7px;max-width:100%}.search svg{width:14px;height:14px}.search input{font-size:11px}.search kbd{display:none}.top-right .icon-btn{width:35px;height:35px;flex-shrink:0}.top-right .icon-btn svg{width:17px;height:17px}.main{padding:27px 17px 100px}.page-heading{gap:13px;display:block;margin-bottom:17px}.page-heading h1{font-size:29px}.page-heading p{font-size:12px;line-height:1.85;max-width:360px}.eyebrow{font-size:8px;letter-spacing:1.5px;margin-bottom:8px}.actions{display:flex;flex-direction:row;gap:8px;align-items:center;margin-top:18px}.actions .btn{min-height:39px;font-size:11px;padding:9px 13px}.actions #refresh-btn{min-width:115px}.statusbar{font-size:9px;line-height:1.8;margin-bottom:20px}.statusbar .left{align-items:flex-start}.statusbar svg{margin-top:3px;flex-shrink:0}.summary-overview{margin-bottom:22px;border-radius:9px}.summary-overview>summary{font-size:10px;padding:10px 13px}.summary-overview>summary>span{font-size:9px}.tabs{gap:2px;width:100%;padding:4px;border-radius:10px;margin-bottom:15px}.tab{padding:8px 11px;font-size:10px;flex:1}.tab b{display:none}.feed-tools{margin-bottom:11px;gap:10px}.period-note{font-size:11px}.advanced-filters>summary{font-size:10px;padding:7px 10px}.advanced-filters>summary svg{width:12px;height:12px}.filters{width:calc(100vw - 34px);padding:14px;gap:8px;top:43px}.filters select{font-size:12px;flex-basis:calc(50% - 4px)}.filter-btn{font-size:11px;min-height:39px}.feed-meta{font-size:9px;margin-bottom:12px}.sort-note{gap:4px}.sort-note svg{width:11px;height:11px}.events{gap:11px}.event-card{padding:17px 16px 11px;border-radius:12px}.card-top{display:block;margin-bottom:10px}.card-time{display:block;margin-top:9px;font-size:10px;color:#8290a3}.tag{font-size:9px;padding:3px 6px}.urgent-label{font-size:9px}.tags{gap:5px}.card-title{font-size:17px;line-height:1.55;letter-spacing:-.35px}.card-description{font-size:12px;line-height:1.85;margin:8px 0 13px;-webkit-line-clamp:2}.card-bottom{gap:8px;padding-top:9px}.source-info{gap:5px;font-size:9px}.source-name{max-width:150px;font-size:9px}.source-avatar{width:23px;height:23px;font-size:7px}.card-tools{gap:4px}.card-tools .status{display:none}.bookmark{width:40px;height:40px}.load-more{font-size:12px;margin-top:17px}.footer{font-size:8px;gap:12px;align-items:flex-start;margin-top:26px}.footer a{font-size:8px;white-space:nowrap}.bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:40;background:#ffffffef;backdrop-filter:blur(12px);border-top:1px solid #e6ebf2;padding:5px 15px calc(5px + env(safe-area-inset-bottom));gap:10px;justify-content:space-around}.bottom-nav .nav-btn{display:flex;flex-direction:column;justify-content:center;text-align:center;gap:4px;padding:7px 12px 5px;margin:0;width:30%;min-height:55px;border-radius:10px;font-size:9px;background:transparent;color:#9aa5b3}.bottom-nav .nav-btn.active{color:#b52a3d;background:#fff4f6}.bottom-nav .nav-btn svg{width:19px;height:19px}.bottom-nav .nav-btn>span{flex:0}.toast{left:50%;bottom:87px;width:max-content;font-size:11px;max-width:calc(100vw - 30px);padding:12px 16px}.notification-popover{right:15px;top:60px;width:min(330px,calc(100vw - 30px))}.brief-document{padding:25px 20px}.brief-document h2{font-size:24px}.brief-event strong{font-size:15px}.brief-document p{font-size:12px}.detail-grid{gap:9px}.detail-data{padding:12px}.detail-data strong{font-size:12px}.drawer-top{padding:14px 20px}.drawer-body{padding:23px 20px}.drawer-body h2{font-size:24px}.drawer-description{font-size:13px}.source-card{padding:20px}.notice{font-size:11px;padding:14px 16px}.small-copy{font-size:11px}.empty h3{font-size:17px}.summary-overview .stats{padding:10px}.side-panel{padding:0 15px 15px}.side-panel .panel{padding-top:10px}}
+
+.bookmark{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:auto;min-width:36px;height:36px;padding:7px 9px;font-size:11px}.bookmark span{white-space:nowrap}.bookmark svg{flex-shrink:0}.advanced-filters>summary:after{content:'⌄';margin-left:4px;color:#718096}.advanced-filters[open]>summary:after{content:'⌃'}
+
+@media(max-width:680px){.bookmark{height:40px;min-width:44px;padding:8px;font-size:10px}.source-name{max-width:115px}}
+
+.nav-btn{gap:10px;padding-left:12px;padding-right:12px}.brand{padding-bottom:26px}.nav-divider{margin-top:14px;margin-bottom:14px}.sidebar-bottom{padding-top:20px}.main{padding-top:30px}.page-heading{margin-bottom:15px}.page-heading p{color:#6d7b8f}.statusbar{font-size:11px;color:#6e7b8e;margin-bottom:18px}.summary-overview{margin-bottom:20px}.summary-overview>summary{color:#65758a}.summary-overview>summary>span{color:#7d899a}.feed-meta,.sort-note{color:#738197;font-size:11px}.card-description{color:#69788c}.card-time{font-size:12px;color:#6e7c90}.source-info,.source-name,.status{font-size:11px;color:#738096}.tag{color:#64758a;font-size:11px}.bookmark{color:#6e7c90}
+
+@media(max-width:680px){.main{padding-top:23px}.brand{padding-bottom:30px}.nav-btn{padding-left:14px;padding-right:14px}.page-heading p{font-size:13px}.actions{margin-top:13px}.statusbar{font-size:10px;margin-bottom:16px}.summary-overview{margin-bottom:18px}.card-time{font-size:11px}.tag{font-size:10px}.source-info,.source-name{font-size:10px}.card-description{font-size:13px}.feed-meta,.sort-note{font-size:10px}.search input{font-size:12px}.bottom-nav .nav-btn{font-size:10px}}
+
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+@media print{.sidebar,.topbar,.actions,.summary-overview,.statusbar,.footer,.overlay,.toast,.bottom-nav,.notification-popover{display:none!important}.workspace{margin:0}.main{padding:0;max-width:none}.view:not(#view-brief){display:none!important}#view-brief{display:block!important}.brief-document{border:0;padding:0}.brief-document button{display:none}.brief-event{break-inside:avoid}.page-heading h1{font-size:22px}a{color:#333}}
+
+
+/* Newsroom layout. The pre-redesign reader remains a separate immutable template. */
+
+body{background:#edf1f5}.event-card{border-radius:6px;box-shadow:0 2px 5px #20304704}.card-title{font-size:21px;letter-spacing:-.5px;line-height:1.45}.card-description{font-size:14px;line-height:1.8}.lead-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#a02a3c;display:block;margin-bottom:13px}.event-card:first-child{border-top:4px solid #bc283c;background:#fff}.event-card:first-child .card-title{font-size:28px;line-height:1.35}.event-card:first-child .card-description{font-size:15px}.tabs{border-radius:6px;background:#dfe6ee}.tab{border-radius:4px}.summary-overview{border-radius:6px}.btn,.search,.icon-btn{border-radius:6px}.page-heading h1{font-size:38px;letter-spacing:-1.5px}.page-heading p{font-size:14px}.feed-meta{border-top:1px solid #dce3ec;padding-top:16px}.feed-tools{margin-bottom:15px}.source-avatar{border-radius:4px}.card-time{font-variant-numeric:tabular-nums}.event-card.review{border-left:3px solid #bd2638}.event-card:focus-within{outline:2px solid #bc283c;outline-offset:2px}
+
+@media(min-width:1000px){
+
+ .sidebar{position:relative;inset:auto;width:100%;padding:0;background:#b72438;border:0;display:block;overflow:visible;z-index:45}.brand{height:94px;padding:20px 42px;gap:13px;width:370px}.brand-mark img{width:51px;height:51px;background:#fff;border-radius:50%;padding:3px}.brand strong{color:#fff;font-size:23px;letter-spacing:-.6px}.brand strong span{color:#ffe0e5;font-size:15px}.brand small{color:#ffe0e5;font-size:9px;letter-spacing:1.8px}.nav-label,.sidebar-bottom,.nav-divider{display:none}.sidebar nav{display:flex;align-items:center;gap:3px;padding:0 30px;min-height:61px;background:#fff;border-bottom:1px solid #dce3ec;overflow-x:auto}.sidebar .nav-btn{width:auto;min-height:60px;flex:0 0 auto;margin:0;border-radius:0;padding:16px 13px;font-size:12px;gap:8px;border-bottom:3px solid transparent}.sidebar .nav-btn.active{background:#fff5f6;border-bottom-color:#bd2638;color:#a31f33}.sidebar .nav-btn b{padding:0 5px;font-size:9px}.sidebar .nav-btn svg{width:17px;height:17px}.sidebar #user-login,.sidebar #account-nav{margin-left:auto}.sidebar #admin-link{font-size:11px;color:#8390a2}.workspace{margin-left:0}.topbar{position:absolute;top:25px;right:40px;left:auto;height:44px;width:calc(100% - 455px);max-width:750px;padding:0;background:transparent;border:0;z-index:46;gap:0}.breadcrumb{display:none}.top-right{gap:18px}.search{width:clamp(260px,32vw,450px);height:44px;background:#ffffff0d;border-color:#ffffff20;color:#ffe9ed}.search:focus-within{background:#ffffff17;border-color:#ffe0e5}.search input{color:white;font-size:13px}.search input::placeholder{color:#ffe5ea}.search kbd{background:#ffffff10;border-color:#ffffff18;color:#ffe5ea}.today{color:#ffe5ea;font-size:12px}.top-right .icon-btn{background:#ffffff0d;border-color:#ffffff20;color:#fff}.main{max-width:1440px;padding:32px 42px 30px}.page-heading{margin-bottom:18px}.eyebrow{color:#9b3646;font-size:10px}.page-heading p{margin-top:7px}.statusbar{margin-bottom:16px}.summary-overview{margin-bottom:20px}.events{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.event-card{display:flex;flex-direction:column;padding:23px 25px 15px;min-width:0}.event-card:first-child{grid-column:1/-1;padding:28px 32px 18px;background:linear-gradient(110deg,#fff 65%,#f4f6fa)}.event-card:first-child .card-title{max-width:1050px}.event-card:first-child .card-description{max-width:1130px}.card-bottom{margin-top:auto}.card-time{font-size:11px;white-space:nowrap}.tags{gap:5px}.tag{font-size:10px}.source-name{max-width:180px}.card-tools .status{display:none}.card-description{-webkit-line-clamp:3}.load-more{display:flex;margin:25px auto}.empty{grid-column:1/-1}.notification-popover{top:80px;right:40px}.footer{margin-top:32px}
+
+}
+
+@media(min-width:1000px) and (max-width:1200px){.sidebar nav{padding:0 14px}.sidebar .nav-btn{padding:15px 9px;font-size:11px;gap:6px}.sidebar .nav-btn b{display:none}.topbar{right:25px;width:calc(100% - 420px)}.today{display:none}.main{padding:28px 30px}.source-name{max-width:120px}}
+
+@media(max-width:680px){.main{padding-top:24px}.page-heading h1{font-size:31px}.page-heading p{font-size:13px}.event-card:first-child{padding-top:20px}.event-card:first-child .card-title{font-size:22px}.event-card:first-child .card-description{font-size:14px}.card-title{font-size:19px}.card-description{font-size:13px}.lead-label{font-size:9px;margin-bottom:10px}.summary-overview{margin-bottom:15px}.card-top{margin-bottom:11px}.events{gap:14px}.card-time{font-size:11px}.tag{font-size:10px}}
+
+@media(min-width:1000px){.main{padding-top:25px}.page-heading{margin-bottom:12px}.statusbar{margin-bottom:13px}.summary-overview{margin-bottom:17px}.feed{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:15px}.feed>.tabs{grid-column:1;grid-row:1;margin-bottom:13px;justify-self:start}.feed>.feed-tools{grid-column:2;grid-row:1;margin-bottom:13px;align-self:center}.feed-tools .period-note{display:none}.feed-meta,.feed>#national-policy,.feed>.events,.feed>.load-more{grid-column:1/-1}.feed-meta{padding-top:10px}}
+
+.brief-document{max-width:930px;margin:0 auto;padding:0;border-radius:6px;overflow:hidden}.brief-letterhead{display:flex;align-items:center;gap:15px;padding:24px 34px;background:#b72438;color:white;font-size:12px;font-weight:650;letter-spacing:1px}.brief-letterhead img{width:51px;height:51px;background:white;border-radius:50%;padding:2px}.brief-letterhead small{display:block;font-size:10px;letter-spacing:1.8px;margin-top:6px;color:#ffe3e8}.brief-report-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:30px 34px 15px}.brief-report-heading h2{font-size:29px;margin:0;letter-spacing:-.7px}.brief-report-heading p{font-size:12px;color:#718094;margin:8px 0}.brief-executive{margin:5px 34px 28px;padding:20px 23px;border-radius:5px;background:#f1f4f8;border-left:3px solid #b72438}.brief-executive h3{font-size:15px;margin:0 0 8px}.brief-executive p{font-size:14px;line-height:1.85;margin:0;color:#4e6077}.brief-section-title{font-size:19px;margin:30px 34px 10px!important;border-bottom:1px solid #e2e7ee;padding-bottom:12px}.brief-section-title span{font-size:11px;color:#8b96a7;font-weight:400;margin-left:10px}.brief-event{display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;margin:0 34px;padding:22px 0;border-bottom:1px solid #e8ecf1}.brief-number{font-size:20px;color:#b72438;font-weight:700}.brief-event strong{font-size:18px;line-height:1.55;color:#203047}.brief-event small{display:block;color:#7a8798;font-size:11px;margin:7px 0 10px}.brief-event p{font-size:14px;line-height:1.9;margin:8px 0;color:#4d6078}.brief-event .brief-sources{font-size:12px;font-weight:600;color:#6d798a}.brief-method{margin:28px 34px 15px!important;font-size:11px!important;color:#8a95a5;line-height:1.8}.brief-signature{margin:0 34px 28px;color:#8a95a5;font-size:10px}
+
+@media(max-width:680px){.brief-letterhead{padding:19px 20px;font-size:10px;gap:11px}.brief-letterhead img{width:44px;height:44px}.brief-letterhead small{font-size:8px}.brief-report-heading{padding:25px 20px 14px;display:block}.brief-report-heading h2{font-size:25px}.brief-report-heading .btn{margin-top:10px}.brief-executive{margin:5px 20px 25px;padding:16px}.brief-executive p{font-size:13px}.brief-section-title{margin:25px 20px 6px!important;font-size:17px}.brief-event{margin:0 20px;grid-template-columns:24px minmax(0,1fr);gap:8px}.brief-event strong{font-size:17px}.brief-event p{font-size:13px}.brief-method,.brief-signature{margin-left:20px!important;margin-right:20px!important}}
+
+.publisher-line{font-size:11px;line-height:1.8;color:#6c798c;margin:0 0 16px;overflow-wrap:anywhere}.publisher-line strong{font-weight:600;color:#516279}.publisher-line .text-btn{font-size:11px;padding:0;background:transparent;border:0;color:#b72438}.publisher-line+.card-bottom{margin-top:auto}.tag.national-tag{background:#fff0eb;color:#9b4738;font-weight:650}.national-record{border-left:3px solid #c1705b}
+
+@media print{.lead-label{display:none}.main{padding:0}.events{display:block}.brief-report-heading .btn{display:none}}
+
+
+
+#password-settings{margin:18px 0;padding:16px;border:1px solid #e2e5ea;border-radius:12px}#change-password-form label{display:block;margin:14px 0 6px}#change-password-form input{width:100%;padding:11px;border:1px solid #cbd0d8;border-radius:7px;font:inherit}
+
+</style>
+
+<style>.summary-overview{display:none}.personal-tools{position:relative;margin:0;font-size:12px;flex-shrink:0}.personal-tools summary{padding:8px 10px;border:1px solid #ffffff55;border-radius:7px;list-style:none}.personal-tools>div{position:absolute;right:0;top:calc(100% + 10px);min-width:220px;padding:12px;background:#fff;color:#203047;border:1px solid #e5eaf0;border-radius:10px;box-shadow:0 10px 35px #20304725;z-index:100}.personal-tools .nav-btn{font-size:12px;padding:8px;color:#536174}.bottom-nav a{text-decoration:none;color:inherit;padding:12px;font-size:11px}.bottom-nav button{font-size:11px}@media(max-width:650px){.personal-tools summary{font-size:0;padding:8px}.personal-tools summary:after{content:"Araçlar";font-size:11px}}</style><style>[data-institutional-nav][hidden]{display:none!important}</style><style>.brief-picker{max-width:930px;margin:0 auto 24px;padding:22px;background:#fff;border:1px solid #dfe4eb;border-radius:8px}.brief-picker h2{margin:0;font-size:21px}.brief-picker-tools{display:flex;gap:9px;flex-wrap:wrap;margin:16px 0}.brief-picker-tools input{flex:1;min-width:160px;padding:10px;border:1px solid #cbd4df;border-radius:6px;font:inherit}#brief-selection-count{font-weight:650;color:#a31a2c}#brief-options{max-height:520px;overflow:auto;padding:3px}#brief-options fieldset{border:0;margin:0 0 18px;padding:0}#brief-options legend{font-weight:700;font-size:14px;margin:8px 0}.brief-choice{display:flex;align-items:flex-start;gap:12px;padding:13px 12px;margin:7px 0;border:1px solid #dde3eb;border-radius:6px;cursor:pointer}.brief-choice.is-selected{border-color:#b72438;background:#fff5f6}.brief-choice input{width:19px;height:19px;min-width:19px;flex:none;margin:3px 0 0;accent-color:#b72438}.brief-choice span{min-width:0}.brief-choice strong{display:block;font-size:14px;line-height:1.6;overflow-wrap:anywhere}.brief-choice small{display:block;margin-top:5px;color:#65758a;font-size:12px}.brief-choice:focus-within{outline:2px solid #b72438;outline-offset:1px}button:disabled{cursor:default;opacity:.55}@media(max-width:680px){.brief-picker{padding:16px}.brief-picker-tools .btn{flex:1}.brief-picker-tools input{flex-basis:100%}.brief-choice{padding:11px 8px}}@media print{.brief-picker{display:none!important}}</style></head>
+
+<body data-design="modern">
+
+<svg style="display:none" aria-hidden="true"><defs>
+
+<symbol id="i-grid" viewbox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></symbol>
+
+<symbol id="i-search" viewbox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></symbol>
+
+<symbol id="i-map" viewbox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Z"></path><path d="M9 3v16M15 5v16"></path></symbol>
+
+<symbol id="i-pin" viewbox="0 0 24 24"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 14 0Z"></path><circle cx="12" cy="10" r="2"></circle></symbol>
+
+<symbol id="i-book" viewbox="0 0 24 24"><path d="M5 3h14v19l-7-5-7 5Z"></path></symbol>
+
+<symbol id="i-layers" viewbox="0 0 24 24"><path d="m12 3 10 5-10 5L2 8Zm-9 9 9 5 9-5M3 16l9 5 9-5"></path></symbol>
+
+<symbol id="i-doc" viewbox="0 0 24 24"><path d="M14 2H5v20h14V7Z"></path><path d="M14 2v6h5M8 12h8M8 16h6"></path></symbol>
+
+<symbol id="i-bell" viewbox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path></symbol>
+
+<symbol id="i-settings" viewbox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="m10 3 4 0 .7 3 2 .9 2.7-.9 2 3.5-2 2.2v2.6l2 2.2-2 3.5-2.7-.9-2 .9-.7 3h-4l-.7-3-2-.9-2.7.9-2-3.5 2-2.2v-2.6l-2-2.2 2-3.5 2.7.9 2-.9Z" transform="translate(0 -1) scale(1 .95)"></path></symbol>
+
+<symbol id="i-refresh" viewbox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"></path><path d="M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1"></path></symbol>
+
+<symbol id="i-arrow" viewbox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"></path></symbol>
+
+<symbol id="i-download" viewbox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"></path></symbol>
+
+<symbol id="i-clock" viewbox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></symbol>
+
+<symbol id="i-alert" viewbox="0 0 24 24"><path d="m12 3 10 18H2Z"></path><path d="M12 9v5m0 3v.1"></path></symbol>
+
+<symbol id="i-check" viewbox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></symbol>
+
+<symbol id="i-close" viewbox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"></path></symbol>
+
+<symbol id="i-globe" viewbox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><ellipse cx="12" cy="12" rx="4" ry="9"></ellipse><path d="M3 12h18M5 6h14M5 18h14"></path></symbol>
+
+<symbol id="i-menu" viewbox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"></path></symbol>
+
+<symbol id="i-shield" viewbox="0 0 24 24"><path d="m12 2 9 4v6c0 5-9 10-9 10S3 17 3 12V6Z"></path><path d="m8 12 3 3 5-6"></path></symbol>
+
+</defs></svg>
+
+<div class="shell">
+
+<aside class="sidebar" id="sidebar">
+
+<div class="brand"><div class="brand-mark"><img src="/assets/umraniye-kaymakamligi-logo.png" alt="T.C. Ümraniye Kaymakamlığı logosu" width="58" height="58"></div><div><strong>Ümraniye <span>OSINT</span></strong><small>GÜNDEM TAKİP MERKEZİ</small></div></div>
+
+<div class="nav-label">KEŞFET</div>
+
+<nav aria-label="Ana gezinme"><button class="nav-btn active" data-view="feed"><svg><use href="#i-grid"></use></svg><span>Haber Gündemi</span><b id="nav-count">0</b></button><button class="nav-btn" data-view="national"><svg><use href="#i-globe"></use></svg><span>Ulusal Gündem</span><b id="nav-national">0</b></button><a class="nav-btn" href="/sosyal-medya"><svg><use href="#i-globe"></use></svg><span>Sosyal Medya</span></a><a href="/kurumsal-etiketler" class="nav-btn" data-institutional-nav="" hidden>Kurumsal Etiketler</a><a class="nav-btn" id="admin-link" href="/yonetim"><svg><use href="#i-settings"></use></svg><span>Yönetici Paneli</span></a></nav>
+
+<div class="sidebar-bottom"><div class="user"><div class="avatar">ÜK</div><div><strong>Ümraniye Kaymakamlığı</strong><small>Basın ve Halkla İlişkiler Müdürlüğü</small></div></div></div>
+
+</aside><button class="sidebar-backdrop" id="sidebar-backdrop" aria-label="Menüyü kapat" tabindex="-1"></button>
+
+<div class="workspace">
+
+<header class="topbar"><button class="icon-btn mobile-menu" id="menu-btn" aria-label="Menüyü aç" aria-expanded="false" aria-controls="sidebar"><svg><use href="#i-menu"></use></svg></button><img class="mobile-emblem" src="/assets/umraniye-kaymakamligi-logo.png" alt="T.C. Ümraniye Kaymakamlığı" width="36" height="36"><div class="breadcrumb">T.C. Ümraniye Kaymakamlığı <span>/</span> <strong id="crumb">Haber Gündemi</strong></div><div class="top-right"><label class="search"><svg><use href="#i-search"></use></svg><input id="search" placeholder="Haber, konu veya mahalle ara…" aria-label="Gündemde ara"><kbd>Ctrl K</kbd></label><span class="today" id="today"></span><button class="icon-btn" id="bell" aria-label="Son dakika bildirimleri" aria-expanded="false"><svg><use href="#i-bell"></use></svg></button><details class="personal-tools"><summary>Kişisel araçlar</summary><div><button class="nav-btn breaking-nav" data-stream="breaking"><svg><use href="#i-alert"></use></svg><span>Son dakika</span><b id="nav-breaking">0</b></button><button class="nav-btn" data-view="neighborhoods"><svg><use href="#i-map"></use></svg><span>Mahalleler</span></button><button class="nav-btn" data-view="saved"><svg><use href="#i-book"></use></svg><span>Kaydettiklerim</span><b id="nav-saved">0</b></button><button class="nav-btn" data-view="brief"><svg><use href="#i-doc"></use></svg><span>Günlük özet</span></button><div class="nav-divider"></div><a class="nav-btn" id="user-login" href="/giris" style="text-decoration:none"><svg><use href="#i-shield"></use></svg><span>Kullanıcı girişi</span></a><button class="nav-btn" id="account-nav" data-view="account" hidden><svg><use href="#i-shield"></use></svg><span>Hesabım</span></button><button class="nav-btn" id="user-logout" hidden><svg><use href="#i-arrow"></use></svg><span>Çıkış yap</span></button><div class="nav-divider"></div></div></details></div></header>
+
+<main class="main">
+
+<div class="page-heading"><div><div class="eyebrow" id="page-eyebrow">ÜMRANİYE İLÇE GÜNDEMİ</div><h1 id="page-title">Haber Gündemi</h1><p id="page-subtitle">Ümraniye ilçesindeki olaylar, kurumlar ve yerel gelişmeler.</p></div><div class="actions"><button class="btn" id="brief-btn"><svg><use href="#i-download"></use></svg>Brifing hazırla</button></div></div>
+
+<div id="statusbar" class="statusbar"><div class="left"><svg><use href="#i-shield"></use></svg><span id="status-copy">Gündem yükleniyor…</span></div></div>
+
+<details class="summary-overview"><summary>Akışın özeti <span id="summary-count">Kayıtlar yükleniyor</span></summary><section class="stats" aria-label="Gündem özeti"><button type="button" class="stat" data-stat="all" aria-label="Tüm gündem kayıtlarını aç"><div class="stat-label"><svg><use href="#i-layers"></use></svg>Toplam gündem</div><div class="stat-value"><strong id="stat-total">0</strong><small>olay kaydı</small></div><div class="stat-note">Seçili veri kümesinin tamamı</div></button><button type="button" class="stat accent" data-stat="review" aria-label="İnceleme önerilerini aç"><div class="stat-label"><svg><use href="#i-alert"></use></svg>İnceleme önerisi</div><div class="stat-value"><strong id="stat-review">0</strong><small>kayıt</small></div><div class="stat-note">İncelenmeyi bekleyen kayıtlar</div></button><button type="button" class="stat" data-stat="saved" aria-label="Takip listemi aç"><div class="stat-label"><svg><use href="#i-book"></use></svg>Takip listem</div><div class="stat-value"><strong id="stat-saved">0</strong><small>olay</small></div><div class="stat-note">Hesabımda kaydedilenler</div></button><button type="button" class="stat" data-stat="updated" aria-label="Gündemi yenile"><div class="stat-label"><svg><use href="#i-refresh"></use></svg>Son güncelleme</div><div class="stat-value"><strong id="stat-updated" style="font-size:25px">—</strong></div><div class="stat-note" id="stat-update-note">Gündemi yenilemek için dokunun</div></button></section><aside class="side-panel"><section class="panel brief-card"><div class="eyebrow">GÜNLÜK BAKIŞ</div><div class="brief-icon"><svg><use href="#i-doc"></use></svg></div><h2>Gündemin özüne<br>birlikte bakalım.</h2><p>Toplanan kayıtların kısa dökümü.<br>Öne çıkan haberler ve takip ettikleriniz.</p><button class="btn" id="open-brief">Brifingi görüntüle <svg><use href="#i-arrow"></use></svg></button></section><section class="panel"><div class="panel-title"><h2><svg><use href="#i-layers"></use></svg>Konu dağılımı</h2><small>MEVCUT AKIŞ</small></div><div id="topic-chart"></div></section><div class="small-copy" style="padding:0 6px">Bu panel, izlenen kaynaklarda görülen gündemi yansıtır. İlçedeki tüm olayların eksiksiz kaydı değildir.</div></aside></details>
+
+<section class="view active" id="view-feed"><div class="content-layout"><div class="feed"><div class="tabs" role="tablist" aria-label="Haber zaman aralığı"><button class="tab" data-period="today" role="tab" aria-selected="false">Bugün</button><button class="tab" data-period="week" role="tab" aria-selected="false">Bu hafta</button><button class="tab active" data-period="month" role="tab" aria-selected="true">Bu ay</button><button class="tab" data-period="" role="tab" aria-selected="false">Son 2 ay <b id="tab-all-count">0</b></button><button class="tab breaking-tab" data-stream="breaking" role="tab" aria-selected="false"><span class="breaking-dot"></span>Son dakika</button></div><div class="feed-tools"><p id="period-note" class="period-note">Bu ay yayımlanan haberler</p><details class="advanced-filters" id="filter-panel"><summary><svg><use href="#i-settings"></use></svg>Filtreler <span id="active-filters" hidden>0</span></summary><div class="filters"><select id="national-category" aria-label="Ulusal kritik olay türü" hidden><option value="">Tüm kritik olay türleri</option></select><select id="topic-filter" aria-label="Konu filtresi"><option value="">Tüm konular</option></select><select id="neighborhood-filter" aria-label="Mahalle filtresi"><option value="">Tüm mahalleler</option></select><select id="focus-filter" aria-label="Arama odağı"><option value="">Tüm gündem</option><option value="kaymakam">Kaymakamlık ve Kaymakam</option><option value="belediye">Belediye ve Belediye Başkanı</option><option value="olay">Olaylar ve acil gündem</option></select><select id="date-filter" aria-label="Tarih filtresi"><option value="">Tüm tarihler</option><option value="today">Bugün</option><option value="week">Bu hafta</option><option value="month" selected>Bu ay</option></select><button id="priority-filter" class="filter-btn"><svg><use href="#i-alert"></use></svg>İnceleme önerisi</button><button class="text-btn" id="clear-filters" style="margin-left:auto">Temizle</button></div></details></div><div class="feed-meta"><span id="feed-result">0 olay gösteriliyor</span><span class="sort-note"><svg><use href="#i-clock"></use></svg>En yeni haber önce</span></div><details id="national-policy" class="summary-overview" hidden><summary>Ulusal Gündemin kapsamı</summary><p class="small-copy" style="padding:0 15px 12px">Hava aracı kazaları, yeni şehit bildirimleri, Türkiye bağlantılı büyük saldırılar, çoklu can kaybı/yaralanma içeren patlamalar, büyük afetler ve toplu kazalar izlenir. Depremde 5,5 ve üzeri büyüklük veya yıkım/can kaybı; diğer olaylarda kayıp, yaralı, tahliye ve kritik tesis bağlamı aranır. Rutin olaylar, tatbikat, anma ve Türkiye bağlantısı bulunmayan dış haberler dışarıda tutulur. Bunlar kaynak bildirimlerine göre otomatik ön eleme ölçütleridir; resmî teyit yerine geçmez. Adli süreç ve cenaze gibi devam haberleri yeni acil olay olarak bildirilmez.</p></details><div class="events" id="events"></div><button id="more-btn" class="btn load-more" hidden>Daha fazla göster</button></div></div></section>
+
+<section class="view" id="view-neighborhoods"><div class="notice">Yer eşleştirmesi başlık/açıklamadaki adlara dayanır. Mahalle belirlenemeyen kayıtlar “İlçe geneli” altında gösterilir. Sayılar gerçek olay sıklığını veya mahallelerin güvenlik seviyesini ölçmez.</div><div id="public-map" class="public-map"></div><p class="small-copy">Noktalar mahalle merkezidir; kesin olay adresi değildir. © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap katkıcıları</a> · ODbL</p><div class="source-grid" id="neighborhood-grid"></div></section>
+
+
+
+<section class="view" id="view-brief"><div class="brief-picker"><h2>Brifinge eklenecek haberleri seçin</h2><p id="brief-day"></p><p class="small-copy" id="brief-load-state" role="status"></p><div class="brief-picker-tools"><input id="brief-search" type="search" placeholder="Bugünün haberlerinde ara…" aria-label="Brifing haberlerinde ara"><button class="btn" id="brief-select-visible">Görünenleri seç</button><button class="btn" id="brief-clear">Seçimi temizle</button><button class="btn" id="brief-reload">Listeyi yenile</button></div><p id="brief-selection-count" role="status" aria-live="polite">0 haber seçildi</p><div id="brief-options"></div><p class="small-copy">Kutucukları işaretleyin. Aşağıdaki önizleme ve PDF yalnız seçtiğiniz haberleri içerir.</p></div><div class="brief-document" id="brief-content"></div></section>
+
+
+
+<section id="view-account" class="view"><div class="panel" style="padding:24px"><h2>Hesabım</h2><p id="account-identity" class="small-copy"></p><div id="account-actions"></div><details id="password-settings" hidden><summary>Şifremi değiştir</summary><form id="change-password-form" style="max-width:420px;margin:16px 0"><label for="current-password">Mevcut şifre</label><input id="current-password" type="password" required maxlength="128" autocomplete="current-password"><label for="new-password">Yeni şifre · en az 6 karakter</label><input id="new-password" type="password" required minlength="6" maxlength="128" autocomplete="new-password"><label for="confirm-password">Yeni şifreyi tekrar girin</label><input id="confirm-password" type="password" required minlength="6" maxlength="128" autocomplete="new-password"><p class="small-copy">Şifreniz değişince tüm cihazlarda yeniden giriş yapmanız gerekir. Kayıtlarınız ve notlarınız korunur.</p><p id="password-message" role="status" class="small-copy"></p><button class="btn btn-primary" type="submit">Şifremi değiştir</button></form></details><div id="account-metrics" class="detail-grid"></div><h3>Kaydettiğim haberler</h3><div id="account-saved"></div><h3>Son işlemlerim</h3><p class="small-copy">Haber açma, kaydetme, inceleme durumu ve not güncellemeleri yalnız kendi hesabınızda listelenir. En son 100 işlem gösterilir.</p><div id="account-history"></div></div></section>
+
+<footer class="footer"><span>Ümraniye Kaymakamlığı · Basın ve Halkla İlişkiler Müdürlüğü<br>© 2026 Hakan Bilgin · Tüm hakları saklıdır.</span></footer>
+
+</main></div></div>
+
+<div class="notification-popover" id="notifications"><h3>Son dakika</h3><div id="notification-content"><p>Güncel acil yayınlar burada görünecek.</p></div></div>
+
+<div class="overlay" id="overlay"><section class="drawer" role="dialog" aria-modal="true" aria-labelledby="detail-title"><div class="drawer-top"><span>OLAY DOSYASI <span id="detail-id"></span></span><button class="icon-btn" id="close-detail" aria-label="Detayı kapat"><svg><use href="#i-close"></use></svg></button></div><div class="drawer-body" id="detail-body"></div></section></div>
+
+<nav class="bottom-nav" aria-label="Hızlı gezinme"><button data-view="feed">Haber Gündemi</button><a href="/sosyal-medya">Sosyal Medya</a><a href="/kurumsal-etiketler" data-institutional-nav="" hidden>Kurumsal Etiketler</a><a href="/yonetim">Yönetici Paneli</a></nav><div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+
+'use strict';
+
+const briefDay=value=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
+
+function briefText(value){return String(value||'').replace(/<[^>]*>/g,' ').replace(/https?:\/\/\S+|www\.\S+/gi,'').replace(/\b(?:WhatsApp|Facebook|Telegram)\b/gi,'').replace(/\s+/g,' ').trim()}
+
+function publisherName(value){return briefText(value).split(/\s*[·|]\s*/)[0].replace(/\s*[-–]\s*Ümraniye.*$/i,'').trim()||'Yayıncı belirtilmedi'}
+
+function briefBestText(event){const sources=event.sources?.length?event.sources:[event];return [event.fullText,event.description,event.text,event.content,event.postText,event.message,...sources.flatMap(s=>[s.fullText,s.description,s.text,s.content,s.postText,s.message])].map(briefText).filter(Boolean).sort((a,b)=>b.length-a.length)[0]||'';}
+function briefDescription(event){
+
+ let text=briefBestText(event).replace(/^HABER\s*:\s*ÜMRANİYE GÜNDEMİ\s*/i,'');const title=briefText(event.title);if(text.startsWith(title))text=text.slice(title.length).trim();
+
+ if(!text)return 'Bu kayıt için başlık dışında ayrıntı alınamadı.';
+
+ const sentences=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter('tr',{granularity:'sentence'}).segment(text)].map(s=>s.segment.trim()):[text];
+
+ text=[...new Set(sentences)].slice(0,3).join(' ');if(text.length>650){const cut=text.slice(0,650);text=cut.slice(0,cut.lastIndexOf(' '))+'…'}return text;
+
+}
+
+function prepareBriefing({events=[],socialEvents=[],date,generatedAt=new Date().toISOString()}){
+ const day=date||briefDay(generatedAt),valid=[...events,...socialEvents.map(e=>({...e,briefStream:'social'}))].filter(e=>e.publishedAt&&Number.isFinite(Date.parse(e.publishedAt))&&briefWithin72Hours(e.publishedAt,Date.parse(generatedAt))).sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
+ const rows=valid.map(e=>({id:e.id,title:briefText(e.title).slice(0,240),detail:briefDescription(e),topic:briefText(e.nationalCritical?(e.nationalUrgent===false?'Ulusal olay takibi':e.nationalCategory||'Ulusal kritik'):e.topic||'Genel gündem'),location:briefText(e.nationalCritical?e.nationalLocation||'Türkiye geneli':e.neighborhood||'İlçe geneli'),publishedAt:e.publishedAt,national:!!e.nationalCritical,social:e.briefStream==='social',sources:[...new Set((e.sources?.length?e.sources:[e]).map(s=>publisherName(s.sourceName||e.sourceName)))]}));
+ const local=rows.filter(e=>!e.national&&!e.social),national=rows.filter(e=>e.national&&!e.social),social=rows.filter(e=>e.social),counts={};for(const e of local)counts[e.topic]=(counts[e.topic]||0)+1;
+ const topics=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([t,n])=>t.toLocaleLowerCase('tr-TR')+' ('+n+')').join(', ');
+ const summary=rows.length?'Son 72 saatte yayımlanan haberlerden '+rows.length+' kayıt derlenmiştir. Bunların '+local.length+' adedi Ümraniye gündemine, '+national.length+' adedi ulusal gündeme, '+social.length+' adedi sosyal medya haberlerine ilişkindir.'+(topics?' Yerel gündemde öne çıkan konular: '+topics+'.':''):'Son 72 saatte yayımlanan ve izleme kapsamına giren bir haber kaydı bulunmamaktadır.';
+ return {day,generatedAt,rows,local,national,social,summary};
+}
+
+
+
+const $=id=>document.getElementById(id);
+
+const icon=(name,cls='')=>'<svg class="'+cls+'"><use href="#i-'+name+'"/></svg>';
+
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const fold=s=>String(s).toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ı/g,'i');
+
+const safeUrl=v=>{try{const u=new URL(v);return ['https:','http:'].includes(u.protocol)?esc(u.href):'#'}catch{return '#'}};
+
+const formatDate=(v,short=false)=>{if(!v||!Number.isFinite(Date.parse(v)))return 'Kaynak tarihi belirsiz';return new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',day:'numeric',month:short?'short':'long',year:'numeric',...(/^\d{4}-\d{2}-\d{2}$/.test(v)?{}:{hour:'2-digit',minute:'2-digit'})}).format(new Date(v));};
+
+const todayKey=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+
+const dateKey=v=>v&&Number.isFinite(Date.parse(v))?new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(v)):'';
+
+function withinRetention(e){const today=todayKey().split('-').map(Number),d=new Date(Date.UTC(today[0],today[1]-3,1)),last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(today[2],last));const value=e.publishedAt;return !!value&&Number.isFinite(Date.parse(value))&&dateKey(value)>=d.toISOString().slice(0,10)}
+
+const storageKey='umraniye-osint-public-v3';
+
+let persisted={};try{persisted=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{}
+
+let state={events:[],health:[],syncedAt:null,records:{},actor:null,accountLoading:true,activity:[],view:'feed',tab:'all',limit:20,priority:false,breaking:false,config:null,busy:false,selected:null};
+
+const nationalAgenda=e=>e.scope==='national'||!e.scope&&e.nationalCritical===true;
+function events(){return state.events.filter(e=>!['x','facebook','instagram'].includes(e.platform)&&e.social!==true).filter(withinRetention)}
+
+function recordsFor(e){return [...new Set([e.id,...(e.relatedIds||[])])].map(id=>state.records['live:'+id]).filter(Boolean).sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))||(String(a.eventId)<String(b.eventId)?-1:String(a.eventId)>String(b.eventId)?1:0))}
+
+function record(e){return recordsFor(e)[0]||{status:'unread',saved:false,notes:'',history:[]}}
+
+const legacyRecords=persisted.records||{};
+
+function lockReader(){accountEpoch++;state.locked=true;state.events=[];state.records={};state.activity=[];state.actor=null;state.syncedAt=null;state.health=[];state.config=null;state.map=null;state.selected=null;document.body.style.overflow='';document.body.replaceChildren();location.replace('/giris')}
+
+function persist(){try{localStorage.setItem(storageKey,JSON.stringify({records:legacyRecords}));}catch{}}
+
+let accountQueue=Promise.resolve(),accountBusy=0,accountEpoch=0;
+
+function clearAccountState(){const signed=!!state.actor;$('password-settings').hidden=true;state.actor=null;state.records={};state.activity=[];if(signed){closeDetail();$('detail-body').textContent=''}}
+
+const accountChannel='BroadcastChannel'in window?new BroadcastChannel('osint-account'):null;if(accountChannel)accountChannel.onmessage=e=>{accountEpoch++;clearAccountState();if(e.data==='signed-out'){lockReader();return}renderAll();loadAccount()};
+
+
+
+async function accountRequest(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},...(body?{body:JSON.stringify(body)}:{}),cache:'no-store'});const d=await r.json();if(!r.ok){if(r.status===401){lockReader()}throw Error(d.error||'Hesap işlemi tamamlanamadı.')}return d}
+
+async function loadAccount(){if(state.locked)return;const epoch=accountEpoch;if(accountBusy)return;try{const r=await fetch('/api/account',{cache:'no-store'});if(epoch!==accountEpoch||accountBusy)return;if(r.status===401){lockReader();return}else{if(!r.ok)throw Error();const d=await r.json();if(epoch!==accountEpoch||accountBusy)return;state.actor=d.actor;state.records=d.records;state.activity=d.activity}}catch{toast('Hesabınıza ulaşılamadı. Kaydetmeden önce tekrar deneyin.')}finally{state.accountLoading=false;renderAll()}}
+
+function eventById(id){const e=events().find(e=>e.id===id||(e.relatedIds||[]).includes(id));if(e)return e;const r=state.records['live:'+id];return r?{id,title:r.title,description:'Bu haber hesabınızın arşivinde saklanıyor. Ayrıntılar için özgün yayını inceleyin.',topic:'Hesap arşivi',neighborhood:'',publishedAt:null,collectedAt:null,evidence:'Kişisel arşiv kaydı',priorityReason:'',sources:r.url?[{url:r.url,sourceName:'Özgün yayın',title:r.title}]:[]}:null}
+
+async function setRecord(e,patch,action='update'){if(state.accountLoading)await accountReady;const expectedActorId=state.actor?.id;accountBusy++;accountEpoch++;const task=accountQueue.catch(()=>{}).then(async()=>{if(state.accountLoading)await accountReady;if(!state.actor){location.href='/giris?next='+encodeURIComponent(location.pathname+'?view='+state.view);throw Error('Kaydetmek ve inceleme yapmak için kullanıcı girişi yapın.')}if(state.actor.id!==expectedActorId)throw Error('Hesap değişti. İşlemi yeniden yapın.');const old=record(e),result=await accountRequest('/api/account/record',{eventId:e.id,action,expectedActorId,revision:old.revision||0,recordEventId:old.eventId,...patch});if(state.actor?.id!==expectedActorId)return result.record;state.records[result.key]=result.record;renderAll();return result.record});accountQueue=task;return task.finally(()=>{accountBusy--})}
+
+function renderAccount(){
+
+ const signed=!!state.actor;$('password-settings').hidden=!signed||state.actor.admin;$('user-login').hidden=signed;$('account-nav').hidden=!signed;$('user-logout').hidden=!signed;$('account-nav').querySelector('span').textContent=signed?state.actor.name+' · Hesabım':'Hesabım';
+
+ $('account-identity').textContent=signed?state.actor.username+' · Kaydettiğiniz haberler, kişisel notlar ve inceleme durumları hesabınızda saklanır.':'Hesabınızdaki kayıtlara erişmek için kullanıcı adı ve şifrenizle giriş yapın.';
+
+ const legacy=Object.values(legacyRecords).some(r=>r.saved||r.notes||r.status&&r.status!=='unread');$('account-actions').innerHTML=signed?'<button class="btn" id="reload-account">Hesabımı yenile</button>'+(legacy?'<p class="small-copy">Bu cihazda önceki sürümden kalan kayıtlar var. Size aitlerse hesabınıza aktarabilirsiniz.</p><button class="btn" id="import-legacy">Bu cihazdaki eski kayıtları hesabıma aktar</button>':''):'<a class="btn btn-primary" href="/giris?next=%2F%3Fview%3Daccount">Kullanıcı girişi</a>';
+
+ const rows=Object.values(state.records),saved=rows.filter(r=>r.saved),reviewed=rows.filter(r=>r.status&&r.status!=='unread');$('account-metrics').innerHTML=[['Kaydettiğim',saved.length],['İnceleme durumu verdiğim',reviewed.length],['Açtığım haber',rows.filter(r=>r.viewedAt).length]].map(([label,n])=>'<div class="detail-data"><small>'+label+'</small><strong>'+n+'</strong></div>').join('');
+
+ $('account-saved').innerHTML=saved.length?saved.map(r=>'<div class="detail-source"><button class="text-btn" data-account-open="'+esc(r.eventId)+'">'+esc(r.title)+'</button><small>'+esc(statusName(r.status))+' · '+formatDate(r.updatedAt)+'</small></div>').join(''):'<p class="small-copy">Hesabınıza kaydettiğiniz haberler burada görünür.</p>';
+
+ $('account-history').innerHTML=state.activity.length?state.activity.map(h=>'<div class="timeline-item"><small>'+formatDate(h.created_at)+'</small><p>'+esc(h.action)+'</p><button class="text-btn" data-account-open="'+esc(h.event_id)+'">'+esc(h.title)+'</button></div>').join(''):'<p class="small-copy">Henüz kayıtlı işlem yok.</p>';
+
+}
+
+const statusName=s=>({unread:'İncelenmedi',reviewing:'İnceleniyor',tracking:'Takipte',closed:'Kapatıldı'}[s]||'İncelenmedi');
+
+let toastTimer;function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3500)}
+
+const topics=['Ulusal kritik','Afet ve acil durum','Altyapı ve çevre','Ulaşım','Eğitim','Sağlık','Kültür ve yaşam','Genel gündem'];
+
+function initFilters(){const oldNational=$('national-category').value;$('national-category').innerHTML='<option value="">Tüm kritik olay türleri</option>'+(state.config?.nationalCategories||[]).map(t=>'<option>'+esc(t)+'</option>').join('');$('national-category').value=oldNational;const old=$('neighborhood-filter').value,oldTopic=$('topic-filter').value;$('topic-filter').innerHTML='<option value="">Tüm konular</option>'+topics.map(t=>'<option>'+esc(t)+'</option>').join('');$('neighborhood-filter').innerHTML='<option value="">Tüm mahalleler</option><option>İlçe geneli</option>'+(state.config?.neighborhoods||['Ihlamurkuyu','Hekimbaşı','Cemil Meriç','Yamanevler','Yukarı Dudullu']).map(t=>'<option>'+esc(t)+'</option>').join('');$('neighborhood-filter').value=old;$('topic-filter').value=oldTopic}
+
+function inPeriod(publishedAt,period,now=Date.now()){
+
+ if(!period)return true;if(!publishedAt||!Number.isFinite(Date.parse(publishedAt)))return false;
+
+ const day=dateKey(publishedAt),today=dateKey(new Date(now).toISOString());if(day>today)return false;
+
+ if(period==='today')return day===today;
+
+ if(period==='month')return day>=today.slice(0,7)+'-01';
+
+ if(period==='week'){const weekday=new Date(today+'T12:00:00Z').getUTCDay();const monday=new Date(Date.parse(today+'T00:00:00+03:00')-((weekday+6)%7)*86400000);return day>=dateKey(monday.toISOString());}
+
+ return true;
+
+}
+
+function isBreaking(e,now=Date.now()){
+
+ if(!e.publishedAt||/^\d{4}-\d{2}-\d{2}$/.test(e.publishedAt))return false;
+
+ const age=now-Date.parse(e.publishedAt);if(!Number.isFinite(age)||age< -300000||age>6*3600000)return false;
+
+ if(e.nationalCritical)return e.nationalUrgent!==false;const title=fold(e.title||'');if(/tatbikat|egitim|anma|yil donumu|seminer|belgesel|film|gecmis olsun/.test(title))return false;
+
+ return /yangin|patlama|gocuk|coktu|cokme|sel baskini|su baskini|silahli|bicakli|trafik kazasi|zincirleme kaza|feci kaza|acil uyari|kritik uyari|seferler durdu|tahliye|deprem oldu|deprem meydana|buyuklugunde deprem|depremle sallandi|son dakika.{0,30}deprem/.test(title);
+
+}
+
+function filtered(){const query=fold($('search').value),topic=$('topic-filter').value,neighborhood=$('neighborhood-filter').value,date=$('date-filter').value,focus=$('focus-filter').value;return events().filter(e=>{
+
+  if(state.view==='feed'&&nationalAgenda(e))return false;
+  if(state.view==='national'){if(!nationalAgenda(e)||$('national-category').value&&e.nationalCategory!==$('national-category').value)return false}
+
+  if(focus==='kaymakam'&&!/kaymakam|yuksel\s+celik/.test(fold(e.title+' '+e.description)))return false;if(focus==='belediye'&&!/belediye|ismet\s+yildirim/.test(fold(e.title+' '+e.description)))return false;if(focus==='olay'&&!/yangin|kaza|saldiri|kavga|patlama|gocuk|cokt|yarali|cinayet|operasyon|gozalti|su baskin|\bsel\b/.test(fold(e.title+' '+e.description)))return false;if(state.breaking&&!isBreaking(e))return false;const r=record(e);if((state.tab==='saved'||state.view==='saved')&&!r.saved)return false;if(state.tab==='unread'&&r.status!=='unread')return false;
+
+  if(topic&&!(e.topics||[e.topic]).includes(topic)||neighborhood&&e.neighborhood!==neighborhood||state.priority&&(e.priority!=='review'||r.status==='closed'))return false;
+
+  if(!state.breaking&&!inPeriod(e.publishedAt,date))return false;
+
+  return !query||fold([e.title,e.description,e.neighborhood,e.topic,...(e.matchedKeywords||[]),...e.sources.flatMap(s=>[s.sourceName,s.title])].join(' ')).includes(query);
+
+}).sort((a,b)=>{if(a.publishedAt&&b.publishedAt)return Date.parse(b.publishedAt)-Date.parse(a.publishedAt);if(a.publishedAt)return -1;if(b.publishedAt)return 1;return Date.parse(b.collectedAt)-Date.parse(a.collectedAt)})}
+
+function card(e,index=0){const publisherNames=[...new Set((e.publisherNames||e.sources.map(s=>s.sourceName)).filter(Boolean).map(publisherName))],publisherCount=e.publisherCount||publisherNames.length,multi=e.sources.length>1;const r=record(e),initials=(e.sourceName||'Haber').split(/\s+/).map(w=>w[0]).slice(0,2).join('');const tags=e.nationalCritical?'<span class="tag national-tag">'+(e.nationalUrgent===false?'Ulusal · Olay takibi':'Ulusal kritik')+'</span><span class="tag">'+esc(e.nationalCategory)+'</span><span class="tag">'+esc(e.nationalLocation||'Türkiye geneli')+'</span>':'<span class="tag">'+esc(e.topic)+'</span><span class="tag">'+esc(e.neighborhood)+'</span>';const time=e.publishedAt?'<time class="card-time" datetime="'+esc(e.publishedAt)+'">'+formatDate(e.publishedAt,true)+(/^\d{4}-\d{2}-\d{2}$/.test(e.publishedAt)?' · Saat belirtilmemiş':'')+'</time>':'<span class="card-time">Yayın tarihi bilinmiyor</span>';return '<article class="event-card '+(e.priority==='review'?'review':'')+(e.nationalCritical?' national-record':'')+'" data-event="'+esc(e.id)+'">'+(index===0?'<span class="lead-label">Akıştaki en güncel kayıt</span>':'')+'<div class="card-top"><div class="tags">'+(isBreaking(e)?'<span class="urgent-label">Son dakika</span>':'')+(e.priorityLevel?'<span class="tag" title="'+esc(e.priorityExplanation)+'">'+esc(e.priorityLevel)+'</span>':'')+tags+(e.groupingReason?'<span class="tag" title="'+esc(e.groupingReason)+'">Birleştirilen haberler</span>':'')+'</div>'+time+'</div><h2 style="margin:0"><button class="card-title" data-open="'+esc(e.id)+'">'+esc(e.title)+'</button></h2><p class="card-description">'+esc(e.description||'Haberin ayrıntılarını ve özgün yayın bağlantılarını görüntüleyin.')+'</p>'+(multi?'<div class="publisher-line" title="'+esc(publisherNames.join(', '))+'"><strong>Kaynaklar:</strong> '+esc(publisherNames.slice(0,5).join(', '))+(publisherNames.length>5?' <button class="text-btn" data-open="'+esc(e.id)+'">+'+(publisherNames.length-5)+' yayıncı</button>':'')+'</div>':'')+'<div class="card-bottom"><div class="source-info"><span class="source-avatar">'+esc(initials)+'</span><span class="source-name">'+esc(multi?publisherCount+' yayıncı':publisherName(e.sourceName))+'</span><span>· '+e.sources.length+' yayın</span></div><div class="card-tools"><span class="status '+(r.status==='closed'?'done':'')+'">'+statusName(r.status)+'</span><button class="bookmark '+(r.saved?'saved':'')+'" data-save="'+esc(e.id)+'" aria-label="'+(r.saved?'Takipten çıkar':'Takibe al')+'" aria-pressed="'+!!r.saved+'">'+icon('book')+'<span>'+(r.saved?'Kaydedildi':'Kaydet')+'</span></button></div></div></article>'}
+
+function renderFeed(){if(['feed','national'].includes(state.view)){$('page-title').textContent=state.breaking?'Son dakika':state.view==='national'?'Ulusal Gündem':'Haber Gündemi';$('crumb').textContent=$('page-title').textContent;$('page-subtitle').textContent=state.breaking?(state.view==='national'?'Türkiye bağlantılı güncel kritik yayınlar':'Ümraniye ilçesindeki güncel acil yayınlar'):state.view==='national'?'Türkiye genelindeki büyük olaylar · Kaynak bildirimlerine göre otomatik ön eleme':'Ümraniye ilçesindeki olaylar, kurumlar ve yerel gelişmeler.';}$('national-policy').hidden=state.view!=='national';$('national-category').hidden=state.view!=='national';for(const id of ['topic-filter','neighborhood-filter','focus-filter'])$(id).hidden=state.view==='national';const activeFilters=['topic-filter','neighborhood-filter','focus-filter','national-category'].filter(id=>!$(id).hidden&&$(id).value).length+Number(state.priority);$('active-filters').textContent=activeFilters;$('active-filters').hidden=!activeFilters;const list=filtered();$('feed-result').textContent=list.length+' haber gösteriliyor';$('period-note').textContent=state.breaking?'Son 6 saatte yayımlanan acil gündem · Ayrıntılar için özgün yayını inceleyin.':({today:'Bugün yayımlanan haberler',week:'Pazartesiden bugüne yayımlanan haberler',month:'Bu ay yayımlanan haberler'}[$('date-filter').value]||'Son iki ayda yayımlanan haberler');syncTabs();$('events').innerHTML=list.length?list.slice(0,state.limit).map(card).join(''):'<div class="empty">'+icon(state.events.length?'search':'globe')+'<h3>'+(state.breaking?'Şu an son dakika kaydı yok':state.view==='national'?'Bu dönemde uygun ulusal kritik yayın bulunamadı':state.events.length?'Bu dönemde kayıt bulunamadı':'Henüz haber bulunamadı')+'</h3><p>'+(state.breaking?'Güncel bir acil yayın bulunduğunda burada görünecek.':state.events.length?'Başka bir dönem seçebilir veya filtreleri genişletebilirsiniz.':'Yeni haberler hazır olduğunda burada görünecek.')+'</p><button class="btn" id="empty-action">'+(state.events.length?'Filtreleri temizle':'Filtreleri temizle')+'</button></div>';$('more-btn').hidden=list.length<=state.limit}
+
+function renderStats(){const all=events(),data=all.filter(e=>state.view==='national'?nationalAgenda(e):!nationalAgenda(e)),saved=all.filter(e=>record(e).saved).length;$('stat-total').textContent=data.length;$('summary-count').textContent=data.length+' kayıt';const urgent=data.filter(e=>isBreaking(e));$('notification-content').innerHTML=urgent.length?urgent.slice(0,5).map(e=>'<p><button class="text-btn" data-event="'+esc(e.id)+'">'+esc(e.title)+'</button></p>').join(''):'<p>Şu an güncel bir son dakika kaydı yok.</p>';$('nav-breaking').textContent=data.filter(e=>isBreaking(e)).length;$('stat-review').textContent=data.filter(e=>e.priority==='review'&&record(e).status!=='closed').length;$('stat-saved').textContent=saved;$('nav-national').textContent=all.filter(nationalAgenda).length;$('nav-count').textContent=all.filter(e=>!nationalAgenda(e)).length;$('nav-saved').textContent=saved;$('tab-all-count').textContent=data.length;
+
+ $('stat-updated').textContent=state.syncedAt?new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',hour:'2-digit',minute:'2-digit'}).format(new Date(state.syncedAt)):'—';$('stat-update-note').textContent='Gündemi yenilemek için dokunun';
+
+  const chart=topics.map(t=>[t,data.filter(e=>e.topic===t).length]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);$('topic-chart').innerHTML=chart.length?chart.map(([t,n])=>'<div class="topic-row"><span class="topic-name"><span class="topic-dot"></span>'+esc(t)+'</span><strong>'+n+'</strong></div><div class="mini-bar"><span style="width:'+Math.round(n/data.length*100)+'%"></span></div>').join(''):'<p class="small-copy">Kayıtlar geldiğinde konu dağılımı burada görünecek.</p>';
+
+ $('status-copy').textContent=state.syncedAt?'Son güncelleme: '+formatDate(state.syncedAt)+(state.config?.schedule?' · Otomatik kaynak kontrolü: 10 dakika.':' · Sayfa açıkken 10 dakikada bir kaynak kontrolü.'):'Gündem hazırlanıyor. Biraz sonra yeniden kontrol edebilirsiniz.';
+
+}
+
+function renderPublicMap(){if(!state.map)return;const m=state.map,b=m.bounds,x=lon=>35+(lon-b.minLon)/(b.maxLon-b.minLon)*720,y=lat=>460-(lat-b.minLat)/(b.maxLat-b.minLat)*420;$('public-map').innerHTML='<svg viewBox="0 0 800 500" role="img" aria-label="Ümraniye mahalle merkezleri ve haber sayıları"><rect width="800" height="500" fill="#f7f8fb"/>'+(m.boundary||[]).map(path=>'<path d="'+path.map((p,i)=>(i?'L':'M')+x(p.lon).toFixed(1)+','+y(p.lat).toFixed(1)).join(' ')+'" fill="none" stroke="#adb8cc" stroke-width="2"/>').join('')+m.points.map(p=>{const count=events().filter(e=>e.neighborhood===p.name).length;return '<g data-neighborhood="'+esc(p.name)+'" role="button" tabindex="0" aria-label="'+esc(p.name)+' '+count+' haber"><title>'+esc(p.name)+' · '+count+' haber · Yaklaşık mahalle merkezi</title><circle cx="'+x(p.lon)+'" cy="'+y(p.lat)+'" r="'+(count?7+Math.min(12,count)/3:4)+'" fill="'+(count?'#ce0000':'#c4ccda')+'" opacity=".85"/><text x="'+(x(p.lon)+9)+'" y="'+(y(p.lat)+3)+'" font-size="8" fill="#526079">'+esc(p.name)+'</text></g>'}).join('')+'</svg>';}
+
+function renderNeighborhoods(){renderPublicMap();const names=['İlçe geneli',...(state.config?.neighborhoods||['Ihlamurkuyu','Hekimbaşı','Cemil Meriç','Yamanevler','Yukarı Dudullu'])];const data=events().filter(e=>e.scope!=='national');$('neighborhood-grid').innerHTML=names.map(n=>{const list=data.filter(e=>e.neighborhood===n);return '<button class="source-card" style="text-align:left;cursor:pointer" data-neighborhood="'+esc(n)+'"><div class="source-head">'+icon('pin')+'<div><h3>'+esc(n)+'</h3><small>'+list.length+' gündem kaydı</small></div></div><p>'+esc(list[0]?.title||'İzlenen kaynaklarda mahalleye eşleştirilmiş kayıt yok.')+'</p><span class="panel-link">Mahalle akışını görüntüle →</span></button>'}).join('')}
+
+let briefLoadTask=null,briefDraftScope=null,briefSelected=new Set(),briefCandidateMemo=null;
+function briefIdentity(row){const item=row.event,keys=['id:'+row.stream+':'+item.id];for(const source of item.sources?.length?item.sources:[item])if(source.url)keys.push('source:'+row.stream+':'+state.briefGrouping.publicationKey(source));return keys;}
+function briefDraft(){
+ const day=todayKey(),owner=state.actor?.id||null,scope=day+'|'+(owner||'session');if(scope===briefDraftScope)return;
+ briefDraftScope=scope;briefSelected=new Set();
+ if(owner)try{const saved=JSON.parse(localStorage.getItem('osint-brief-selection-v1:'+owner)||'null');if(saved?.day===day&&Array.isArray(saved.keys))briefSelected=new Set(saved.keys.filter(k=>typeof k==='string').slice(0,5000));}catch{}
+}
+function saveBriefDraft(){if(state.actor?.id)try{localStorage.setItem('osint-brief-selection-v1:'+state.actor.id,JSON.stringify({day:todayKey(),keys:[...briefSelected].slice(0,5000)}));}catch{toast('Seçiminiz açık oturumda korunuyor; tarayıcıya kaydedilemedi.');}}
+function briefPublicationInstant(event){
+ const sources=event.sources?.length?event.sources:[event];const candidates=[event.publishedAt,event.published_at,event.publicationDate,event.publication_date,event.postedAt,event.posted_at,event.createdAt,event.created_at,event.timestamp,...sources.flatMap(source=>[source.publishedAt,source.published_at,source.publicationDate,source.publication_date,source.postedAt,source.posted_at,source.createdAt,source.created_at,source.timestamp])];
+ for(let value of candidates){if(value===null||value===undefined||value==='')continue;if(typeof value==='number'||/^\d{10,13}$/.test(String(value))){let n=Number(value);if(String(value).length===10)n*=1000;const d=new Date(n);if(Number.isFinite(d.getTime()))return d.toISOString();}const d=new Date(value);if(Number.isFinite(d.getTime()))return d.toISOString();}return null;
+}
+// OSINT_BRIEFING_WINDOW_72H_V1
+function briefingInstant72h(value){
+ if(!value)return NaN;
+ const raw=String(value).trim();
+ const local=/^\d{4}-\d{2}-\d{2}$/.test(raw)?raw+'T00:00:00+03:00':/^\d{4}-\d{2}-\d{2}T/.test(raw)&&!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)?raw+'+03:00':raw;
+ const instant=Date.parse(local);
+ return Number.isFinite(instant)?instant:NaN;
+}
+function briefWithin72Hours(value,now=Date.now()){
+ const instant=briefingInstant72h(value);
+ return Number.isFinite(instant)&&instant>=now-72*60*60*1000&&instant<=now+5*60*1000;
+}
+
+function briefCandidates(){
+ briefDraft();const grouping=state.briefGrouping;if(!grouping)return [];
+ const day=todayKey();if(briefCandidateMemo?.day===day&&briefCandidateMemo?.minute===Math.floor(Date.now()/60000)&&briefCandidateMemo.news===state.events&&briefCandidateMemo.social===state.briefSocial)return briefCandidateMemo.rows;
+ const current=records=>grouping.groupEventRecords(grouping.publicationRecords(records).filter(e=>e.publishedAt&&briefWithin72Hours(e.publishedAt)));
+ const datedSocial=(state.briefSocial||[]).map(e=>{const publishedAt=briefPublicationInstant(e),body=briefBestText(e),sources=(e.sources?.length?e.sources:[e]).map(s=>{const sourceBody=briefBestText(s)||body;return {...s,description:sourceBody||s.description||e.description||'',fullText:sourceBody||s.fullText||e.fullText||''};});return {...e,publishedAt,description:body||e.description||'',fullText:body||e.fullText||'',sources};}).filter(e=>e.publishedAt&&briefWithin72Hours(e.publishedAt));
+ const rows=[...current(events()).map(event=>({stream:'news',event})),...current(datedSocial).map(event=>({stream:'social',event}))].map(row=>({...row,key:row.stream+':'+row.event.id}));
+ briefCandidateMemo={day,minute:Math.floor(Date.now()/60000),news:state.events,social:state.briefSocial,rows};return rows;
+}
+function briefIsSelected(row){return briefIdentity(row).some(key=>briefSelected.has(key));}
+function briefVisible(rows=briefCandidates()){const query=fold($('brief-search')?.value||'');return rows.filter(row=>!query||fold(row.event.title+' '+(row.event.description||'')+' '+(row.event.sourceName||'')).includes(query));}
+function setBriefSelection(rows){briefSelected=new Set(rows.flatMap(briefIdentity));saveBriefDraft();renderBrief();}
+function selectedBriefInput(){const rows=briefCandidates().filter(briefIsSelected);return {events:rows.filter(row=>row.stream==='news').map(row=>row.event),socialEvents:rows.filter(row=>row.stream==='social').map(row=>row.event),date:todayKey()};}
+function loadBriefData({refreshNews=false}={}){
+ if(briefLoadTask)return briefLoadTask;const epoch=accountEpoch;state.briefLoading=true;state.briefMessage='Son 72 saatin haberleri hazırlanıyor…';renderBrief();
+ briefLoadTask=(async()=>{
+  const [grouping,social,agenda]=await Promise.allSettled([
+   import('/assets/event-grouping.js'),
+    fetch('/api/briefing/social',{credentials:'same-origin',cache:'no-store'}).then(async r=>{if(r.status===401){lockReader();throw Error('Oturum sona erdi');}if(!r.ok)throw Error('Sosyal medya haberleri alınamadı');const d=await r.json();if(!Array.isArray(d.items))throw Error('Sosyal medya yanıtı geçersiz');return d;}),
+   refreshNews||!state.config?.initialData||Date.now()-(state.lastAgendaLoadedAt||0)>60000?loadAgenda():Promise.resolve()
+  ]);
+  if(state.locked||epoch!==accountEpoch)return;
+  if(grouping.status!=='fulfilled'){state.briefMessage='Brifing listesi hazırlanamadı. Listeyi yenileyin.';state.briefGrouping=null;return;}
+  state.briefGrouping=grouping.value;
+   if(social.status==='fulfilled')state.briefSocial=social.value.items;else state.briefSocial=[];
+   const undatedSocial=social.status==='fulfilled'?Number(social.value.undated||0):0;
+   state.briefMessage=[agenda.status==='rejected'?'Haber listesi yenilenemedi; ekranda bulunan bugünkü kayıtlar kullanılıyor.':'',social.status==='rejected'?'Sosyal medya haberleri alınamadı; listede yalnız haber kayıtları var.':'',undatedSocial?undatedSocial+' sosyal paylaşımda kaynak yayın tarihi okunamadığı için bugünün brifingine eklenmedi.':''].filter(Boolean).join(' ');
+ })().catch(()=>{if(!state.locked&&epoch===accountEpoch)state.briefMessage='Brifing hazırlanamadı. Listeyi yenileyin.';}).finally(()=>{briefLoadTask=null;if(!state.locked&&epoch===accountEpoch){state.briefLoading=false;renderBrief();}});
+ return briefLoadTask;
+}
+function renderBrief(){
+ if(state.view!=='brief'||state.locked)return;
+ const focused=document.activeElement?.dataset?.briefSelect,rows=briefCandidates(),visible=briefVisible(rows),input=selectedBriefInput(),report=prepareBriefing(input),busy=!!state.pdfBusy||!!state.briefLoading||state.accountLoading;
+ $('brief-day').textContent=new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',dateStyle:'long'}).format(new Date(todayKey()+'T12:00:00+03:00'))+' · Son 72 saat · Türkiye saati';
+ $('brief-load-state').textContent=state.accountLoading?'Hesap bilgisi doğrulanıyor; haber seçimi birazdan açılacak.':state.briefMessage||'Yayın zamanı son 72 saat içinde olmayan içerikler listeye alınmaz. Sınır Türkiye saatiyle hesaplanır.';
+ $('brief-selection-count').textContent=report.rows.length+' haber seçildi · '+rows.length+' haber seçilebilir';
+ for(const id of ['brief-select-visible','brief-clear','brief-reload','brief-search'])$(id).disabled=!!state.pdfBusy||!state.briefGrouping&&id!=='brief-reload';
+ $('brief-select-visible').disabled=busy||!visible.length;$('brief-clear').disabled=busy||!report.rows.length;$('brief-reload').disabled=busy;
+ const option=row=>{const e=row.event,selected=briefIsSelected(row),sourceNames=[...new Set((e.sources?.length?e.sources:[e]).map(s=>publisherName(s.sourceName||e.sourceName)))];return '<label class="brief-choice '+(selected?'is-selected':'')+'"><input type="checkbox" data-brief-select="'+esc(row.key)+'" '+(selected?'checked ':'')+(busy?'disabled ':'')+'aria-label="Brifinge ekle: '+esc(e.title)+'"><span><strong>'+esc(e.title)+'</strong><small>'+esc(formatDate(e.publishedAt))+' · '+esc(sourceNames.join(', '))+'</small></span></label>';};
+ const sections=[['Ümraniye gündemi',row=>row.stream==='news'&&!nationalAgenda(row.event)],['Ulusal Gündem',row=>row.stream==='news'&&nationalAgenda(row.event)],['Sosyal medya haberleri',row=>row.stream==='social']];
+ $('brief-options').innerHTML=sections.map(([name,accept])=>{const candidates=visible.filter(accept);return candidates.length?'<fieldset><legend>'+name+' · '+candidates.length+' haber</legend>'+candidates.map(option).join('')+'</fieldset>':'';}).join('')||'<p class="small-copy">'+(state.briefLoading?'Haberler yükleniyor…':rows.length?'Aramaya uygun haber bulunamadı.':'Son 72 saatte yayımlanmış seçilebilir haber bulunamadı.')+'</p>';
+ const section=(title,items)=>items.length?'<h3 class="brief-section-title">'+title+' <span>'+items.length+' haber</span></h3>'+items.map((e,i)=>'<article class="brief-event"><span class="brief-number">'+String(i+1).padStart(2,'0')+'</span><div><strong>'+esc(e.title)+'</strong><small>'+formatDate(e.publishedAt)+' · '+esc(e.topic)+' · '+esc(e.location)+'</small><p>'+esc(e.detail)+'</p><p class="brief-sources">Kaynak: '+esc(e.sources.join(', ')||'Yayıncı belirtilmedi')+'</p></div></article>').join(''):'';
+ $('brief-content').innerHTML='<div class="brief-letterhead"><img src="/favicon.png" alt="Ümraniye Kaymakamlığı"><div>T.C. ÜMRANİYE KAYMAKAMLIĞI<small>GÜNLÜK GÜNDEM BRİFİNGİ</small></div></div><div class="brief-report-heading"><div><h2>Günlük gündem brifingi</h2><p>'+esc($('brief-day').textContent)+'</p></div><button class="btn btn-primary" id="print-brief" '+(busy||!report.rows.length?'disabled':'')+'>'+icon('download')+(state.pdfBusy?'PDF hazırlanıyor…':'Seçilenleri PDF indir ('+report.rows.length+')')+'</button></div><div class="brief-executive"><h3>Yönetici özeti</h3><p>'+esc(report.rows.length?report.summary:'Brifinge eklenecek haberleri yukarıdaki kutucuklardan seçin. Önizleme ve PDF yalnız seçtiklerinizi içerir.')+'</p></div>'+section('Ümraniye gündemi',report.local)+section('Ulusal Gündem',report.national)+section('Sosyal medya haberleri',report.social)+'<p class="brief-method">Yalnız son 72 saatte yayımlanan ve hazırlayan kişi tarafından seçilen haberler yer alır. Bilgiler kaynak yayınlardan derlenmiştir; bağımsız doğrulama içermez.</p><div class="brief-signature">© 2026 Hakan Bilgin · Tüm hakları saklıdır.</div>';
+ if(focused){const control=[...$('brief-options').querySelectorAll('[data-brief-select]')].find(el=>el.dataset.briefSelect===focused);control?.focus({preventScroll:true});}
+}
+document.addEventListener('change',event=>{const control=event.target.closest('[data-brief-select]');if(!control||state.pdfBusy||state.briefLoading)return;const all=briefCandidates(),selected=all.filter(briefIsSelected),target=all.find(row=>row.key===control.dataset.briefSelect);if(!target)return;setBriefSelection(control.checked?[...selected.filter(row=>row.key!==target.key),target]:selected.filter(row=>row.key!==target.key));});
+$('brief-search').oninput=()=>renderBrief();
+$('brief-select-visible').onclick=()=>setBriefSelection([...new Map([...briefCandidates().filter(briefIsSelected),...briefVisible()].map(row=>[row.key,row])).values()]);
+$('brief-clear').onclick=()=>setBriefSelection([]);
+$('brief-reload').onclick=()=>loadBriefData({refreshNews:true});
+
+
+function renderAll(){if(state.locked)return;renderAccount();renderStats();renderFeed();renderNeighborhoods();renderBrief()}
+
+let navigationEpoch=0;
+const titles={national:['Ulusal Gündem','Türkiye genelindeki büyük olaylar · Kaynak bildirimlerine göre otomatik ön eleme.'],account:['Hesabım','Kişisel kayıtlarınız ve inceleme geçmişiniz.'],feed:['Haber Gündemi','Ümraniye ilçesindeki olaylar, kurumlar ve yerel gelişmeler.'],saved:['Takip listem','Takibe aldığınız olaylar ve son durumları.'],neighborhoods:['Mahalle gündemi','İlçenin gündemine mahalle ölçeğinde bakın.'],brief:['Günlük brifing','Günün öne çıkan kayıtları ve takip ettikleriniz.']};
+
+function navigate(view){navigationEpoch++;const address=new URL(location.href);if(view==='feed')address.searchParams.delete('view');else address.searchParams.set('view',view);history.replaceState(null,'',address.pathname+address.search+address.hash);$('page-eyebrow').textContent=view==='national'?'TÜRKİYE’DE KRİTİK GÜNDEM':'ÜMRANİYE İLÇE GÜNDEMİ';if(view==='national'){for(const id of ['topic-filter','neighborhood-filter','focus-filter'])$(id).value=''}else if(view==='feed'&&$('topic-filter').value==='Ulusal kritik')$('topic-filter').value='';state.breaking=false;state.view=view;state.limit=20;if(view==='saved'){state.tab='saved';$('date-filter').value=''}else if(['feed','national'].includes(view)){state.tab='all'}document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));document.querySelectorAll('.view').forEach(el=>el.classList.toggle('active',el.id==='view-'+(['saved','national'].includes(view)?'feed':view)));$('page-title').textContent=titles[view][0];$('page-subtitle').textContent=titles[view][1];$('crumb').textContent=titles[view][0];$('sidebar').classList.remove('mobile-open');$('menu-btn').setAttribute('aria-expanded','false');syncTabs();renderAll();if(view==='brief')loadBriefData();window.scrollTo({top:0,behavior:'smooth'})}
+
+function syncTabs(){document.querySelectorAll('.tab').forEach(b=>{const active=['feed','national'].includes(state.view)&&(b.dataset.stream==='breaking'?state.breaking:!state.breaking&&b.dataset.period===$('date-filter').value);b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active))});document.querySelectorAll('[data-stream="breaking"]').forEach(b=>b.classList.toggle('active',state.breaking));}
+
+function clearFilters(){state.breaking=false;for(const id of ['search','topic-filter','neighborhood-filter','date-filter','focus-filter','national-category'])$(id).value='';state.priority=false;state.limit=20;$('priority-filter').classList.remove('on');renderFeed()}
+
+let lastFocus;
+
+function openDetail(id,track=true){const e=eventById(id);if(!e)return;state.selected=e.id;if(track&&state.actor)setRecord(e,{},'open').then(()=>loadAccount()).catch(()=>{});lastFocus=document.activeElement;const r=record(e);$('detail-id').textContent=' / '+e.id.slice(-8).toUpperCase();$('detail-body').innerHTML='<div class="tags">'+(e.nationalCritical?'<span class="tag" title="'+esc(e.nationalReason)+'">Ulusal kritik · ön eleme</span>':'')+(e.nationalCritical?'<span class="tag" title="'+esc(e.nationalReason)+'">'+(e.nationalUrgent===false?'Olay takibi · ':'')+esc(e.nationalCategory)+' · '+esc(e.nationalLocation)+'</span>':'')+(e.groupingReason?'<span class="tag" title="'+esc(e.groupingReason)+'">Olası ortak olay</span>':'')+'<span class="tag">'+esc(e.topic)+'</span><span class="tag">'+esc(e.neighborhood)+'</span></div><h2 id="detail-title">'+esc(e.title)+'</h2><p class="drawer-description">'+esc(e.description||'Bu kayıt kaynak başlığından çıkarıldı. Tam metin özeti henüz oluşturulmadı; ayrıntılar için özgün yayını inceleyin.')+'</p><div class="notice">'+esc(e.evidence)+'. '+esc(e.priorityReason)+' Yayın sayısı bağımsız teyit sayısı değildir.</div><div class="detail-grid"><div class="detail-data"><small>Yayın zamanı</small><strong>'+formatDate(e.publishedAt)+'</strong></div><div class="detail-data"><small>Sistemde görülme</small><strong>'+formatDate(e.collectedAt)+'</strong></div><div class="detail-data"><small>Yer eşleştirmesi</small><strong>'+esc(e.locationBasis||'Kaynak metni')+'</strong></div><div class="detail-data"><small>Olay zamanı</small><strong>Otomatik belirlenmedi</strong></div></div><h3>Kaynaklar ve yayın geçmişi · '+e.sources.length+' yayın</h3><p class="small-copy">'+(e.publisherCount||new Set(e.sources.map(s=>s.sourceId||s.sourceName)).size)+' yayıncıdan alınan özgün başlıklar ve yayın zamanları aşağıdadır.</p>'+[...e.sources].sort((a,b)=>Date.parse(b.publishedAt||0)-Date.parse(a.publishedAt||0)).map(s=>'<div class="detail-source">'+(s.url?'<a href="'+safeUrl(s.url)+'" target="_blank" rel="noopener noreferrer">'+esc(s.sourceName)+' ↗</a>':'<strong>Kaynak bağlantısı yok</strong>')+'<small>'+esc(s.sourceType)+' · '+formatDate(s.publishedAt)+'</small><p>'+esc(s.title)+'</p></div>').join('')+'<h3>Arama eşleşmesi</h3><p class="small-copy">'+esc(e.matchReason||'Kaynak ve ilçe bağlamı')+'</p><div class="tags">'+(e.matchedKeywords||[]).map(t=>'<span class="tag">'+esc(t)+'</span>').join('')+'</div><h3>İnceleme ve takip</h3><p class="small-copy">'+(state.actor?'Kişisel not ve inceleme durumunuz yalnız hesabınızda saklanır.':'Kaydetmek, not eklemek ve inceleme yapmak için kullanıcı girişi yapın.')+' Ortak not ve görevler ayrı olay dosyasındadır.</p><p><a class="btn" href="/ekip#event='+encodeURIComponent(e.id)+'">Ortak olay dosyasını aç</a></p><label class="form-label" for="detail-status">İnceleme durumu</label><select class="field" id="detail-status">'+['unread','reviewing','tracking','closed'].map(s=>'<option value="'+s+'" '+(r.status===s?'selected':'')+'>'+statusName(s)+'</option>').join('')+'</select><label class="form-label" for="detail-notes">Çalışma notunuz</label><textarea class="field" id="detail-notes" placeholder="Kaynak değerlendirmesi veya takip notu…">'+esc(r.notes)+'</textarea>'+recordsFor(e).filter(other=>other.eventId!==r.eventId&&other.notes).map(other=>'<div class="detail-source"><strong>Birleşen yayından korunan önceki not</strong><small>'+esc(other.title)+' · '+formatDate(other.updatedAt)+'</small><p style="white-space:pre-wrap">'+esc(other.notes)+'</p></div>').join('')+'<div class="drawer-actions"><button class="btn btn-primary" id="save-detail">'+icon('check')+'Değişiklikleri kaydet</button><button class="btn" id="detail-bookmark">'+icon('book')+(r.saved?'Takipten çıkar':'Takibe al')+'</button></div><h3>İşlem geçmişi</h3><div class="timeline"><div class="timeline-item">'+formatDate(e.collectedAt)+'<br>'+'Kayıt kaynak listesinden alındı'+'</div>'+(r.history||[]).slice().reverse().map(h=>'<div class="timeline-item">'+formatDate(h.at)+'<br>'+esc(h.action)+'</div>').join('')+'</div>';$('overlay').classList.add('open');document.body.style.overflow='hidden';$('close-detail').focus()}
+
+function closeDetail(){$('overlay').classList.remove('open');document.body.style.overflow='';state.selected=null;lastFocus?.focus?.()}
+
+function sync(){toast('Kaynak kontrolü yönetici panelinden yapılır.')}
+
+function download(name,content,type){const blob=new Blob(['\ufeff'+content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+
+let pdfReady,pdfLogoReady;
+
+function loadPdfLogo(){if(!pdfLogoReady)pdfLogoReady=fetch('/favicon.png').then(r=>{if(!r.ok)throw Error('Kurum logosu yüklenemedi.');return r.blob()}).then(blob=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('Kurum logosu yüklenemedi.'));reader.readAsDataURL(blob)})).catch(e=>{pdfLogoReady=null;throw e});return pdfLogoReady}
+
+function ensureBriefingPdf(){if(globalThis.OSINTBriefing)return Promise.resolve();if(!pdfReady)pdfReady=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/assets/briefing-pdf.js?v=2';script.onload=()=>globalThis.OSINTBriefing?resolve():reject(Error('PDF bileşeni yüklenemedi.'));script.onerror=()=>{pdfReady=null;script.remove();reject(Error('PDF oluşturulamadı. Bağlantınızı kontrol edip yeniden deneyin.'))};document.head.append(script)});return pdfReady}
+
+async function downloadBrief(){
+ if(state.pdfBusy||state.briefLoading||state.locked)return;
+ const input=selectedBriefInput(),count=input.events.length+input.socialEvents.length,day=todayKey(),epoch=accountEpoch;
+ if(!count){toast('PDF için son 72 saatin haberlerinden en az birini seçin.');return;}
+ state.pdfBusy=true;renderBrief();
+ try{await ensureBriefingPdf();const logo=await loadPdfLogo();if(state.locked||epoch!==accountEpoch)return;if(todayKey()!==day)throw Error('Gün değişti. Yeni günün haberlerini seçerek brifingi yeniden hazırlayın.');const {doc,report}=globalThis.OSINTBriefing.create(input,logo);if(!report.rows.length)throw Error('Seçilen haberler son 72 saat aralığına uygun değil.');doc.save('Umraniye_OSINT_Gunluk_Brifing_'+day+'.pdf');toast(report.rows.length+' seçilmiş haberle günlük brifing indirildi.');}
+ catch(error){if(!state.locked)toast(error.message||'PDF oluşturulamadı.');}
+ finally{state.pdfBusy=false;if(!state.locked)renderBrief();}
+}
+
+
+
+document.addEventListener('click',async event=>{
+
+ try{
+
+ const accountOpen=event.target.closest('[data-account-open]');if(accountOpen){openDetail(accountOpen.dataset.accountOpen);return}
+
+ if(event.target.closest('#reload-account')){await loadAccount();toast('Hesabınız güncellendi.');return}
+
+ if(event.target.closest('#import-legacy')){await importLegacy();return}
+
+ if(event.target.closest('#user-logout')){await signOutAccount();return}
+
+
+
+ const period=event.target.closest('[data-period]');if(period){navigate(state.view==='national'?'national':'feed');state.breaking=false;$('date-filter').value=period.dataset.period;state.limit=20;renderFeed();return}
+
+ const breaking=event.target.closest('[data-stream="breaking"]');if(breaking){navigate(state.view==='national'?'national':'feed');clearFilters();state.breaking=true;state.tab='all';$('page-title').textContent='Son dakika';$('page-subtitle').textContent='Güncel yayınlarda acil gündem';$('crumb').textContent='Son dakika';$('sidebar').classList.remove('mobile-open');renderFeed();return}
+
+
+
+ const metric=event.target.closest('[data-stat]');if(metric){if(metric.dataset.stat==='updated'){refreshAgenda(true);return}clearFilters();navigate(metric.dataset.stat==='saved'?'saved':'feed');if(metric.dataset.stat==='review'){state.priority=true;$('priority-filter').classList.add('on');renderFeed()}return}
+
+ const nav=event.target.closest('[data-view]');if(nav){navigate(nav.dataset.view);return}
+
+ const save=event.target.closest('[data-save]');if(save){event.stopPropagation();const e=events().find(e=>e.id===save.dataset.save);if(e){await setRecord(e,{saved:!record(e).saved});await loadAccount();toast(record(e).saved?'Olay takip listenize eklendi.':'Olay takipten çıkarıldı.')}return}
+
+ const card=event.target.closest('[data-event]');if(card){openDetail(card.dataset.event);return}
+
+ const tab=event.target.closest('[data-tab]');if(tab){state.tab=tab.dataset.tab;if(state.view==='saved'&&state.tab!=='saved')state.view='feed';state.limit=20;syncTabs();renderFeed();return}
+
+ const neighborhood=event.target.closest('[data-neighborhood]');if(neighborhood){navigate('feed');clearFilters();$('neighborhood-filter').value=neighborhood.dataset.neighborhood;renderFeed();return}
+
+ if(event.target.closest('#empty-action'))clearFilters()
+
+ if(event.target.closest('#save-detail')){const e=eventById(state.selected);if(e){await setRecord(e,{status:$('detail-status').value,notes:$('detail-notes').value.slice(0,5000)});await loadAccount();toast('İnceleme durumu ve not hesabınıza kaydedildi.');openDetail(e.id,false)}}
+
+ if(event.target.closest('#detail-bookmark')){const e=eventById(state.selected);if(e){await setRecord(e,{saved:!record(e).saved});await loadAccount();openDetail(e.id,false)}}
+
+ if(event.target.closest('#print-brief'))downloadBrief();if(event.target.closest('#public-csv'))location.href='/api/public/export?date='+todayKey();
+
+ }catch(err){toast(err.message);if(state.actor)await loadAccount()}
+
+});
+
+$('change-password-form').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,button=form.querySelector('button'),message=$('password-message');message.textContent='';if($('new-password').value!==$('confirm-password').value){message.textContent='Yeni şifreler eşleşmiyor.';return}button.disabled=true;try{const response=await fetch('/api/account/password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({currentPassword:$('current-password').value,newPassword:$('new-password').value})});const result=await response.json();if(!response.ok)throw Error(result.error||'Şifre değiştirilemedi.');form.reset();location.replace('/giris?passwordChanged=1')}catch(error){message.textContent=error.message}finally{button.disabled=false}};
+
+$('clear-filters').onclick=clearFilters;$('brief-btn').onclick=()=>navigate('brief');$('open-brief').onclick=()=>navigate('brief');$('close-detail').onclick=closeDetail;$('overlay').onclick=e=>{if(e.target===$('overlay'))closeDetail()};$('menu-btn').onclick=()=>{const open=$('sidebar').classList.toggle('mobile-open');$('menu-btn').setAttribute('aria-expanded',String(open))};$('sidebar-backdrop').onclick=()=>{$('sidebar').classList.remove('mobile-open');$('menu-btn').setAttribute('aria-expanded','false')};$('more-btn').onclick=()=>{state.limit+=20;renderFeed()};
+
+$('priority-filter').onclick=()=>{state.priority=!state.priority;$('priority-filter').classList.toggle('on',state.priority);renderFeed()};for(const id of ['topic-filter','neighborhood-filter','date-filter','focus-filter','national-category'])$(id).onchange=()=>{if(id==='date-filter')state.breaking=false;state.limit=20;renderFeed()};$('search').oninput=()=>{if(!['feed','saved','national'].includes(state.view))navigate('feed');state.limit=20;renderFeed()};$('bell').onclick=()=>{const open=$('notifications').classList.toggle('open');$('bell').setAttribute('aria-expanded',String(open))};
+
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('search').focus()}if(e.key==='Escape'){closeDetail();$('notifications').classList.remove('open');$('sidebar').classList.remove('mobile-open');$('menu-btn').setAttribute('aria-expanded','false');$('filter-panel').open=false}if(e.key==='Tab'&&$('overlay').classList.contains('open')){const els=[...$('overlay').querySelectorAll('button,a,select,textarea')].filter(el=>!el.disabled);const first=els[0],last=els.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});
+
+$('today').textContent=new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',day:'numeric',month:'long',year:'numeric'}).format(new Date());
+
+persist();initFilters();renderAll();
+
+const initialView=new URLSearchParams(location.search).get('view'),accountReady=loadAccount();accountReady.then(()=>{if(!state.locked&&navigationEpoch===0&&['account','brief','national','saved','neighborhoods'].includes(initialView))navigate(initialView);});
+
+let agendaLoadTask=null;
+function loadAgenda(){if(!agendaLoadTask){const task=fetchAgendaSnapshot().finally(()=>{if(agendaLoadTask===task)agendaLoadTask=null;});agendaLoadTask=task;}return agendaLoadTask;}
+async function fetchAgendaSnapshot(){
+
+ if(state.locked)return;const readerEpoch=accountEpoch;
+
+ const response=await fetch('/api/config',{cache:'no-store',signal:AbortSignal.timeout(20000)});if(response.status===401){lockReader();throw Error('Giriş gerekli')}if(!response.ok)throw Error();
+
+ const config=await response.json();if(state.locked||readerEpoch!==accountEpoch)return;state.config=config;state.lastAgendaLoadedAt=Date.now();if(!state.map){try{state.map=await(await fetch('/api/public/map')).json()}catch{}}if(state.locked||readerEpoch!==accountEpoch)return;if(config.initialData){state.events=(config.initialData.events||[]).filter(withinRetention);state.syncedAt=config.initialData.syncedAt;persist()}initFilters();renderAll();
+
+}
+
+async function refreshAgenda(){
+ if(state.refreshing||state.locked)return;state.refreshing=true;
+ try{await loadAgenda()}catch{}finally{state.refreshing=false}
+}
+
+
+document.addEventListener('keydown',e=>{const point=e.target.closest('#public-map [data-neighborhood]');if(point&&['Enter',' '].includes(e.key)){e.preventDefault();point.click()}});
+
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){refreshAgenda();loadAccount()}});setInterval(()=>{if(!document.hidden)loadAccount()},60000);
+
+window.addEventListener('pageshow',e=>{if(state.locked){location.replace('/giris');return}if(e.persisted){state.records={};state.activity=[];state.actor=null;closeDetail();renderAll();loadAccount()}});
+
+async function signOutAccount(){if(accountBusy){toast('İşlem tamamlandıktan sonra tekrar çıkış yapın.');return}try{await accountRequest('/api/logout',{});accountChannel?.postMessage('signed-out');lockReader()}catch(e){toast(e.message)}}
+
+async function importLegacy(){if(!state.actor)return;const button=$('import-legacy');if(button)button.disabled=true;let imported=0;try{for(const [key,r] of Object.entries(legacyRecords)){const e=events().find(e=>key==='live:'+e.id||(e.relatedIds||[]).some(id=>key==='live:'+id));if(!e||!r.saved&&!r.notes&&(!r.status||r.status==='unread')||(record(e).saved||record(e).notes||record(e).status!=='unread'))continue;await setRecord(e,{saved:!!r.saved,status:['unread','reviewing','tracking','closed'].includes(r.status)?r.status:'unread',notes:String(r.notes||'').slice(0,5000)});delete legacyRecords[key];imported++}persist();await loadAccount();toast(imported+' eski kayıt hesabınıza aktarıldı.')}catch(e){toast(e.message)}finally{if(button)button.disabled=false}}
+
+refreshAgenda();setInterval(()=>{if(!document.hidden)refreshAgenda()},60000+Math.floor(Math.random()*15000));
+
+</script>
+
+<script>fetch('/api/session',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(s=>{document.querySelectorAll('[data-institutional-nav]').forEach(n=>n.hidden=!s.adminUnlocked);}).catch(()=>{});</script></body></html>
+
