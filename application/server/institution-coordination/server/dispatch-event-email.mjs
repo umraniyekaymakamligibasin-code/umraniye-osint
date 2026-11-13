@@ -22,13 +22,13 @@ const ELIGIBILITY = `SELECT o.id,o.coord_case_id,o.institution_id,o.recipient_id
  */
 export async function dispatchDueInstitutionNotices({ db, decryptAddress, sendWithIdempotency, portalUrl, limit = 10, onError }) {
   if (!db?.prepare || typeof decryptAddress !== 'function' || typeof sendWithIdempotency !== 'function') throw new Error('Required mail security adapters missing');
-  if (sendWithIdempotency.supportsIdempotency !== true) throw new Error('Mail provider idempotency support required');
+  if (sendWithIdempotency.supportsIdempotency !== true && sendWithIdempotency.durableClaimOnly !== true) throw new Error('Mail provider idempotency support required');
   const parsedPortal = new URL(portalUrl);
   if (parsedPortal.protocol !== 'https:' || parsedPortal.username || parsedPortal.password) throw new Error('A fixed HTTPS portal URL is required');
   // Recover abandoned claims with the same provider idempotency key.
-  await db.prepare(`UPDATE coord_mail_outbox SET state=CASE WHEN attempts>=5 THEN 'dead' ELSE 'queued' END,
+  await db.prepare(`UPDATE coord_mail_outbox SET state=CASE WHEN ?=0 OR attempts>=5 THEN 'dead' ELSE 'queued' END,
     next_attempt_at=?,lease_until=NULL,last_error_code='expired_claim' WHERE state='sending' AND lease_until<=?`)
-    .bind(isoNow(),isoNow()).run();
+    .bind(sendWithIdempotency.supportsIdempotency===true?1:0,isoNow(),isoNow()).run();
   const count = Math.max(1, Math.min(10, Number.isInteger(limit) ? limit : 10));
   const due = await db.prepare(`SELECT id,coord_case_id,institution_id,recipient_id,attempts FROM coord_mail_outbox
     WHERE state IN ('queued') AND next_attempt_at<=? ORDER BY created_at,id LIMIT ?`).bind(isoNow(), count).all();

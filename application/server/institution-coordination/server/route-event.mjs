@@ -112,7 +112,7 @@ export async function projectEligibleEvent({ db, event, rules }) {
     JOIN coord_mail_recipients r ON r.institution_id=i.id AND r.active=1 AND r.verified_at IS NOT NULL AND r.verified_by IS NOT NULL
     WHERE c.id=? AND ?=1
     ON CONFLICT(dedupe_key) DO NOTHING`)
-    .bind(id(), createdAt, createdAt, caseId, event.historical === true ? 0 : 1);
+    .bind(id(), createdAt, createdAt, caseId, event.historical !== true && projection.firstPublishedAt && Date.parse(projection.firstPublishedAt)>=Date.now()-3600000 && Date.parse(projection.firstPublishedAt)<=Date.now()+300000 ? 1 : 0);
   const results = await db.batch([insertCase, auditInsert, outboxInsert]);
   const inserted = results?.[0]?.results?.[0]?.id === caseId || results?.[0]?.meta?.changes > 0 || results?.[0]?.changes > 0;
   if (!inserted) return { decision: 'held', reason: 'duplicate_or_projection_not_inserted' };
@@ -121,3 +121,34 @@ export async function projectEligibleEvent({ db, event, rules }) {
     caseId, emailQueued };
 }
 
+
+/** Multiple duties can coexist; competing owners of the same duty are not fan-out. */
+export function classifyForInstitutions(event,rules){
+  if(!event||rules?.state!=='approved')return {decision:'held',reason:'rules_not_approved',routes:[]};
+  const matches=[];
+  for(const rule of rules.rules??[]){
+    const result=classifyForInstitution(event,{...rules,rules:[rule]});
+    if(result.decision==='candidate')matches.push({...result,role:rule.role==='lead'?'lead':'support',coRouteGroup:rule.coRouteGroup||null,rule});
+  }
+  const distinct=[...new Map(matches.map(m=>[m.institution+'|'+m.topic,m])).values()];
+  const routes=[],conflicts=[];
+  for(const topic of new Set(distinct.map(m=>m.topic))){
+    const owners=distinct.filter(m=>m.topic===topic);
+    const explicitJoint=owners.length>1&&owners[0].coRouteGroup&&owners.every(m=>m.coRouteGroup===owners[0].coRouteGroup);
+    if(new Set(owners.map(m=>m.institution)).size>1&&!explicitJoint){conflicts.push({topic,reason:'competing_authority'});continue;}
+    routes.push(...owners);
+  }
+  return {decision:routes.length?'candidates':'held',reason:routes.length?'independent_duties':conflicts.length?'competing_authority':'no_eligible_route',routes,conflicts};
+}
+
+/** Each approved tenant gets its own minimized case; no other tenant's history is exposed. */
+export async function projectMultiInstitutionEvent({db,event,rules}){
+  const plan=classifyForInstitutions(event,rules);
+  if(plan.decision!=='candidates')return plan;
+  const results=[];
+  for(const route of plan.routes){
+    const result=await projectEligibleEvent({db,event,rules:{...rules,rules:[route.rule]}});
+    results.push({...result,institution:route.institution,topic:route.topic,role:route.role});
+  }
+  return {decision:results.some(r=>r.decision==='projected')?'projected':'no_new_projection',routes:results,conflicts:plan.conflicts};
+}

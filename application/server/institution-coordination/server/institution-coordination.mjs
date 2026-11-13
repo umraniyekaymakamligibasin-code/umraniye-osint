@@ -178,7 +178,23 @@ export function createInstitutionCoordination(adapters) {
         await run(db, `INSERT INTO coord_case_history(id,coord_case_id,institution_id,actor_account_id,action,from_value,to_value,created_at)
           VALUES(?,?,?,?,'view',NULL,NULL,?)`, id(), item.id, tenant.institution_id, actorKey, now());
         await audit(db, actorKey, tenant.institution_id, 'view', 'case', item.id, requestId);
-        return json({ case: item, sources });
+        const history=await all(db,`SELECT action,from_value,to_value,note_redacted,created_at FROM coord_case_history
+          WHERE coord_case_id=? AND institution_id=? AND action!='view' ORDER BY created_at DESC,id DESC LIMIT 100`,item.id,tenant.institution_id);
+        return json({ case: {...item,role:tenant.role}, sources, history });
+      }
+
+      const noteMatch=path.match(/^\/cases\/([A-Za-z0-9_-]{1,120})\/notes$/);
+      if(noteMatch&&request.method==='POST'){
+        if(!await adapters.verifyCsrf(request,actor))return json({error:'csrf_failed'},403);
+        const body=await parseBody(request),tenant=await resolveMembership(db,actorKey,text(body.institution,80));
+        if(!tenant||!ROLE_WRITES.has(tenant.role))return json({error:'case_not_found'},404);
+        const item=await first(db,`${CASE_SELECT} AND c.id=? LIMIT 1`,tenant.institution_id,noteMatch[1]);
+        if(!item)return json({error:'case_not_found'},404);
+        if(typeof body.note!=='string'||!body.note.trim()||body.note.length>2000)return json({error:'note_1_to_2000_required'},400);
+        await run(db,`INSERT INTO coord_case_history(id,coord_case_id,institution_id,actor_account_id,action,note_redacted,created_at)
+          VALUES(?,?,?,?,'note_added',?,?)`,id(),item.id,tenant.institution_id,actorKey,body.note.trim(),now());
+        await audit(db,actorKey,tenant.institution_id,'note_added','case',item.id,requestId);
+        return json({ok:true});
       }
 
       const statusMatch = path.match(/^\/cases\/([A-Za-z0-9_-]{1,120})\/status$/);
@@ -229,6 +245,28 @@ export function createInstitutionCoordination(adapters) {
   }
 
   async function adminRoute(path, request, actorKey, requestId) {
+    const recipientsMatch=path.match(/^\/admin\/institutions\/([A-Za-z0-9_-]{1,100})\/recipients(?:\/([A-Za-z0-9_-]{1,120})\/disable)?$/);
+    if(recipientsMatch){
+      if(typeof adapters.recipients!=='function')return json({error:'recipient_store_unavailable'},503);
+      const store=await adapters.recipients();
+      if(request.method==='GET'&&!recipientsMatch[2])return json({recipients:await store.list(recipientsMatch[1])});
+      if(request.method==='POST')return json(recipientsMatch[2]?await store.deactivate(actorKey,recipientsMatch[1],recipientsMatch[2]):await store.save(actorKey,recipientsMatch[1],await parseBody(request)));
+      return json({error:'method_not_allowed'},405);
+    }
+
+    if(path.startsWith('/admin/credentials')) {
+      if(typeof adapters.credentials!=='function')return json({error:'credential_vault_unavailable'},503);
+      const vault=await adapters.credentials();
+      if(path==='/admin/credentials'&&request.method==='GET')return json({accounts:await vault.list()});
+      if(path==='/admin/credentials/provision'&&request.method==='POST')return json(await vault.provision(actorKey));
+      const match=path.match(/^\/admin\/credentials\/([A-Za-z0-9_-]{1,120})\/(reveal|password)$/);
+      if(match&&request.method==='POST') {
+        if(match[2]==='reveal')return json(await vault.reveal(actorKey,match[1]));
+        const body=await parseBody(request);return json(await vault.rotate(actorKey,match[1],body.password));
+      }
+      return json({error:'not_found'},404);
+    }
+
     if (path === '/admin/cases' && request.method === 'GET') {
       const rows = await all(db, `SELECT c.id,c.title,c.summary_redacted,c.status,c.first_seen_at,i.code institution,t.display_name topic
         FROM coord_cases c JOIN coord_institutions i ON i.id=c.institution_id JOIN coord_topics t ON t.id=c.topic_id
