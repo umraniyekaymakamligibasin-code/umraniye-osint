@@ -33,9 +33,9 @@ await assert.rejects(()=>api.ingest({...request([]),sessionCheck:true}),/invalid
 await assert.rejects(()=>api.ingest({...request([]),results:[{provider:'facebook'}]}),/invalid/);
 await assert.rejects(()=>api.ingest({...request([]),revision:999}),/revision_conflict/);
 assert(writes.some(w=>w.a[0]==='x-backup-status'));assert(!writes.some(w=>w.a[0]==='browser-status'));
-const fb={...p,url:'https://www.facebook.com/test/posts/1234567890123456789',sourcePageUrl:'https://www.facebook.com/test/',facebookPostId:'1234567890123456789',platform:'facebook'};
+const fb={...p,sourceName:'untrusted source label',url:'https://www.facebook.com/test/posts/1234567890123456789',sourcePageUrl:'https://www.facebook.com/test/',facebookPostId:'1234567890123456789',platform:'facebook'};
 const fbRequest=posts=>({reader:'fbgql-backup',revision:1,groupRevision:0,results:[{provider:'facebook',profileURL:fb.sourcePageUrl,source_id:'fb1',status:'collected',posts}]});
-result=await api.ingest(fbRequest([fb]));assert.equal(result.accepted,1);assert.equal(result.receipts[0].storedUrls.length,1);assert.equal(records.size,2);
+result=await api.ingest(fbRequest([fb]));assert.equal(result.accepted,1);assert.equal(result.receipts[0].storedUrls.length,1);assert.equal(records.size,2);assert.equal(JSON.parse([...records.values()].find(v=>JSON.parse(v).platform==='facebook')).sourceName,'Yerel Haber · Facebook');
 result=await api.ingest(fbRequest([{...fb}]));assert.equal(result.accepted,1);assert.equal(records.size,2);
 await assert.rejects(()=>api.ingest({...fbRequest([fb]),results:[{...fbRequest([fb]).results[0],source_id:'disabled'}]}),/invalid/);
 await assert.rejects(()=>api.ingest(fbRequest([{...fb,sourcePageUrl:'https://www.facebook.com/other/'}])),/invalid/);

@@ -4,7 +4,7 @@ After=umraniye-osint-deneme.service
 [Service]
 Type=oneshot
 User=root
-ExecStart=/usr/bin/python3 /opt/umraniye-osint-facebook-fbgql-deneme/backup_publish.py
+ExecStart=/usr/bin/python3 /opt/umraniye-osint-facebook-fbgql-deneme/publish.py
 TimeoutStartSec=90
 UMask=0077
 MemoryMax=120M
