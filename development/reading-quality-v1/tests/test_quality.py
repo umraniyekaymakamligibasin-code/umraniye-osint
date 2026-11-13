@@ -128,8 +128,27 @@ class Instagram(unittest.TestCase):
   self.assertEqual(self.worker.db.execute('SELECT status FROM posts').fetchone()[0],'acknowledged')
  def test_old_content_cannot_be_delivered(self):
   self.worker.remember('source1',self.post())
-  self.worker.db.execute('UPDATE posts SET published=?',(time.time()-7200,));self.worker.db.commit()
+  self.worker.db.execute('UPDATE posts SET published=?',(time.time()-ig.FRESH_SECONDS-600,));self.worker.db.commit()
   with patch.object(self.worker,'submit') as send:self.worker.drain();send.assert_not_called()
+ def test_post_discovered_two_hours_late_is_still_delivered(self):
+  p=self.post();p['timestamp']=ig.iso(time.time()-7200)
+  self.assertEqual(self.worker.remember('source1',p),'pending')
+  with patch.object(self.worker,'submit',return_value=({'accepted':1},{'acknowledgedUrls':[p['permalink']]})) as send:
+   self.assertEqual(self.worker.drain()['acknowledged'],1);send.assert_called_once()
+ def test_meta_rate_limit_pause_still_delivers_read_posts(self):
+  p=self.post();self.worker.remember('source1',p)
+  fingerprint=__import__('hashlib').sha256(b'fixture-not-a-credential').hexdigest()
+  self.worker.control('global_pause',{'fingerprint':fingerprint,'retryAt':time.time()+3600,'code':4})
+  with patch.object(self.worker,'submit',return_value=({'accepted':1},{'acknowledgedUrls':[p['permalink']]})),patch.object(self.worker,'discover') as api:
+   report=self.worker.run()
+  api.assert_not_called();self.assertEqual(report['status'],'api_backoff');self.assertEqual(report['pending'],0)
+  self.assertEqual(self.worker.db.execute('SELECT status FROM posts').fetchone()[0],'acknowledged')
+ def test_token_pause_keeps_login_status_without_delivery(self):
+  self.worker.remember('source1',self.post())
+  fingerprint=__import__('hashlib').sha256(b'fixture-not-a-credential').hexdigest()
+  self.worker.control('global_pause',{'fingerprint':fingerprint,'authRequired':True})
+  with patch.object(self.worker,'submit',return_value=({},{})) as send:report=self.worker.run()
+  self.assertEqual(report['status'],'token_renewal_required');send.assert_called_once_with([],0,'login_required')
  def test_untrusted_links_and_dates_rejected(self):
   p=self.post();p['permalink']='https://evil.invalid/reel/ABC12345/'
   self.assertEqual(ig.normalized(p,'source1')[1],'invalid_url')
