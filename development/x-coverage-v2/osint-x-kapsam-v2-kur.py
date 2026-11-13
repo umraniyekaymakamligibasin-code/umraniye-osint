@@ -28,7 +28,7 @@ def main():
  for name,data in old.items():
   rollback.append("shutil.copyfile(backup/"+repr(name)+",app/"+repr(name)+")" if data is not None else "(app/"+repr(name)+").unlink(missing_ok=True)")
  (backup/'geri-al.py').write_text('\n'.join(rollback)+'\n')
- lock=open(STATE/'round.lock','a+b');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+ lock=open(STATE/'round.lock','a+b');owner=STATE.stat();os.fchown(lock.fileno(),owner.st_uid,owner.st_gid);os.fchmod(lock.fileno(),0o600);fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
  try:
   for name,value in PAYLOAD.items():
    target=APP/name;temp=APP/(name+'.upgrade-tmp');temp.write_bytes(base64.b64decode(value));temp.chmod(0o644);temp.replace(target)
