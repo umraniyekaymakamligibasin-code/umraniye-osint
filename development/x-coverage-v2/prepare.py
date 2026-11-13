@@ -1,5 +1,5 @@
 """Restricted, consistent read of the real dictionary; never copies credentials/profiles."""
-import argparse, datetime as dt, hashlib, json, re, sqlite3, subprocess
+import argparse, datetime as dt, hashlib, json, os, re, sqlite3, subprocess
 from pathlib import Path
 
 UNITS=['umraniye-osint-browser-x.service','umraniye-osint-browser-x.timer','umraniye-osint-sirali.service','umraniye-osint-sirali.timer','umraniye-osint-deneme.service','umraniye-osint.service','umraniye-telegram.service']
@@ -43,16 +43,34 @@ def read_snapshot(database,app,manifest):
         return {'at':dt.datetime.now(dt.timezone.utc).isoformat(),'revision':tables['common_keyword_state'][0]['revision'],'tables':tables,'sources':sources,'existingX':old,'referenceWindowHours':24,'referenceTruncated':len(old)>=10000,'existingCoverageComparable':False}
     finally:con.close()
 
+def write_state(dfd,name,text,uid=-1,gid=-1):
+    """Root-safe write into a service-writable dir: no symlink follow, fchown on fd, atomic rename via dir_fd."""
+    tmp=name.rsplit('.',1)[0]+'.tmp'
+    try:os.unlink(tmp,dir_fd=dfd)
+    except FileNotFoundError:pass
+    fd=os.open(tmp,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=dfd)
+    try:
+        with os.fdopen(fd,'w',encoding='utf-8') as stream:os.fchown(stream.fileno(),uid,gid);stream.write(text)
+        os.replace(tmp,name,src_dir_fd=dfd,dst_dir_fd=dfd)
+    except BaseException:
+        try:os.unlink(tmp,dir_fd=dfd)
+        except FileNotFoundError:pass
+        raise
+def open_state(path):return os.open(path,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--database',required=True);ap.add_argument('--app',required=True);ap.add_argument('--state',required=True);ap.add_argument('--owner');a=ap.parse_args()
     state=Path(a.state);state.mkdir(parents=True,exist_ok=True,mode=0o700)
     manifest=json.loads((Path(__file__).parent/'rules-manifest.json').read_text())
     before=states();snapshot=read_snapshot(a.database,a.app,manifest)
-    p=state/'snapshot.json';tmp=p.with_suffix('.tmp');tmp.write_text(json.dumps(snapshot,ensure_ascii=False),encoding='utf-8');tmp.chmod(0o600);tmp.replace(p)
-    (state/'service-observation.json').write_text(json.dumps({'before':before,'after':states(),'normalOldRoundObserved':False}),encoding='utf-8')
+    uid=gid=-1
     if a.owner:
-        import os,pwd
-        who=pwd.getpwnam(a.owner)
-        for name in ('snapshot.json','service-observation.json'):os.chown(state/name,who.pw_uid,who.pw_gid)
+        import pwd
+        who=pwd.getpwnam(a.owner);uid,gid=who.pw_uid,who.pw_gid
+    dfd=open_state(state)
+    try:
+        write_state(dfd,'snapshot.json',json.dumps(snapshot,ensure_ascii=False),uid,gid)
+        write_state(dfd,'service-observation.json',json.dumps({'before':before,'after':states(),'normalOldRoundObserved':False}),uid,gid)
+    finally:os.close(dfd)
     print(json.dumps({'snapshotReady':True,'sources':len(snapshot['sources']),'revision':snapshot['revision'],'productionWrites':0}))
 if __name__=='__main__':main()

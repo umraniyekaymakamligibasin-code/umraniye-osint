@@ -21,7 +21,7 @@ const STATUS_TRANSITIONS = {
 // Without this map every one of them became a generic 500 'request_failed'.
 const CLIENT_ERRORS = new Map([
   ['valid_email_required', 400], ['recipient_confirmation_required', 400], ['password_16_to_128_required', 400],
-  ['institution_not_found', 404], ['account_not_found', 404], ['password_changed_outside_vault', 409]
+  ['institution_not_found', 404], ['account_not_found', 404], ['recipient_not_found', 404], ['password_changed_outside_vault', 409]
 ]);
 const id = () => randomUUID();
 const now = () => new Date().toISOString();
@@ -132,7 +132,7 @@ export function createInstitutionCoordination(adapters) {
   async function route(request) {
     const url = new URL(request.url);
     if (url.pathname !== PREFIX && !url.pathname.startsWith(PREFIX + '/')) return null;
-    const requestId = text(request.headers.get('x-request-id'), 100) || id();
+    const requestId = id(); // server-generated; client x-request-id is not trusted for audit
     try {
       const actor = await adapters.authenticate(request);
       const actorKey = accountId(actor);
@@ -219,6 +219,7 @@ export function createInstitutionCoordination(adapters) {
         statements.push(db.prepare(`INSERT INTO coord_case_history(id,coord_case_id,institution_id,actor_account_id,action,to_value,created_at)
           SELECT ?,?,?,?,'assignment_updated',?,? WHERE EXISTS(SELECT 1 FROM coord_referrals WHERE id=?)`).bind(id(),source.id,tenant.institution_id,actorKey,(body.mode==='transfer'?'Görev devri: ':'Destek kurumu: ')+target.display_name,at,referralId));
         await db.batch(statements);
+        await audit(db,actorKey,tenant.institution_id,'case_referred','case',source.id,requestId);
         return json({ok:true,alreadyAssigned:!!known});
       }
       const noteMatch=path.match(/^\/cases\/([A-Za-z0-9_-]{1,120})\/notes$/);
@@ -292,7 +293,7 @@ export function createInstitutionCoordination(adapters) {
       if(typeof adapters.recipients!=='function')return json({error:'recipient_store_unavailable'},503);
       const store=await adapters.recipients();
       if(request.method==='GET'&&!recipientsMatch[2])return json({recipients:await store.list(recipientsMatch[1])});
-      if(request.method==='POST')return json(recipientsMatch[2]?await store.deactivate(actorKey,recipientsMatch[1],recipientsMatch[2]):await store.save(actorKey,recipientsMatch[1],await parseBody(request)));
+      if(request.method==='POST')return json(recipientsMatch[2]?await store.deactivate(actorKey,recipientsMatch[1],recipientsMatch[2],requestId):await store.save(actorKey,recipientsMatch[1],await parseBody(request)));
       return json({error:'method_not_allowed'},405);
     }
 

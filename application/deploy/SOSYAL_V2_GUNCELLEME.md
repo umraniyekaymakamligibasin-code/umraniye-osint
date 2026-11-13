@@ -7,13 +7,13 @@
 Windows PowerShell / Komut İstemi içinde:
 
 ```powershell
-scp "C:\Users\haaka\Documents\Codex\2026-10-23\bu\outputs\Umraniye_OSINT_Sosyal_V2_2026-11-02.zip" basin@100.79.234.33:/home/basin/
+scp "<yerel-klasör>\Umraniye_OSINT_Sosyal_V2_2026-11-02.zip" basin@<sunucu-ip>:/home/basin/
 ```
 
 %100 olmasını bekleyin. Sonra Linux'a bağlanın:
 
 ```powershell
-ssh basin@100.79.234.33
+ssh basin@<sunucu-ip>
 ```
 
 ## 2. Linux'ta açın

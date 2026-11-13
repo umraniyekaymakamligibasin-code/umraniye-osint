@@ -1,6 +1,7 @@
 import {readFile,lstat} from 'node:fs/promises';
 import {createDecipheriv} from 'node:crypto';
 import {spawn} from 'node:child_process';
+import {childEnv} from '../../child-env.mjs';
 import {join} from 'node:path';
 export function createGmailSender({directory,python='python3',transport}){
  async function configuration(){
@@ -17,7 +18,7 @@ export function createGmailSender({directory,python='python3',transport}){
   const password=Buffer.concat([d.update(b.subarray(28)),d.final()]).toString('utf8');
   const payload={to:input.to,text:input.text,idempotencyKey:input.idempotencyKey,password};
   const r=transport?await transport(payload):await new Promise((resolve,reject)=>{
-   const child=spawn(python,[new URL('./gmail-smtp.py',import.meta.url).pathname],{stdio:['pipe','pipe','ignore'],windowsHide:true});let output='';
+   const child=spawn(python,[new URL('./gmail-smtp.py',import.meta.url).pathname],{stdio:['pipe','pipe','ignore'],windowsHide:true,env:childEnv()});let output='';
    const timer=setTimeout(()=>{child.kill();reject(Error('smtp_transport_timeout'))},90000);
    child.stdout.on('data',b=>{output+=b;if(output.length>4096)child.kill()});
    child.on('error',()=>{clearTimeout(timer);reject(Object.assign(Error('smtp_transport_unavailable'),{definitelyNotSent:true}))});

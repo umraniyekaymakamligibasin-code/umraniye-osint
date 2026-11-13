@@ -28,7 +28,8 @@ export function createHttpServer(worker,env,{origin,port=3000,host='127.0.0.1',t
    const media=['GET','HEAD'].includes(req.method)&&(path.startsWith('/assets/')||path==='/favicon.png'||path==='/api/portal/thumbnail');
    if(limit(ip,media?'media':false)||(['/api/login','/api/admin/login','/api/team/login'].includes(path)&&limit(ip,true)))return reject(429,'Çok fazla istek. Daha sonra yeniden deneyin.',{'Retry-After':'60'});
    if(browserProxy&&path.startsWith(browserProxy.prefix)){await browserProxy.handle(req,res);return;}
-   if(req.method==='POST'&&req.headers['sec-fetch-site']==='cross-site')return reject(403,'İstek kaynağı reddedildi');
+   // Central CSRF guard: a browser POST must come from this site's origin. Server-side workers send no Origin header.
+   if(req.method==='POST'&&(req.headers['sec-fetch-site']==='cross-site'||(req.headers.origin!==undefined&&req.headers.origin!==base.origin)))return reject(403,'İstek kaynağı reddedildi');
    const bodyLimit=requestBodyLimit(path);
    if(Number(req.headers['content-length']||0)>bodyLimit)return reject(413,'İstek çok büyük');
    const chunks=[];let length=0;for await(const chunk of req){length+=chunk.length;if(length>bodyLimit)return reject(413,'İstek çok büyük');chunks.push(chunk)}

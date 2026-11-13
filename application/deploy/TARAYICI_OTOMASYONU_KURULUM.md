@@ -15,13 +15,13 @@ Bu sürüm genel bir insan araştırmacı veya ChatGPT'nin sürekli açık oturu
 Tailscale açık kalsın. Yeni **Windows PowerShell** penceresinde yalnız şu komutu yazın:
 
 ```powershell
-scp "C:\Users\haaka\Documents\Codex\2026-10-23\bu\outputs\Umraniye_OSINT_Deneme_2026-11-02.zip" basin@100.79.234.33:/home/basin/
+scp "<yerel-klasör>\Umraniye_OSINT_Deneme_2026-11-02.zip" basin@<sunucu-ip>:/home/basin/
 ```
 
 Linux şifresini kendi terminalinizde girin. %100 olmasını bekleyin. Ardından:
 
 ```powershell
-ssh basin@100.79.234.33
+ssh basin@<sunucu-ip>
 ```
 
 ## 2. Linux'ta paketi açın ve ayrı denemeyi kurun
@@ -72,7 +72,7 @@ Terminal açık kalsın. İkinci hesabın sırası 2, üçüncünün 3 olur. Hes
 Windows'ta **ikinci bir PowerShell** açın:
 
 ```powershell
-ssh -N -L 6080:127.0.0.1:6080 basin@100.79.234.33
+ssh -N -L 6080:127.0.0.1:6080 basin@<sunucu-ip>
 ```
 
 Şifreyi girince pencerenin sessiz kalması normaldir; bağlantı tüneli açık durur. Sonra Windows tarayıcısına şu adresi yazın:

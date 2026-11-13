@@ -12,13 +12,13 @@ const db={prepare(sql){let values=[];return {bind(...v){values=v;return this},as
 raw.exec(readFileSync(new URL('./migrations/0010_institution_credentials.sql',import.meta.url),'utf8'));
 const {createInstitutionCredentials}=await import('./server/institution-credentials.mjs');
 const {randomBytes,pbkdf2Sync}=await import('node:crypto');
-raw.exec(`INSERT INTO coord_institutions(id,code,display_name,institution_group,created_at,updated_at) VALUES('i','ISKI_UMR','İSKİ','utility','now','now')`);
+raw.exec(`INSERT INTO coord_institutions(id,code,display_name,institution_group,approval_status,approval_reference,created_at,updated_at) VALUES('i','ISKI_UMR','İSKİ','utility','approved','test','now','now'),('d','DRAFT_X','Taslak','utility','draft',NULL,'now','now')`);
 
 const vault=createInstitutionCredentials({db,key:randomBytes(32)});
-assert.equal((await vault.provision('admin')).created,1);
+assert.deepEqual(await vault.provision('admin'),{created:1,skipped:1});assert.equal(raw.prepare("SELECT count(*) n FROM coord_account_credentials WHERE institution_id='d'").get().n,0);
 assert.equal((await vault.provision('admin')).created,0);
 assert.equal(raw.prepare('SELECT count(*) n FROM coord_portal_viewers').get().n,0);
-assert.equal(raw.prepare('SELECT enabled FROM coord_institutions').get().enabled,0);
+assert.equal(raw.prepare("SELECT enabled FROM coord_institutions WHERE id='i'").get().enabled,0);
 const [account]=await vault.list();const secret=await vault.reveal('admin',account.account_id);
 const stored=raw.prepare('SELECT * FROM team_accounts WHERE id=?').get(account.account_id);
 assert.equal(stored.password_hash,pbkdf2Sync(secret.password,stored.salt,100000,32,'sha256').toString('hex'));

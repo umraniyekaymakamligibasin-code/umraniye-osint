@@ -1,9 +1,12 @@
 import http from 'node:http';
 import {randomUUID} from 'node:crypto';
+import {isIP} from 'node:net';
+import {createRequestBudget} from './request-budget.mjs';
 const security={'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Permissions-Policy':'camera=(), microphone=(), geolocation=()','X-Frame-Options':'DENY','Cross-Origin-Resource-Policy':'same-origin','Cache-Control':'no-store'};
 export function createHttpServer(worker,env,{origin,port=3000,host='127.0.0.1',trustCloudflare=false,log=console.log,now=Date.now}={}){
- const base=new URL(origin),budgets=new Map();let active=0,authActive=0;
- function limit(ip,isLogin){const bucket=Math.floor(now()/(isLogin?900000:60000)),key=(isLogin?'login:':'all:')+ip,old=budgets.get(key),count=old?.bucket===bucket?old.count+1:1;budgets.set(key,{bucket,count});if(budgets.size>10000)for(const [k,v]of budgets)if(v.bucket!==bucket)budgets.delete(k);return count>(isLogin?25:240)}
+ const base=new URL(origin),budget=createRequestBudget({now});let active=0,authActive=0;
+ // Separate expiry per key: general traffic no longer evicts login counters (limits: login 25/15 dk, genel 240/dk).
+ const limit=(ip,isLogin)=>budget.limited(ip,isLogin);
  const server=http.createServer({maxHeaderSize:16384},async(req,res)=>{
   const id=randomUUID(),headers=Object.fromEntries(Object.entries({...security,'X-Request-ID':id,...(base.protocol==='https:'?{'Strict-Transport-Security':'max-age=31536000'}:{})}).map(([k,v])=>[k.toLowerCase(),v]));
   const reject=(status,error,extra={})=>{res.writeHead(status,{...headers,'Content-Type':'application/json; charset=utf-8',...extra});res.end(JSON.stringify({error,requestId:id}))};
@@ -15,7 +18,8 @@ export function createHttpServer(worker,env,{origin,port=3000,host='127.0.0.1',t
    if(path==='/mcp'||path.startsWith('/api/automation/'))return reject(404,'Bulunamadı');
    if(['/api/login','/api/admin/login','/api/team/login'].includes(path)){if(authActive>=4)return reject(429,'Giriş işlemleri yoğun. Yeniden deneyin.',{'Retry-After':'5'});authActive++;authSlot=true;}
    if(!['GET','HEAD','POST'].includes(req.method))return reject(405,'Yöntem desteklenmiyor',{'Allow':'GET, HEAD, POST'});
-   const ip=trustCloudflare&&req.headers['cf-connecting-ip']||req.socket.remoteAddress||'unknown';
+   const peer=req.socket.remoteAddress||'unknown',forwardedIP=req.headers['cf-connecting-ip'];
+   const ip=trustCloudflare&&['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)&&typeof forwardedIP==='string'&&isIP(forwardedIP)?forwardedIP:peer;
    if(limit(ip,false)||(['/api/login','/api/admin/login','/api/team/login'].includes(path)&&limit(ip,true)))return reject(429,'Çok fazla istek. Daha sonra yeniden deneyin.',{'Retry-After':'60'});
    if(req.method==='POST'&&req.headers['sec-fetch-site']==='cross-site')return reject(403,'İstek kaynağı reddedildi');
    if(Number(req.headers['content-length']||0)>65536)return reject(413,'İstek çok büyük');
