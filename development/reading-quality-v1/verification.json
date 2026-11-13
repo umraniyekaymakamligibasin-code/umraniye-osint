@@ -1,7 +1,7 @@
 {
-  "status": "prepared_installation_requires_interactive_sudo",
+  "status": "installed_readers_observed_acceptance_pending",
   "linuxIsolatedTestsPassed": 26,
-  "liveInstalled": false,
+  "liveInstalled": true,
   "newLivePostVerified": false,
   "scoresRecalculated": false,
   "changes": [
@@ -10,5 +10,24 @@
     "read_only_four_channel_evidence"
   ],
   "remaining": "See README open work and 100-point acceptance plan",
-  "installerSHA256": "00878085cf8e87b21f357bb9ca641cbe498af66761cab2260d4f5f8aff2d63dd"
+  "installerSHA256": "00878085cf8e87b21f357bb9ca641cbe498af66761cab2260d4f5f8aff2d63dd",
+  "installedAt": "2026-11-13T18:25:58.584144+00:00",
+  "postInstallEvidence": {
+    "instagram": {
+      "at": "2026-11-13T18:26:28.873873+00:00",
+      "sourcesRead": 3,
+      "uniqueRead": 225,
+      "newIdentities": 0,
+      "waitingSourcesExcludedFromReadSlots": 1
+    },
+    "facebook": {
+      "at": "2026-11-13T18:27:53.627994+00:00",
+      "uniqueRead": 96,
+      "newIdentities": 3,
+      "requests": 37,
+      "sourcesDeferredWithoutAccessError": 2,
+      "freshPostDeliveryVerified": false
+    }
+  },
+  "dateWarningRequiresLineageInspection": true
 }
