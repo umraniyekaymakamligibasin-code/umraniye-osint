@@ -1,9 +1,28 @@
 {
-  "status": "prepared_requires_interactive_sudo",
+  "status": "installed_normal_evaluation_verified",
   "linuxIsolatedTestsPassed": 18,
   "existingClassifierSelftestPassed": true,
-  "liveInstalled": false,
+  "liveInstalled": true,
   "historicalReplay": false,
   "apiRequests": 0,
-  "servicesRestarted": false
+  "servicesRestarted": false,
+  "installedAt": "2026-11-13T18:44:28.095695+00:00",
+  "normalEvaluation": {
+    "at": "2026-11-13T18:45:08.860191+00:00",
+    "reviewBefore": 77,
+    "reviewAfter": 20,
+    "archiveBefore": 53,
+    "archiveAfter": 110,
+    "datesRecoveredFromExactAPIMedia": 57,
+    "noExactAPIEvidence": 19,
+    "autoInserted": 0,
+    "telegram": "not_sent"
+  },
+  "newLivePostVerified": false,
+  "remainingBlocker": {
+    "instagramAPIErrorCode": 200,
+    "subcode": 5258005,
+    "observedBeforeDateInstallation": true,
+    "exactExplanation": "pending_readonly_meta_response"
+  }
 }
