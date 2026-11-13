@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "date": "2026-11-13",
+  "timezone": "Europe/Istanbul",
+  "status": "planned_not_installed",
+  "baselineEngineeringScores": {
+    "news": 80,
+    "x": 75,
+    "facebook": 70,
+    "instagram": 55
+  },
+  "scoring": "equal_channel_weights; within_channel_passed_frozen_tests_fraction_times_category_weight",
+  "weights": {
+    "coverage": 25,
+    "latency": 15,
+    "locality_and_newsworthiness": 20,
+    "text_and_dates": 10,
+    "deduplication": 10,
+    "durable_delivery_and_visibility": 10,
+    "stability": 10
+  },
+  "proposedTargets": {
+    "prioritySourceP95Minutes": 10,
+    "otherSourceP95Minutes": 30,
+    "firstSeenToStoredP95Seconds": 60,
+    "labelledPrecision": 0.98,
+    "labelledRecall": 0.98,
+    "minimumReferenceCasesPerChannel": 30,
+    "naturalObservationHours": 48,
+    "availability": 0.995,
+    "criticalMissesInFrozenReference": 0,
+    "duplicatePublicationsInReference": 0
+  },
+  "milestones": [
+    {
+      "id": "A",
+      "status": "planned",
+      "name": "measurement_and_reference"
+    },
+    {
+      "id": "B",
+      "status": "planned",
+      "name": "instagram_automatic_decisions"
+    },
+    {
+      "id": "C",
+      "status": "planned",
+      "name": "facebook_coverage_and_deferral"
+    },
+    {
+      "id": "D",
+      "status": "planned",
+      "name": "x_notifications_and_source_coverage"
+    },
+    {
+      "id": "E",
+      "status": "planned",
+      "name": "news_quality_and_shared_event_identity"
+    },
+    {
+      "id": "F",
+      "status": "planned",
+      "name": "natural_operation_and_acceptance"
+    }
+  ],
+  "restrictions": [
+    "no_historical_notification_replay",
+    "no_synthetic_live_messages",
+    "preserve_institution_authorization",
+    "preserve_local_only_telegram",
+    "no_secrets_to_git",
+    "no_challenge_bypass",
+    "no_silent_source_removal_for_score"
+  ]
+}
