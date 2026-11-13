@@ -132,6 +132,24 @@ class Worker:
         self.db.execute('CREATE TABLE IF NOT EXISTS posts(id TEXT PRIMARY KEY,handle TEXT NOT NULL,url TEXT,published REAL,discovered REAL NOT NULL,status TEXT NOT NULL,data TEXT)')
         self.db.execute('CREATE TABLE IF NOT EXISTS health(handle TEXT PRIMARY KEY,retry_at REAL NOT NULL,failures INTEGER NOT NULL,code TEXT)')
         self.db.execute('CREATE TABLE IF NOT EXISTS control(key TEXT PRIMARY KEY,value TEXT NOT NULL)')
+        self.db.execute('CREATE TABLE IF NOT EXISTS source_progress(handle TEXT PRIMARY KEY,last_attempt REAL,last_success REAL,status TEXT,read_count INTEGER,new_identities INTEGER)')
+        self.db.commit()
+
+    def source_order(self):
+        rotation = int(self.control('rotation') or 0) % max(1, len(self.handles))
+        rotated = self.handles[rotation:] + self.handles[:rotation]
+        states = {r[0]: r[1] for r in self.db.execute('SELECT handle,retry_at FROM health')}
+        eligible = [h for h in rotated if states.get(h, 0) <= now()]
+        # Least recently attempted eligible source first, ties retain rotation order.
+        attempts = {r[0]: r[1] for r in self.db.execute('SELECT handle,last_attempt FROM source_progress')}
+        eligible.sort(key=lambda h: attempts.get(h, 0))
+        return eligible[:3], [h for h in rotated if states.get(h, 0) > now()]
+
+    def source_progress(self, row):
+        previous = self.db.execute('SELECT last_success FROM source_progress WHERE handle=?', (row['handle'],)).fetchone()
+        last_success = now() if row['status'] == 'readable' and row['read'] > 0 else (previous[0] if previous else None)
+        self.db.execute('INSERT OR REPLACE INTO source_progress VALUES(?,?,?,?,?,?)',
+                        (row['handle'], now(), last_success, row['status'], row['read'], row.get('newIdentities', 0)))
         self.db.commit()
 
     def control(self, key, value=None):
@@ -162,20 +180,22 @@ class Worker:
         media_id = str(post.get('id') or '')
         if not media_id.isdigit():
             return 'invalid_id'
-        old = self.db.execute('SELECT status FROM posts WHERE id=?', (media_id,)).fetchone()
+        old = self.db.execute('SELECT status,discovered FROM posts WHERE id=?', (media_id,)).fetchone()
         if old and old[0] not in ('text_missing', 'date_missing', 'future_date', 'invalid_url'):
             return 'known'
         item, reason = normalized(post, handle)
         published = None
         if item:
             published = dt.datetime.fromisoformat(item['publishedAt']).timestamp()
+        if item:
+            item['firstSeenAt'] = iso(old[1] if old else now())
         status = reason or 'pending'
         if item and published < self.credentials['enabledSince']:
             status = 'baseline'
         elif item and now() - published > 3600:
             status = 'stale'
         self.db.execute('INSERT OR REPLACE INTO posts VALUES(?,?,?,?,?,?,?)',
-                        (media_id, handle, post.get('permalink'), published, now(), status,
+                        (media_id, handle, post.get('permalink'), published, old[1] if old else now(), status,
                          json.dumps(item, ensure_ascii=False) if item else None))
         self.db.commit()
         return status
@@ -258,11 +278,15 @@ class Worker:
         if not self.panel_enabled():
             report['status'] = 'panel_paused'
             return report
-        rotation = int(self.control('rotation') or 0) % max(1, len(self.handles))
-        all_order = self.handles[rotation:] + self.handles[:rotation]
-        order = all_order[:3]
+        order, waiting = self.source_order()
+        report['waitingSources'] = len(waiting)
+        report['waitingSourceStates'] = []
+        for handle in waiting:
+            health = self.db.execute('SELECT retry_at,code FROM health WHERE handle=?', (handle,)).fetchone()
+            report['waitingSourceStates'].append({'handle': handle, 'retryAt': iso(health[0]),
+                'reason': 'source_unavailable_to_api' if str(health[1]) == 'meta_error_110_2207013' else 'source_backoff'})
         report['sourceBudgetPerRound'] = 3
-        report['deferredSources'] = max(0, len(all_order)-len(order))
+        report['deferredSources'] = max(0, len(self.handles)-len(waiting)-len(order))
         attempted = 0
         for handle in order:
             if now() - started > 150:
@@ -274,7 +298,8 @@ class Worker:
                 report['sources'].append({'handle': handle, 'status': 'backoff', 'retryAt': iso(health[0]), 'code': int(match[1]) if match else None, 'subcode': int(match[2]) if match else None})
                 continue
             attempted += 1
-            row = {'handle': handle, 'read': 0, 'newPending': 0, 'status': 'readable', 'reasons': {}}
+            row = {'handle': handle, 'read': 0, 'newPending': 0, 'status': 'readable', 'reasons': {}, 'newIdentities': 0, 'uniqueRead': 0}
+            observed = set()
             try:
                 cursor = None
                 for page in range(3):
@@ -284,6 +309,13 @@ class Worker:
                         raise ValueError('invalid_media_response')
                     row['read'] += len(posts)
                     for post in posts:
+                        media_id = str(post.get('id') or '')
+                        if media_id in observed:
+                            continue
+                        observed.add(media_id)
+                        row['uniqueRead'] += 1
+                        if media_id.isdigit() and self.db.execute('SELECT 1 FROM posts WHERE id=?', (media_id,)).fetchone() is None:
+                            row['newIdentities'] += 1
                         status = self.remember(handle, post)
                         row['reasons'][status] = row['reasons'].get(status, 0) + 1
                         row['newPending'] += status == 'pending'
@@ -307,6 +339,7 @@ class Worker:
                         self.submit([], 0, 'login_required')
                     except Exception:
                         pass
+                    self.source_progress(row)
                     report['sources'].append(row)
                     break
                 if error.code in (4, 17, 32, 613):
@@ -314,6 +347,7 @@ class Worker:
                     self.control('global_pause', {'fingerprint': fingerprint, 'retryAt': retry_at, 'code': error.code})
                     report.update(retryAt=iso(retry_at), pauseReason='meta_rate_limit', pauseCode=error.code)
                     report['status'] = 'api_rate_limited'
+                    self.source_progress(row)
                     report['sources'].append(row)
                     break
                 failures = (health[1] if health else 0) + 1
@@ -322,9 +356,14 @@ class Worker:
                 self.db.commit()
             except Exception as error:
                 row.update(status='read_error', errorType=type(error).__name__)
+            self.source_progress(row)
             report['sources'].append(row)
             time.sleep(0.5)
-        self.control('rotation', rotation + max(1, attempted))
+        if report['sources']:
+            last = report['sources'][-1]['handle']
+            self.control('rotation', (self.handles.index(last)+1) % max(1,len(self.handles)))
+        report['uniqueRead'] = sum(r.get('uniqueRead',0) for r in report['sources'])
+        report['newIdentities'] = sum(r.get('newIdentities',0) for r in report['sources'])
         total_read = sum(r.get('read', 0) for r in report['sources'])
         if total_read and report.get('status') != 'token_renewal_required':
             try:
@@ -333,6 +372,9 @@ class Worker:
             except Exception:
                 report['panelHealthUpdated'] = False
         for _ in range(0 if report.get('status') == 'token_renewal_required' else 4):
+            if now() - started > 185:
+                report['deliveryDeferredByTimeBudget'] = True
+                break
             try:
                 outcome = self.drain()
                 report['ingestion'].append(outcome)
