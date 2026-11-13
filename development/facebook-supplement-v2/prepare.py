@@ -16,11 +16,29 @@ def snapshot(database=DB,app=APP):
         old=[str(r[0]) for r in c.execute('SELECT stable_post_id FROM facebook_posts WHERE published_at>=?',((dt.datetime.now(dt.timezone.utc)-dt.timedelta(hours=24)).isoformat(),))]
         return {'at':dt.datetime.now(dt.timezone.utc).isoformat(),'revision':tables['common_keyword_state'][0]['revision'],'tables':tables,'sources':sources,'existingFacebookIds':old}
     finally:c.close()
+def write_state(dfd,name,text,uid=-1,gid=-1):
+    """Root-safe write into a service-writable dir: no symlink follow, fchown on fd, atomic rename via dir_fd."""
+    tmp=name.rsplit('.',1)[0]+'.tmp'
+    try:os.unlink(tmp,dir_fd=dfd)
+    except FileNotFoundError:pass
+    fd=os.open(tmp,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=dfd)
+    try:
+        with os.fdopen(fd,'w',encoding='utf-8') as stream:os.fchown(stream.fileno(),uid,gid);stream.write(text)
+        os.replace(tmp,name,src_dir_fd=dfd,dst_dir_fd=dfd)
+    except BaseException:
+        try:os.unlink(tmp,dir_fd=dfd)
+        except FileNotFoundError:pass
+        raise
+def open_state(path):return os.open(path,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
 def main():
-    os.umask(0o077);data=snapshot();p=STATE/'snapshot.json';t=p.with_suffix('.tmp');t.write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8');t.chmod(0o600);who=pwd.getpwnam('osintfbshadow');os.chown(t,who.pw_uid,who.pw_gid);t.replace(p)
+    os.umask(0o077);data=snapshot();who=pwd.getpwnam('osintfbshadow');dfd=open_state(STATE)
+    try:main_write(dfd,data,who.pw_uid,who.pw_gid)
+    finally:os.close(dfd)
+def main_write(dfd,data,uid,gid):
+    write_state(dfd,'snapshot.json',json.dumps(data,ensure_ascii=False),uid,gid)
     context={'version':1,'sources':[]};original=DB.parent/'social-source-context.json'
     if original.is_file() and original.stat().st_size<=100000:
         value=json.loads(original.read_text())
         if value.get('version')==1:context['sources']=[{k:r.get(k) for k in ['provider','identity','enabled','scope']} for r in value.get('sources',[])[:300]]
-    target=STATE/'social-source-context.json';temp=target.with_suffix('.tmp');temp.write_text(json.dumps(context,ensure_ascii=False));temp.chmod(0o600);os.chown(temp,who.pw_uid,who.pw_gid);temp.replace(target)
+    write_state(dfd,'social-source-context.json',json.dumps(context,ensure_ascii=False),uid,gid)
 if __name__=='__main__':main()

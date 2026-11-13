@@ -24,7 +24,7 @@ def fetch(url):
     if not url.startswith(BASE + "/"):
         raise ValueError("Izin verilmeyen adres")
     return subprocess.check_output(
-        ["curl", "-fsSL", "--max-time", "18",
+        ["curl", "-fsSL", "--proto", "=https", "--proto-redir", "=https", "--max-redirs", "5", "--max-time", "18",
          "--max-filesize", "2000000", url],
         text=True, timeout=23
     )
