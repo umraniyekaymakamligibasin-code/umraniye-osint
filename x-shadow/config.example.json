@@ -2,8 +2,8 @@
   "shadow": true,
   "telegram": false,
   "productionWrites": false,
-  "queriesPerRound": 2,
-  "resultsPerQuery": 10,
-  "timeoutSeconds": 90,
+  "queriesPerRound": 6,
+  "resultsPerQuery": 40,
+  "timeoutSeconds": 120,
   "freshnessMinutes": 60
 }
