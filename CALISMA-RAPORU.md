@@ -5,7 +5,7 @@
 > sorun ve cevaba göre devam edin. Canlı sunucuya bir şey kurmadan önce kod sahibinden açık onay alın.
 > `main` dalına doğrudan kod göndermeyin, force push yapmayın (nedeni aşağıda).
 
-Son güncelleme: 13 Kasım 2026 · Durum: 1. aşama PR'da, 2. aşama seçim bekliyor, 3. aşama başlamadı.
+Son güncelleme: 13 Kasım 2026 · Durum: üç aşamanın da PR'ı açık; inceleme, seçim ve kod sahibinin kararları bekleniyor.
 
 ---
 
@@ -18,7 +18,7 @@ Bu depodaki kodu satır satır inceledim. `PROJE-ACIKLAMASI-VE-TEKNIK-ONCELIKLER
 | --- | --- | --- |
 | 1 | Hatalar ve bildirilen sorunlar (donma, "Sonraki" düğmesi, yavaşlık, sessiz hatalar, X/Instagram gecikmesi...) | **PR #3** inceleme ve birleştirme bekliyor |
 | 2 | Arayüz: üç tasarım seçeneği, birini siz seçiyorsunuz | **Issue #4** ve **PR #6 / #7 / #8**, seçim bekliyor |
-| 3 | Güvenlik açıklarının kapatılması | Bulgular raporlandı (`inceleme/` klasörü, PR #3), düzeltme PR'ı daha açılmadı |
+| 3 | Güvenlik açıklarının kapatılması ve Git geçmişinde sır taraması | **PR #10** inceleme bekliyor; kod sahibinin kararı gereken 10 konu **issue #9**'da |
 
 Hiçbir şeyi canlı sunucuya kurmadım, `main` dalındaki kodu değiştirmedim. Yaptığım her şey ayrı
 dallarda ve PR'larda; siz inceleyip onaylayınca devreye giriyor. Bu dosya, `main` dalında yalnız
@@ -54,6 +54,7 @@ Bu yüzden:
 | `asama-1/hata-duzeltmeleri` | 1. aşama (PR #3). |
 | `asama-2/tasarim-a`, `-b`, `-c` | Üç tasarım seçeneği (PR #6, #7, #8). |
 | `asama-2/arayuz` | Yalnız tasarım ekran görüntülerini barındırıyor (PR #5 kapatıldı). Seçim yapılana kadar silmeyin; görseller buradan gösteriliyor. |
+| `asama-3/guvenlik` | 3. aşama (PR #10). |
 
 ---
 
@@ -68,6 +69,8 @@ Bu yüzden:
 | #1 | Issue | Kullanılmayan dosyalar (`src/server.js` vb.) silinsin mi? | Kod sahibi cevaplasın |
 | #2 | Issue | Instagram tazelik süresi 1 saat mi 3 saat mi? | Kod sahibi cevaplasın |
 | #4 | Issue | Arayüz seçimi (ekran görüntüleri burada) | Seçiminizi yazın |
+| #10 | PR | 3. aşama: güvenlik düzeltmeleri ve sır taraması | İnceleyin; #3'ten sonra tabanı `gelistirme` yapıp birleştirin |
+| #9 | Issue | Güvenlik: kod sahibinin kararı gereken 10 konu | Kod sahibi madde madde cevaplasın |
 
 ---
 
@@ -126,24 +129,36 @@ diğer ikisini kapatın. Karma bir istek ("A ama renkler B gibi") varsa issue #4
 
 ---
 
-## 6. 3. aşama: güvenlik (henüz yapılmadı)
+## 6. 3. aşama: güvenlik (PR #10, issue #9)
 
-Güvenlik bulgularını 1. aşamada bilerek düzeltmedim; ayrı PR ile ele alınacak. Ayrıntılar
-[`inceleme/`](https://github.com/umraniyekaymakamligibasin-code/umraniye-osint/tree/asama-1/hata-duzeltmeleri/inceleme) dosyalarında "3. aşama" başlıklarında. Öne çıkanlar:
+Ayrıntılı rapor: [`inceleme/09-guvenlik.md`](https://github.com/umraniyekaymakamligibasin-code/umraniye-osint/blob/asama-3/guvenlik/inceleme/09-guvenlik.md).
 
-- Tarayıcı oturumu için **parolasız VNC** (`x11vnc -nopw`). Sunucudaki her yerel süreç, sosyal medya
-  hesaplarının açık olduğu tarayıcıyı yönetebilir.
-- Root olarak çalışan `prepare.py`, servis kullanıcısının yazabildiği dizinde sembolik bağlantı
-  izleyebiliyor (yetki yükseltme riski). Yayımlayıcı servisler root olarak çalışıyor.
-- Alt süreçlere tüm ortam değişkenleri geçiyor: yönetici parolası ve Telegram anahtarı, dış siteleri
-  açan tarayıcı sürecine ulaşıyor.
-- Eşitleyicideki bir koşul hatası, **tüm `.json` dosyalarını** GitHub'a aktarıyor (oturum ve ayar
-  dosyaları dahil olabilir). Sır kalıpları dar.
-- Ekip şifresi en az 6 karakter; deneme sınırları farklı kullanıcı adlarıyla aşılabiliyor; kurumsal
-  PIN 4 haneli.
-- Kurum e-posta şifreleri geri çözülebilir saklanıyor.
+**Sır taraması:** Tüm Git geçmişi (61 commit, 541 dosya sürümü) parola, anahtar, token ve oturum çerezi
+kalıplarına karşı tarandı. **Gerçek bir sır bulunmadı.** Eşleşmelerin hepsi yanlış pozitifti: gömülü
+yazı tipi verisi, örnek adres, test verisi. Belgelerde duran iç ağ IP adresi ve yerel kullanıcı yolu
+temizlendi.
 
-3. aşamada ayrıca **tüm Git geçmişi** sır taraması yapılacak (değerler rapora yazılmayacak).
+**Düzeltilenler:**
+- Alt süreçlere (Chromium/Playwright, Python) yönetici parolası ve API anahtarları artık geçmiyor.
+  Dış siteleri açan tarayıcı sürecinde bu sırlar bulunuyordu.
+- Eşitleyici, adı oturum/kimlik/şifre/çerez içeren veri dosyalarını artık GitHub'a aktarmıyor. Eskiden
+  bir koşul hatası yüzünden adı ne olursa olsun tüm `.json` dosyaları gidiyordu. Sır kalıpları da
+  genişletildi.
+- Root olarak çalışan yardımcılar (`prepare.py`, `publish_status.py`) sembolik bağlantı saldırısına
+  karşı güvenli yazıyor.
+- Legacy uygulamada giriş deneme sınırını sıfırlayan sınırlayıcı hatası düzeltildi.
+- Merkezi CSRF koruması: başka siteden gelen POST istekleri reddediliyor.
+- Yeni ekip şifreleri en az 12 karakter. Mevcut şifreler çalışmaya devam ediyor.
+- Ekip girişinde IP başına ek deneme sınırı eklendi.
+- Eski barındırma ortamından kalan, başlıkla yönetici yetkisi verebilen kod ve dış token talimatı
+  içeren rotalar kaldırıldı.
+- İçerik denetimi istemcinin gönderdiği veriye güvenmiyor. Kurum hesapları yalnız onaylı kurumlara
+  açılıyor. Eksik denetim kayıtları eklendi.
+
+**Kod sahibinin kararını bekleyen 10 konu (issue #9):** parolasız VNC, 9 karakterlik sahip parolası
+istisnası, 4 haneli kurumsal PIN, şifre özeti tur sayısı, kurum şifresini gösterme, `TRUST_CLOUDFLARE`,
+legacy uygulamanın kapatılması, root çalışan yayımlayıcılar, paket kurulumunda özet doğrulaması,
+kısa şifreli mevcut hesaplar.
 
 ---
 
@@ -170,7 +185,8 @@ Ayrıntılı liste ve komutlar: **[`EKSIK-DOSYALAR.md`](https://github.com/umran
 
 ## 8. Kod sahibine sorulacaklar
 
-Ajan kullanıyorsanız bu soruları kod sahibine sorun, cevaplara göre devam edin:
+Ajan kullanıyorsanız bu soruları kod sahibine sorun, cevaplara göre devam edin. Güvenlikle ilgili
+10 soru ayrıca **issue #9**'da madde madde yazılı; onları da sorun:
 
 1. **Issue #1:** `src/server.js`, `account.js`, `workspace.js` ve benzeri kullanılmayan dosyalar bir
    derleme adımında kullanılıyor mu? Kullanılmıyorsa silinebilir mi?
@@ -207,6 +223,12 @@ gh pr merge 3 --repo umraniyekaymakamligibasin-code/umraniye-osint --merge
 
 Tasarım için: #3 birleştikten sonra seçilen PR'da (ör. #6) **Edit** → base: `gelistirme` → kaydet →
 **Merge**. Diğer iki tasarım PR'ını **Close pull request** ile kapatın.
+
+Güvenlik için: #3 birleştikten sonra PR #10'da da **Edit** → base: `gelistirme` → **Merge**.
+
+**Önerilen sıra:** #3 → seçilen tasarım PR'ı → #10. Üçü birleştikten sonra sunucuya tek seferde
+kurulabilir (bölüm 10). Tasarım ve güvenlik PR'ları farklı dosyalara dokunduğu için birbiriyle
+çakışmaz.
 
 ---
 
@@ -288,6 +310,19 @@ sudo cp "$SRC/legacy-application/worker/index.js" /opt/umraniye-osint/worker/ind
 (`rules-manifest.json`) kontrol ediyor. Uygulama güncellenip okuyucu güncellenmezse (veya tersi)
 okuyucular `reviewed_filter_version_changed` hatasıyla durur.
 
+PR #10 kurulduysa ek adımlar:
+
+```sh
+# Eşitleyicinin güncel kopyası (basin kullanıcısıyla; cron'un çalıştırdığı yolu `crontab -l` ile doğrulayın)
+cp "$SRC/ops/github_sync.py" ~/.local/share/umraniye-github-sync/source-ops/github_sync.py
+# systemd birimleri değiştiyse (facebook-shadow ve x-shadow servis dosyaları)
+sudo systemctl daemon-reload
+```
+
+Eşitleyici yeni kurallarla bir dosyayı sır sayarsa aktarımı durdurur. Kurulumdan bir dakika sonra
+`cat ~/.local/share/umraniye-github-sync/status.json` çıktısında `"ok": true` olmalı. `false` ise
+hata mesajındaki dosyayı kontrol edin; gerçekten sır içeriyorsa sırrı dosyadan çıkarın.
+
 ### 10.4 Servisleri başlatın
 
 ```sh
@@ -313,6 +348,8 @@ ekler (birkaç saniye).
       atlandi" satırı bir kez görülebilir (beklenen).
 - [ ] Bir dakika sonra GitHub'da `main` dalında yeni bir "Sync live OSINT source" commit'i oluştu
       (eşitleyici kurulan kodu aldı).
+- [ ] (PR #10 kurulduysa) Ekip üyesi giriş yapabiliyor; yönetici paneli açılıyor; şifre değiştirirken
+      12 karakter isteniyor; `status.json` içinde `"ok": true`.
 
 ---
 
@@ -372,6 +409,7 @@ birleştirildikten sonra `gelistirme` dalındadır (dal silinirse bağlantılard
 | `CALISMA-RAPORU.md` (bu dosya, `main`) | Özet, yapılacaklar, kurulum ve geri alma |
 | [`CALISMA-PLANI.md`](https://github.com/umraniyekaymakamligibasin-code/umraniye-osint/blob/asama-1/hata-duzeltmeleri/CALISMA-PLANI.md) | Yol haritası ve madde madde ilerleme |
 | [`EKSIK-DOSYALAR.md`](https://github.com/umraniyekaymakamligibasin-code/umraniye-osint/blob/asama-1/hata-duzeltmeleri/EKSIK-DOSYALAR.md) | Depoda eksik olan kurulum parçaları ve nasıl isteneceği |
+| [`inceleme/09-guvenlik.md`](https://github.com/umraniyekaymakamligibasin-code/umraniye-osint/blob/asama-3/guvenlik/inceleme/09-guvenlik.md) | 3. aşama güvenlik raporu ve sır taraması sonucu |
 | [`inceleme/`](https://github.com/umraniyekaymakamligibasin-code/umraniye-osint/tree/asama-1/hata-duzeltmeleri/inceleme) | Alan alan ayrıntılı bulgular: dosya:satır, neden, düzeltme, doğrulama, güvenlik notları |
 | `PROJE-ACIKLAMASI-VE-TEKNIK-ONCELIKLER.md` | Sizin özgün sorun listeniz |
 
