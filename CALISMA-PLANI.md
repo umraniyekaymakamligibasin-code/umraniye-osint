@@ -31,15 +31,23 @@ taraf koddur; yalnız güvenlik açısından incelenir.
 
 Önce `PROJE-ACIKLAMASI-VE-TEKNIK-ONCELIKLER.md` maddeleri, sonra satır satır inceleme bulguları.
 
-- [ ] Madde 1: Bugün / bu hafta / bu ay geçişinde donma (yinelenen istek, eski yanıtın yeni görünümü ezmesi)
-- [ ] Madde 3: Haber Gündemi / Ulusal Gündem sekmelerinde kasma (sekme başına yeniden çekme ve tam yeniden çizim)
-- [ ] Madde 8 ve 12: "Sonraki" düğmesi ve sayfalama sınır durumları
-- [ ] Madde 9: 60 saniyelik otomatik yenilemenin açık sayfayı baştan çizmesi
-- [ ] Madde 10: Portal önbelleği süresi dolunca eşzamanlı tam hazırlama (istek birleştirme, bayat-sun-arka planda-yenile)
-- [ ] Madde 11: Sessizce yutulan hatalar (kullanıcıya etkili olanlar görünür ve yeniden denenebilir hale gelir)
-- [ ] Madde 5: Açılış yükü (gereksiz başlangıç verisi, büyük varlıklar, bloklayan dosyalar)
-- [ ] Madde 6: X/Instagram verisinin geç görünmesi (kodda görülen kuyruk/zamanlama gecikmeleri)
-- [ ] Satır satır inceleme bulguları (önem sırasıyla, aşağıdaki bulgu kaydında)
+- [x] Madde 1: Bugün / bu hafta / bu ay geçişinde donma — kök neden istemcide: her kayıt için yeni
+  `Intl.DateTimeFormat`, harita için 35 tam liste taraması, değişmeyen veride tam yeniden çizim
+  (`inceleme/03`, F-01/F-02). Sahte DOM ölçümü 2000 kayıtla 4,9–8 sn → 7–11 ms.
+- [x] Madde 3: Sekmelerde kasma — `app.html` tarafı Madde 1 ile aynı kök neden; portal tarafında sekme
+  başına tüm kabuğun yeniden kurulması ve aynı listenin yeniden indirilmesi (`inceleme/00`, P7);
+  görsel isteklerinin API bütçesini doldurup 429 üretmesi (P1).
+- [x] Madde 8 ve 12: "Sonraki" — 429 kök nedeni (P1), yükleme durumu olmaması (P2), geçersiz sayfa (P3)
+- [x] Madde 9: 60 saniyelik yenileme (P5, ayrıca `app.html` F-02, `social.html` S-05)
+- [x] Madde 10: Önbellek yarışı (P4), `integrations.mjs` eşzamanlı analiz (S-02), konum analizi
+  RegExp maliyeti (S-01: 2114 ms → 416 ms)
+- [x] Madde 11: Sessiz hatalar (P5, F-03, F-05, W7, L-05)
+- [x] Madde 5: Açılış yükü — logo 1,8 MB → 49 KB (P10), yinelenen açılış istekleri (P6)
+- [x] Madde 6: X/Instagram gecikmesi — X okuyucusunun 6 saate kadar susması (D1), en yeni boşluğun
+  okunmaması (D2), X bildirim okuyucusunun iptalde okuduklarını kaybetmesi (B1), Instagram'da 1 saatten
+  geç bulunan gönderilerin atılması (B3), X kural kopyalarının eski olması (P15), acil bildirimin eski
+  önbellekle üretilmesi (W1). Bilinçli tarama aralıkları (5–10 dk) değiştirilmedi.
+- [x] Satır satır inceleme bulguları: `inceleme/` klasöründe alan bazında 9 rapor
 
 ## 2. aşama: arayüz
 
@@ -63,6 +71,38 @@ taraf koddur; yalnız güvenlik açısından incelenir.
 
 ## Bulgu kaydı
 
-Her bulgu: önem, dosya:satır, gözlem, kök neden, düzeltme, doğrulama.
+Her bulgu: önem, dosya:satır, gözlem, kök neden, düzeltme, doğrulama. Ayrıntılar `inceleme/` altında:
 
-_(İnceleme ilerledikçe doldurulacak.)_
+| Rapor | Kapsam |
+| --- | --- |
+| `00-portal-ve-ortak.md` | Portal, istek bütçesi, giriş ekranı, logo, X kural kopyaları, manifestler |
+| `01-worker.md` | `application/worker/index.js` |
+| `02-src-js.md` | `application/src/*.js`, `workspace.html` (ölü kopyalar dahil) |
+| `03-app-admin-html.md` | `app.html`, `admin.html`, moderasyon arayüzü |
+| `04-sunucu-modulleri.md` | `application/server`, `scripts`, `deploy`, `drizzle` |
+| `05-kurum-telegram-ops.md` | Kurum koordinasyonu, Telegram botu, eşitleyici |
+| `06-browser-instagram.md` | Tarayıcı işçileri, Instagram API ve medya |
+| `07-x-facebook.md` | X ve Facebook yedek okuyucuları |
+| `08-legacy.md` | Önceki uygulama |
+
+Öne çıkan kritik/yüksek düzeltmeler:
+
+- Telegram botu ilk yeni uyarıda tanımsız değişken yüzünden çöküyordu; hiçbir uyarı gitmiyordu (05).
+- `+0300` biçimindeki RSS tarihleri reddediliyordu; kayıtlar tarih filtrelerinden düşüyor, acil
+  bildirim oluşmuyordu (02).
+- Görsel istekleri IP başına API bütçesini doldurup "Sonraki" ve sekmeleri 429 ile bozuyordu (00).
+- X okuyucusu zaman aşımında 6 saate kadar susuyordu (07); Facebook okuyucusu sayfa ortasında bütçe
+  dolunca okuduklarını atıyordu (07).
+- Telegram'da çift gönderim yarışı (05); kurum yönetimi hatalarının hep 500'e dönmesi (05).
+
+1. aşamada düzeltilmeyen güvenlik bulguları raporlarda "3. aşama" başlığıyla duruyor.
+
+Karar bekleyenler:
+
+- Instagram tazelik penceresi 1 saatten 3 saate çıkarıldı (panelin kullandığı değer); kod sahibine
+  issue #2 ile soruldu.
+
+Karara bağlananlar:
+
+- Haber saklama süresi **2 ay** olarak eşitlendi (`src/retention.js` 6 aydan 2 aya; worker zaten 2 ay).
+- Kullanılmayan dosyalar silinmedi; issue #1 ile soruldu.
