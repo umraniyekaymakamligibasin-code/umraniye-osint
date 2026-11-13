@@ -34,5 +34,13 @@ export function createInstitutionHost({base,db,origin,actor,serviceRequestAllowe
     if(u.pathname.startsWith('/api/')||u.pathname.startsWith('/assets/'))return Response.json({error:'approved_portal_access_required'},{status:403,headers:{'cache-control':'no-store'}});
     return Response.redirect(expected+'/kurum',302);
   }
-  return {fetch:handle};
+  return {async fetch(request,...args){
+    const response=await handle(request,...args);
+    if(!response.headers.get('content-type')?.includes('text/html'))return response;
+    const a=await authenticate(request);
+    if(a?.admin!==true)return response;
+    const html=await response.text();
+    const nav='<nav aria-label="Kurum işlemleri" style="padding:12px 24px;background:#fff;border-bottom:1px solid #e6e8ec;display:flex;gap:20px"><a href="/" style="color:#344054">Gündem</a><a href="/kurum/yonetim" style="color:#b91c24;font-weight:600">Kurum Yönetimi</a><a href="/kurum" style="color:#344054">Kurum Olayları</a></nav>';
+    return new Response(html.replace(/(<body\b[^>]*>)/i,'$1'+nav),{status:response.status,headers:response.headers});
+  }};
 }
