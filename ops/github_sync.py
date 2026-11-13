@@ -34,7 +34,7 @@ def snapshot():
             for name in sorted(names):
                 p = pathlib.Path(folder)/name
                 if p.is_symlink() or name.startswith('.') or '.bak' in name or '.pre-' in name or name=='get-pip.py': continue
-                if p.suffix not in EXT and name not in JSON_NAMES: continue
+                if p.suffix not in EXT and name not in JSON_NAMES and not (p.suffix == '.json' and p.relative_to(root).parts[0] in ('src', 'drizzle')): continue
                 if any(w in name.lower() for w in ('cookie','credential','session-key','private-key')): continue
                 if p.stat().st_size > 12_000_000: raise RuntimeError('Oversized source: '+str(p))
                 data = p.read_bytes()
