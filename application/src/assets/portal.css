@@ -17,3 +17,8 @@ footer{flex-wrap:wrap}.copyright{flex-basis:100%;border-top:1px solid var(--bord
 .home-news-grid{grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:700px){.home-news-grid{grid-template-columns:1fr}}
 
 .media-fallback{width:100%;padding:12px;text-align:center;line-height:1.5;letter-spacing:0!important;font-size:13px!important;color:#667085}.media-fallback .fallback-long{display:block;font-size:13px;letter-spacing:0}.media-fallback .fallback-short{display:none}.media-loading{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-size:12px;color:#667085}.story-media.is-loading img{opacity:0}.news-list .media-fallback{padding:6px;gap:4px}.news-list .media-fallback .fallback-long{display:none}.news-list .media-fallback .fallback-short{display:block;font-size:11px}.mini-image-title .media-fallback{padding:4px;gap:3px}.mini-image-title .media-fallback .fallback-long{display:none}.mini-image-title .media-fallback .fallback-short{display:block;font-size:10px}.mini-image-title .media-fallback svg{width:19px;height:19px}.mini-image-title .media-loading{font-size:10px;padding:3px}.news-list .media-loading{font-size:10px;padding:4px}
+
+/* Liste yenilenirken mevcut kayıtlar görünür kalır; çift tıklama engellenir. */
+#list-results.is-refreshing{opacity:.55;pointer-events:none;transition:opacity .15s ease}
+.notice.live-update.is-stale{background:#fff8e8;border:1px solid #f1dfb2;border-radius:8px;padding:8px 12px;color:#7c6127}
+.notice .text-link{margin-left:6px}
