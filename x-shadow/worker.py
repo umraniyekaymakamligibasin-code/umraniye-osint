@@ -130,16 +130,16 @@ def resources():
 
 def old_busy():
     if os.name=='nt':return True # live runs only from inspected Linux server
-    for unit in ('umraniye-osint-browser-x.service','umraniye-osint-sirali.service'):
-        p=subprocess.run(['systemctl','show',unit,'--property=ActiveState','--value'],capture_output=True,text=True,timeout=4)
-        if p.returncode or p.stdout.strip() in ('active','activating','reloading'):return True
-    return False
+    # The sequential orchestrator stays active while Instagram/Facebook run too.
+    # Only the actual legacy X reader conflicts with this shadow X request.
+    p=subprocess.run(['systemctl','show','umraniye-osint-browser-x.service','--property=ActiveState','--value'],capture_output=True,text=True,timeout=4)
+    return p.returncode!=0 or p.stdout.strip() in ('active','activating','reloading')
 
 async def guarded_collect(account_db,plans,raw,limit):
     task=asyncio.create_task(collect(account_db,plans,raw,limit))
     try:
         while not task.done():
-            done,_=await asyncio.wait([task],timeout=2)
+            done,_=await asyncio.wait([task],timeout=0.5)
             if done:break
             if await asyncio.to_thread(old_busy):raise RuntimeError('existing_x_round_started')
         return await task
