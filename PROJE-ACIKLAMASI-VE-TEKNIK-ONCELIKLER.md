@@ -95,14 +95,49 @@ Uygulamanın temel akışı kaynakların belirlenmesi, içeriklerin alınması, 
 
 **Tamamlanma ölçütü:** İlk sayfa, ara sayfa, son sayfa, boş sonuç ve değişen filtre senaryolarında beklenen kayıtlar görüntülenir; hata olduğunda düğme ve kullanıcı geri bildirimi tutarlı kalır.
 
+## Kod incelemesinde görülen ek işler
+
+Aşağıdaki maddeler depo içindeki kod akışından görülen somut davranışlardır. Bunlar önemli inceleme ipuçlarıdır; canlı tarayıcı ve sunucu ölçümü yapılmadan tek başına kullanıcının bildirdiği her yavaşlığın kök nedeni sayılmaz.
+
+### 9. Otomatik yenileme açık sayfanın içeriğini baştan çiziyor
+
+**Kod bulgusu:** `application/src/assets/portal.js` içindeki `refreshPortal()` her 60 saniyede özet isteği gönderiyor. Ana sayfada formda odak veya filtre yoksa `#content` öğesini yeniden `home()` çıktısıyla değiştiriyor; diğer sayfalarda form etkileşimi yoksa `loadList()` çağırıyor. Sekme/filtre gezintisiyle aynı zamanda gerçekleşirse kullanıcının okuduğu içerik, sayfa konumu veya geçiş sırasında oluşturulan DOM yenilenebilir. Her yenileme tam veri çekiyor demek değildir: `/api/portal/summary` sunucu tarafında önbellek kullanıyor, liste de ayrıca istek yapıyor. İstemci yenilemesinin bu davranışı yine de gereksiz ağ ve çizim yükü oluşturabilir.
+
+**Çözülecek:** Yenileme sadece değişen sayaçları ve gerçekten yeni kayıt özetini güncellesin; değişmemiş listeyi veya tüm ana sayfa DOM'unu tekrar oluşturmasın. Form, sayfalama, sekme değişimi, iletişim kutusu ve kaydırma durumu korunmalı. Aynı anda devam eden gezinmeyle çakışma önlenmeli.
+
+### 10. Portal önbelleği zaman aşımında tam veri kümesini yeniden hazırlıyor
+
+**Kod bulgusu:** `application/server/portal-api.mjs` içindeki portal veri hazırlama akışı süresi dolmuş önbellekte `/api/config` üzerinden haber listesini alıp sıralıyor; sosyal kayıtları grupluyor, tüm listeyi yeniden sıralıyor ve moderasyon görünürlüğünü yeniden uyguluyor. Canlı modda önbellek süresi 30 saniye olarak tanımlı. `application/src/assets/portal.js` ise özet yenilemesini 60 saniyede bir çağırıyor. Bu zamanlamalar, farklı oturumların veya isteklerin önbellek yenilemesini üst üste getirmesi halinde pahalı hazırlama işinin tekrarlanmasına yol açabilir; kodda mevcut eşzamanlı yenileme koruması ve canlı sistemde bunun sıklığı ölçülmelidir.
+
+**Çözülecek:** Önbellek sona ererken eşzamanlı isteklerin tek hazırlama işini paylaşması sağlansın; gerekirse son geçerli sonuç kısa bir kontrollü sürede sunulurken yenileme arka planda yapılsın. Gruplama/sıralama maliyeti ve liste boyutu ölçülsün; sık erişilen sonuçlar gereksiz yere baştan hesaplanmasın. Önbellek geçerliliği, moderasyon değişikliği ve veri güncelliğiyle birlikte doğrulansın.
+
+### 11. Bazı istemci ve iş akışı hataları sessizce yutuluyor
+
+**Kod bulgusu:** `application/src/assets/portal.js` içinde `refreshPortal()` başarısızlığında boş `catch` bulunuyor. `application/src/app.html` içinde `loadAgenda()` hatası da sessizce yakalanıp yalnızca yenileme durumu temizleniyor. Bazı yönetim ekranlarında oturum kontrolü başarısızlığı da kullanıcıya görünür bir durum üretmiyor. Bu örnekler geçici ağ/API hatasının gerçek sebebini kullanıcıdan ve destek incelemesinden saklayabilir. Her boş `catch` hatalı değildir; bazıları isteğe bağlı resim veya bozuk yerel veri gibi tolere edilebilir durum içindir ve ayrı değerlendirilmelidir.
+
+**Çözülecek:** Sessiz yakalamalar tek tek sınıflandırılsın. Kullanıcıya etkisi olan hata için tekrar deneme olanağı ve kısa, anlaşılır durum mesajı sunulsun; teknik kayıtlar sır, oturum veya kişisel içerik yazmadan olay adı, istek türü ve hata sınıfını içersin. Beklenen isteğe bağlı hatalar arayüzü kilitlemeden kontrollü biçimde ele alınsın.
+
+### 12. Sayfalama istemcisi ve sunucusu için sınır senaryoları doğrulanmalı
+
+**Kod bulgusu:** `application/src/assets/portal.js` sayfalama düğmelerini sunucudan gelen `page` ve `pages` değerlerine göre oluşturuyor; sonraki düğmesi son sayfada devre dışı bırakılıyor. `application/server/portal-api.mjs` sayfa değerini üst sınırla sınırlıyor, sayfa başına en çok 50 kayıt alıyor ve sonuçları bellekteki diziden `slice()` ile seçiyor. Bu kodda “Sonraki” düğmesinin her durumda arızalı olduğuna dair doğrudan kanıt yok. Ancak boş liste, filtre sonrası geçersiz sayfa numarası, son sayfada silinen/elenen kayıtlar ve birden fazla yenileme yanıtının yarışması gibi durumlar arayüzün boş sayfada kalmasına veya kayıtların atlanmış görünmesine neden olabilir.
+
+**Çözülecek:** Kullanıcı bildirimini gerçek tarayıcıda yeniden üretip URL parametreleri, yanıtın `page/pages/total` değerleri ve çizilen kayıtları aynı zaman çizelgesinde izleyin. Sunucu geçersiz sayfayı geçerli son sayfaya yöneltsin veya tutarlı boş sonuç dönsün; filtre ve veri değişikliğiyle istemci sayfa numarası senkron kalsın. Hata yalnızca arayüz olayı ya da yanıt yarışıysa onu düzeltin; mevcut kanıt olmadan sayfalama kodunu gelişigüzel değiştirmeyin.
+
+### 13. Kod deposundaki gizli bilgiler için tam kapsamlı tarama
+
+**Kod bulgusu:** Otomatik eşitleyici belirli dosyalarda bazı yüksek güvenli sır kalıplarını yakalayınca aktarımı durduruyor; bu bir Git geçmişi taraması veya tüm sır türlerini kapsayan güvenlik incelemesi değildir. Ayrıca uygulama dışındaki bileşenler ve yapılandırmalar da erişim anahtarı taşıyabilir.
+
+**Çözülecek:** Kullanıcının istediği güvenlik çalışmasında tüm izlenen dizinler, dağıtım dosyaları, geçmiş commit'ler ve sırların çalışma anında nereden yüklendiği ayrı taransın. Eşitleyicinin atladığı dosya/dizin kapsamı belgelenip yanlışlıkla anahtar aktarabilecek örüntüler azaltılsın. Her olası bulgu gizli değeri göstermeden doğrulansın; gerçek bir maruziyet bulunursa anahtarı yenileme ve geçmişi temizleme gereksinimi değerlendirilsin.
+
 ## Uygulama sırası
 
 1. **Başlangıç ölçümü ve yeniden üretim:** Her sorunu üretmek için adımlar yazılır; tarayıcı ağı/performansı, sunucu süreleri ve uygulama kayıtları karşılaştırılır.
 2. **Güvenlik ve çalışmayı engelleyen sorunlar:** Doğrulanmış sır maruziyeti ve sayfalama gibi temel etkileşim hataları ele alınır; mevcut erişim kontrolü korunur.
-3. **Gereksiz iş ve donma:** Tarih/sekme geçişlerinde yinelenen veri çağrıları ve ana iş parçacığını kilitleyen işler düzeltilir.
-4. **Açılış ve sosyal veri gecikmesi:** Ölçümde yavaş çıkan sunucu, veri kuyruğu, ağ veya çizim aşaması hedeflenir.
-5. **Arayüz düzenlemesi:** “Son Dakika” alanı kullanım alanı ve bilgi tekrarı değerlendirilerek sadeleştirilir.
-6. **Son doğrulama:** Masaüstü/mobil; bugün/hafta/ay; gündem sekmeleri; sonraki/önceki sayfa; yavaş ağ ve geçici kaynak hatası senaryoları tekrar denenir. Ölçüm sonuçları ve açık kalan konular raporlanır.
+3. **Gereksiz iş ve donma:** Tarih/sekme geçişlerinde yinelenen veri çağrıları, dakika başı tam arayüz yenilemesi, çakışan önbellek hazırlıkları ve ana iş parçacığını kilitleyen işler düzeltilir.
+4. **Hata görünürlüğü:** Kullanıcıya etki eden sessiz hatalar anlaşılır geri bildirim ve güvenli teknik kayıtlarla izlenebilir hale getirilir.
+5. **Açılış ve sosyal veri gecikmesi:** Ölçümde yavaş çıkan sunucu, veri kuyruğu, ağ veya çizim aşaması hedeflenir.
+6. **Arayüz düzenlemesi:** “Son Dakika” alanı kullanım alanı ve bilgi tekrarı değerlendirilerek sadeleştirilir.
+7. **Son doğrulama:** Masaüstü/mobil; bugün/hafta/ay; gündem sekmeleri; sonraki/önceki sayfa; yavaş ağ ve geçici kaynak hatası senaryoları tekrar denenir. Ölçüm sonuçları ve açık kalan konular raporlanır.
 
 ## Sonuçların belgelenmesi
 
