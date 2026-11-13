@@ -5,7 +5,8 @@ class SMTP:
  mode='ok'
  def __init__(self,*a,**kw):pass
  def __enter__(self):return self
- def __exit__(self,*a):pass
+ def __exit__(self,*a):
+  if self.mode=='quitfail':raise smtplib.SMTPResponseException(451,b'quit failed')
  def ehlo(self):pass
  def starttls(self,**kw):pass
  def login(self,*a):
@@ -13,6 +14,7 @@ class SMTP:
  def send_message(self,msg):
   assert str(msg['From'])=='umraniyekaymakamligibasin@gmail.com'
   if self.mode=='timeout':raise TimeoutError()
+  if self.mode=='sender':raise smtplib.SMTPSenderRefused(553,b'rejected','umraniyekaymakamligibasin@gmail.com')
   return {}
 class Tests(unittest.TestCase):
  def test_delivery_states(self):
@@ -20,6 +22,8 @@ class Tests(unittest.TestCase):
   SMTP.mode='ok';self.assertTrue(m.deliver(payload,SMTP)['ok'])
   SMTP.mode='auth';self.assertTrue(m.deliver(payload,SMTP)['definitelyNotSent'])
   SMTP.mode='timeout';self.assertFalse(m.deliver(payload,SMTP)['definitelyNotSent'])
+  SMTP.mode='quitfail';self.assertTrue(m.deliver(payload,SMTP)['ok'])
+  SMTP.mode='sender';self.assertTrue(m.deliver(payload,SMTP)['definitelyNotSent'])
  def test_header_injection(self):
   self.assertEqual(m.deliver({'to':'a@example.invalid\r\nBcc: x@y.invalid'})['code'],'recipient_invalid')
 if __name__=='__main__':unittest.main()
