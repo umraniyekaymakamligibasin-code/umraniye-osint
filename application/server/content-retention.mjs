@@ -3,6 +3,7 @@ import {withNewsStateLock} from './news-state-lock.mjs';
 import {readFile,readdir,writeFile,rename,lstat} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {execFile} from 'node:child_process';
+import {childEnv} from './child-env.mjs';
 import {promisify} from 'node:util';
 import {DatabaseSync} from 'node:sqlite';
 const execute=promisify(execFile),yieldTurn=()=>new Promise(r=>setImmediate(r));
@@ -45,6 +46,6 @@ export async function purgeContent(DB,{now=Date.now(),dataDir=process.env.DATA_D
  for(const name of entries.filter(n=>/^[a-z0-9_-]+\.json$/i.test(n))){const path=resolve(directory,name);await withNewsStateLock(path,async()=>{const info=await lstat(path);if(info.isSymbolicLink()||info.size>32000000){report.incomplete=true;return;}const state=JSON.parse(await readFile(path,'utf8'));let removed=0;for(const [key,row] of Object.entries(state.rows||{}))if(contentExpired({...row.item,firstSeenAt:row.item?.firstSeenAt||new Date(row.seen).toISOString()},cutoff)){delete state.rows[key];removed++;}if(removed){const tmp=path+'.retention-'+process.pid+'.tmp';await writeFile(tmp,JSON.stringify(state),{mode:0o600});await rename(tmp,path);report.cacheRemoved+=removed;}});await yieldTurn();}
  const overflowPath=join(directory,'pending-overflow.sqlite');let overflow;
  try{const info=await lstat(overflowPath);if(info.isSymbolicLink())throw Error('unsafe_overflow_file');overflow=new DatabaseSync(overflowPath);overflow.exec('PRAGMA busy_timeout=1000');const rows=overflow.prepare('SELECT source,url,data,seen FROM pending LIMIT 20000').all();for(const row of rows){const state=JSON.parse(row.data);if(contentExpired({...state.item,firstSeenAt:state.item?.firstSeenAt||new Date(row.seen).toISOString()},cutoff))report.cacheRemoved+=Number(overflow.prepare('DELETE FROM pending WHERE source=? AND url=? AND data=?').run(row.source,row.url,row.data).changes);}if(rows.length===20000)report.incomplete=true;}catch(error){if(error.code!=='ENOENT')throw error;}finally{overflow?.close();}
- if(cleanPrivate){const {stdout}=await execute('/opt/umraniye-osint-browser/venv/bin/python',['/opt/umraniye-osint-browser/review_retention.py','--root',dataDir,'--cutoff',cutoff],{timeout:15000,maxBuffer:16384});const result=JSON.parse(stdout);report.privateRemoved=result.removed;report.incomplete ||= result.busy>0;}
+ if(cleanPrivate){const {stdout}=await execute('/opt/umraniye-osint-browser/venv/bin/python',['/opt/umraniye-osint-browser/review_retention.py','--root',dataDir,'--cutoff',cutoff],{timeout:15000,maxBuffer:16384,env:childEnv()});const result=JSON.parse(stdout);report.privateRemoved=result.removed;report.incomplete ||= result.busy>0;}
  return report;
 }
