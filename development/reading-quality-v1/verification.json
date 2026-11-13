@@ -1,0 +1,14 @@
+{
+  "status": "prepared_installation_requires_interactive_sudo",
+  "linuxIsolatedTestsPassed": 26,
+  "liveInstalled": false,
+  "newLivePostVerified": false,
+  "scoresRecalculated": false,
+  "changes": [
+    "facebook_budget_deferral_and_source_progress",
+    "instagram_fair_rotation_and_preserved_first_discovery",
+    "read_only_four_channel_evidence"
+  ],
+  "remaining": "See README open work and 100-point acceptance plan",
+  "installerSHA256": "00878085cf8e87b21f357bb9ca641cbe498af66761cab2260d4f5f8aff2d63dd"
+}
