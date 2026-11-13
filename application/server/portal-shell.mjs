@@ -3,7 +3,7 @@ import {createContentModeration} from './content-moderation.mjs';
 import {readFile} from 'node:fs/promises';
 import {createPortalAPI} from './portal-api.mjs';
 import {createAssetResponder} from './portal-assets.mjs';
-const assets=new Map([['/assets/content-moderation-ui.js',['content-moderation-ui.js','application/javascript']],['/assets/content-moderation-ui.css',['content-moderation-ui.css','text/css']],['/assets/portal.css',['portal.css','text/css']],['/assets/portal.js',['portal.js','application/javascript']],['/assets/admin-portal.css',['admin-portal.css','text/css']],['/assets/InterVariable.woff2',['InterVariable.woff2','font/woff2']]]);
+const assets=new Map([['/assets/content-moderation-ui.js',['content-moderation-ui.js','application/javascript']],['/assets/content-moderation-ui.css',['content-moderation-ui.css','text/css']],['/assets/portal.css',['portal.css','text/css']],['/assets/portal.js',['portal.js','application/javascript']],['/assets/admin-portal.css',['admin-portal.css','text/css']],['/assets/portal-tasarim-c.css',['portal-tasarim-c.css','text/css']],['/assets/InterVariable.woff2',['InterVariable.woff2','font/woff2']]]);
 export function createPortalShell(base,env,{origin,socialItems}){
  assets.set('/assets/workspace-refresh.css',['workspace-refresh.css','text/css']);
  assets.set('/assets/vendor/tabler/tabler.min.css',['vendor/tabler/tabler.min.css','text/css']);
