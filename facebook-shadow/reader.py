@@ -10,6 +10,7 @@ COMMIT='28e03ae84012be44d37a67014fcfcfcc420c9ee9'
 class GuardStop(BaseException):pass
 
 class BoundedTransport:
+    max_requests=8
     requests_made=0
     started=0
     def __init__(self,timeout=8):
@@ -19,8 +20,8 @@ class BoundedTransport:
         parts=urlsplit(url)
         if parts.scheme!='https' or parts.hostname not in ('www.facebook.com','facebook.com') or parts.port not in (None,443) or parts.username or parts.password:raise GuardStop('destination_denied')
         if cookies or self.session.cookies.get('c_user'):raise GuardStop('unexpected_authenticated_session')
-        if BoundedTransport.requests_made>=6:raise GuardStop('request_budget_reached')
-        remaining=35-(time.monotonic()-BoundedTransport.started)
+        if BoundedTransport.requests_made>=BoundedTransport.max_requests:raise GuardStop('request_budget_reached')
+        remaining=25-(time.monotonic()-BoundedTransport.started)
         if remaining<=0:raise GuardStop('time_budget_reached')
         BoundedTransport.requests_made+=1
         try:
@@ -32,7 +33,7 @@ class BoundedTransport:
                 for chunk in r.iter_content(65536):
                     size+=len(chunk)
                     if size>5_000_000:raise GuardStop('response_too_large')
-                    if time.monotonic()-BoundedTransport.started>35:raise GuardStop('time_budget_reached')
+                    if time.monotonic()-BoundedTransport.started>25:raise GuardStop('time_budget_reached')
                     chunks.append(chunk)
                 body=b''.join(chunks).decode('utf-8','replace')
                 if '/checkpoint/' in body or 'captcha_response' in body:raise GuardStop('human_verification_required')
@@ -55,18 +56,27 @@ def normalized(post,source):
     u=urlsplit(url)
     if u.scheme!='https' or u.hostname not in ('www.facebook.com','facebook.com','m.facebook.com') or u.username or u.password or u.port:return None
     if not re.fullmatch(r'[A-Za-z0-9_:-]{1,150}',sid):return None
-    return {'id':sid,'url':url,'title':text[:160],'description':text,'fullText':text,'author':str(post.page_name or source['page_name']),'sourceName':source['page_name'],'sourcePageUrl':source['page_url'],'publishedAt':published,'collectedAt':dt.datetime.now(dt.timezone.utc).isoformat(),'platform':'facebook','source':'facebook','reader':'fbgql','locationVerified':False}
+    return {'id':sid,'facebookPostId':sid,'facebookSourceId':source['source_id'],'url':url,'title':text[:160],'description':text,'fullText':text,'author':str(post.page_name or source['page_name']),'sourceName':source['page_name'],'sourcePageUrl':source['page_url'],'publishedAt':published,'collectedAt':dt.datetime.now(dt.timezone.utc).isoformat(),'platform':'facebook','source':'facebook','reader':'fbgql','locationVerified':False}
 
 def read(source):
     from fbgql import Scraper,ScrapeJob,runner,policy
     runner.SyncTransport=BoundedTransport
     policy.MAX_EMPTY_RETRIES=0;policy.MAX_TRANSPORT_RETRIES=1
-    BoundedTransport.requests_made=0;BoundedTransport.started=time.monotonic()
+    BoundedTransport.requests_made=0;BoundedTransport.max_requests=max(1,min(8,int(source.get('requestBudget',8))));BoundedTransport.started=time.monotonic()
     result={'status':'not_started','posts':[],'reader':'fbgql','upstreamCommit':COMMIT,'anonymous':True,'commentsEnabled':False,'browserStarted':False}
     try:
-        job=ScrapeJob(page=source['page_url'],max_posts=3,posts_only=True,workers=1,reply_concurrency=1,anonymous=True,min_interval_sec=2)
+        job=ScrapeJob(page=source['page_url'],max_posts=12,posts_only=True,workers=1,reply_concurrency=1,anonymous=True,min_interval_sec=2)
         response=Scraper().run(job)
         result['posts']=[e for r in response.posts if (e:=normalized(r.post,source))]
+        missing=next((e for e in result['posts'] if not e['fullText'].strip()),None)
+        if missing and BoundedTransport.requests_made<BoundedTransport.max_requests and time.monotonic()-BoundedTransport.started<17:
+            try:
+                detail=Scraper().run(ScrapeJob(post_url=missing['url'],max_posts=1,posts_only=True,workers=1,reply_concurrency=1,anonymous=True,min_interval_sec=2))
+                for r in detail.posts:
+                    expanded=normalized(r.post,source)
+                    if expanded and expanded['id']==missing['id'] and len(expanded['fullText'])>len(missing['fullText']):missing.update(expanded)
+            except GuardStop as err:
+                if str(err) in ('rate_limited','public_access_blocked','human_verification_required'):raise
         result['status']='read_completed' if result['posts'] else 'empty_or_layout_changed'
     except GuardStop as e:result['status']=str(e)
     except Exception as e:result.update(status='reader_error',errorType=type(e).__name__)

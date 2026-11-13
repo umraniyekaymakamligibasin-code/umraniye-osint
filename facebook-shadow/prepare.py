@@ -18,4 +18,9 @@ def snapshot(database=DB,app=APP):
     finally:c.close()
 def main():
     os.umask(0o077);data=snapshot();p=STATE/'snapshot.json';t=p.with_suffix('.tmp');t.write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8');t.chmod(0o600);who=pwd.getpwnam('osintfbshadow');os.chown(t,who.pw_uid,who.pw_gid);t.replace(p)
+    context={'version':1,'sources':[]};original=DB.parent/'social-source-context.json'
+    if original.is_file() and original.stat().st_size<=100000:
+        value=json.loads(original.read_text())
+        if value.get('version')==1:context['sources']=[{k:r.get(k) for k in ['provider','identity','enabled','scope']} for r in value.get('sources',[])[:300]]
+    target=STATE/'social-source-context.json';temp=target.with_suffix('.tmp');temp.write_text(json.dumps(context,ensure_ascii=False));temp.chmod(0o600);os.chown(temp,who.pw_uid,who.pw_gid);temp.replace(target)
 if __name__=='__main__':main()
