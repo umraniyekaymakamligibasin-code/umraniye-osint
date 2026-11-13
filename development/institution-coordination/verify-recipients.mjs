@@ -17,7 +17,7 @@ await store.save('admin','ISKI_UMR',{address:'test@example.invalid',active:true,
 await store.save('admin','ISKI_UMR',{address:'test@example.invalid',active:true,confirmed:true});
 const rows=await store.list('ISKI_UMR');assert.equal(rows.length,1);assert.equal(rows[0].address,'test@example.invalid');
 assert.equal((await store.list('AYEDAS_UMR')).length,0);
-await store.deactivate('admin','AYEDAS_UMR',rows[0].id);assert.equal((await store.list('ISKI_UMR'))[0].active,true);
-await store.deactivate('admin','ISKI_UMR',rows[0].id);assert.equal((await store.list('ISKI_UMR'))[0].active,false);
+await assert.rejects(()=>store.deactivate('admin','AYEDAS_UMR',rows[0].id),/recipient_not_found/);assert.equal((await store.list('ISKI_UMR'))[0].active,true);
+await store.deactivate('admin','ISKI_UMR',rows[0].id);assert.equal((await store.list('ISKI_UMR'))[0].active,false);assert.equal(raw.prepare("SELECT count(*) n FROM coord_audit WHERE action='recipient_disabled' AND target_id=?").get(rows[0].id).n,1);
 assert.ok(!raw.prepare('SELECT address_ciphertext FROM coord_mail_recipients').get().address_ciphertext.includes('test@'));
 console.log('PASS: tenant recipients, encrypted addresses, explicit confirmation, deduplication, scoped deactivation');raw.close();

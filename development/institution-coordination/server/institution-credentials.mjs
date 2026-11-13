@@ -7,8 +7,9 @@ export function createInstitutionCredentials({db,key}){
  const open=(value,id)=>{const b=Buffer.from(value,'base64'),d=createDecipheriv('aes-256-gcm',key,b.subarray(0,12));d.setAAD(Buffer.from(id));d.setAuthTag(b.subarray(12,28));return Buffer.concat([d.update(b.subarray(28)),d.final()]).toString('utf8')};
  const audit=(actor,action,target)=>db.prepare(`INSERT INTO coord_audit(id,actor_account_id,actor_kind,action,target_type,target_id,created_at) VALUES(?,?,'central_admin',?,'credential',?,?)`).bind(randomUUID(),actor,action,target,stamp());
  async function provision(actor){
-  const rows=(await db.prepare("SELECT id,code,display_name FROM coord_institutions ORDER BY code").all()).results;let created=0;
+  const rows=(await db.prepare("SELECT id,code,display_name,approval_status FROM coord_institutions ORDER BY code").all()).results;let created=0,skipped=0;
   for(const i of rows){
+   if(i.approval_status!=='approved'){skipped++;continue}// taslak/onaysiz kuruma hesap acilmaz
    if(await db.prepare('SELECT account_id FROM coord_account_credentials WHERE institution_id=?').bind(i.id).first())continue;
    const username='kurum_'+i.code.toLowerCase();
    if(await db.prepare('SELECT id FROM team_accounts WHERE username=?').bind(username).first())throw Error('username_collision_'+i.code);
@@ -19,7 +20,7 @@ export function createInstitutionCredentials({db,key}){
     db.prepare(`INSERT INTO coord_memberships(id,institution_id,account_id,role,active,approval_reference,approved_by,approved_at,created_at,updated_at) VALUES(?,?,?,'case_worker',1,?,?,?,?,?)`).bind(randomUUID(),i.id,id,'Kullanıcının otomatik kurum hesabı talebi',actor,at,at,at),
     audit(actor,'institution_account_created',id)
    ]);created++;
-  }return {created};
+  }return {created,skipped};
  }
  async function list(){return (await db.prepare(`SELECT i.code,i.display_name,a.id account_id,a.username,a.active,c.updated_at FROM coord_account_credentials c JOIN coord_institutions i ON i.id=c.institution_id JOIN team_accounts a ON a.id=c.account_id ORDER BY i.display_name`).all()).results}
  async function reveal(actor,account){const r=await db.prepare(`SELECT c.sealed,c.password_hash,a.password_hash current_hash FROM coord_account_credentials c JOIN team_accounts a ON a.id=c.account_id WHERE c.account_id=?`).bind(account).first();if(!r)throw Error('account_not_found');if(r.password_hash!==r.current_hash)throw Error('password_changed_outside_vault');await audit(actor,'institution_password_revealed',account).run();return {password:open(r.sealed,account)}}

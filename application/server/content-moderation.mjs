@@ -130,10 +130,13 @@ export function createContentModeration({base,env,origin,socialItems,actor,inval
         let e;try{e=JSON.parse(row.data)}catch{return Response.json({error:'Kuyruk verisi bozuk'},{status:400})}
         await save(e,'hidden',who,'Yönetici kuyruktan kaldırdı');
         await db.prepare("UPDATE lab_outbox SET status='expired',last_error='admin_suppressed' WHERE id=? AND status IN ('pending','unknown')").bind(item.queueId).run();
-      }else if(action==='dismiss'){
-        await save(item,'dismissed',who,'Filtrelenenler listesinden arşivlendi');
       }else{
-        await save(item,'hidden',who,s(input.reason,500));
+        // Istemcinin gonderdigi url/title/stream guvenilmez: kayit sunucu verisinden id (yoksa baglanti) ile bulunur.
+        const want=idOf(item),link=want?'':canonical(urlOf(item));if(!want&&!link)return Response.json({error:'Geçersiz kayıt'},{status:400});
+        const found=(await rawEvents(request)).find(e=>{const k=identities(e);return want?k.ids.includes(want):k.urls.includes(link);});
+        if(!found)return Response.json({error:'Kayıt bulunamadı'},{status:404});
+        if(action==='dismiss')await save(found,'dismissed',who,'Filtrelenenler listesinden arşivlendi');
+        else await save(found,'hidden',who,s(input.reason,500));
       }
       return Response.json({ok:true},{headers:{'Cache-Control':'no-store'}});
     }

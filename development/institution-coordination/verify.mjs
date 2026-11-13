@@ -33,7 +33,7 @@ assert.equal(raw.prepare("SELECT count(*) n FROM coord_case_history WHERE action
 raw.prepare(`INSERT INTO coord_institution_topic_grants VALUES('p','t',1,'approval','admin',?)`).run(stamp);
 assert.equal((await req('/cases/'+result.caseId+'/refer','water',{institution:'ISKI',targetInstitution:'AYEDAS',topic:'water_leak',mode:'support'})).status,200);
 assert.equal((await req('/cases/'+result.caseId+'/refer','water',{institution:'ISKI',targetInstitution:'AYEDAS',topic:'water_leak',mode:'support'})).status,200);
-assert.equal(raw.prepare('SELECT count(*) n FROM coord_referrals').get().n,1);
+assert.equal(raw.prepare('SELECT count(*) n FROM coord_referrals').get().n,1);assert.equal(raw.prepare("SELECT count(*) n FROM coord_audit WHERE action='case_referred'").get().n,2);
 assert.equal(raw.prepare("SELECT count(*) n FROM coord_cases WHERE institution_id='p'").get().n,1);
 assert.equal(raw.prepare("SELECT count(*) n FROM coord_case_history WHERE institution_id='p' AND action='note_added'").get().n,0);
 const sent=[];const send=async x=>sent.push(x);send.supportsIdempotency=true;
