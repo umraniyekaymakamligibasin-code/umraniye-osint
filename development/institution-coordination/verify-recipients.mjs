@@ -1,0 +1,23 @@
+import { DatabaseSync } from 'node:sqlite';
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { projectEligibleEvent } from './server/route-event.mjs';
+import { dispatchDueInstitutionNotices } from './server/dispatch-event-email.mjs';
+import { createInstitutionCoordination } from './server/institution-coordination.mjs';
+const raw = new DatabaseSync(':memory:');
+raw.exec('CREATE TABLE team_accounts(id TEXT PRIMARY KEY)');
+raw.exec(readFileSync(new URL('./schema.sql',import.meta.url),'utf8'));
+const db={prepare(sql){let values=[];return {bind(...v){values=v;return this},async first(){return raw.prepare(sql).get(...values)||null},async all(){return {results:raw.prepare(sql).all(...values)}},async run(){return this._run()},_run(){return {meta:{changes:Number(raw.prepare(sql).run(...values).changes)}}}}},async batch(statements){raw.exec('BEGIN IMMEDIATE');try{const r=statements.map(s=>s._run());raw.exec('COMMIT');return r}catch(e){raw.exec('ROLLBACK');throw e}}};
+
+const {createInstitutionRecipients}=await import('./server/institution-recipients.mjs');const {randomBytes}=await import('node:crypto');
+for(const [id,code] of [['i','ISKI_UMR'],['p','AYEDAS_UMR']])raw.prepare(`INSERT INTO coord_institutions(id,code,display_name,institution_group,created_at,updated_at) VALUES(?,?,?,'utility','now','now')`).run(id,code,code);
+const store=createInstitutionRecipients({db,key:randomBytes(32)});
+await assert.rejects(()=>store.save('admin','ISKI_UMR',{address:'test@example.invalid',active:true,confirmed:false}),/confirmation/);
+await store.save('admin','ISKI_UMR',{address:'test@example.invalid',active:true,confirmed:true});
+await store.save('admin','ISKI_UMR',{address:'test@example.invalid',active:true,confirmed:true});
+const rows=await store.list('ISKI_UMR');assert.equal(rows.length,1);assert.equal(rows[0].address,'test@example.invalid');
+assert.equal((await store.list('AYEDAS_UMR')).length,0);
+await store.deactivate('admin','AYEDAS_UMR',rows[0].id);assert.equal((await store.list('ISKI_UMR'))[0].active,true);
+await store.deactivate('admin','ISKI_UMR',rows[0].id);assert.equal((await store.list('ISKI_UMR'))[0].active,false);
+assert.ok(!raw.prepare('SELECT address_ciphertext FROM coord_mail_recipients').get().address_ciphertext.includes('test@'));
+console.log('PASS: tenant recipients, encrypted addresses, explicit confirmation, deduplication, scoped deactivation');raw.close();

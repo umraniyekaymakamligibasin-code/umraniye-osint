@@ -1,0 +1,13 @@
+import {createInstitutionHost} from './server/institution-host.mjs';
+import {DatabaseSync} from 'node:sqlite';
+import {readFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+const raw=new DatabaseSync(':memory:');raw.exec('CREATE TABLE team_accounts(id TEXT PRIMARY KEY,active INTEGER)');raw.exec(readFileSync(new URL('./schema.sql',import.meta.url),'utf8'));
+const db={prepare(sql){let v=[];return {bind(...x){v=x;return this},async first(){return raw.prepare(sql).get(...v)},async all(){return {results:raw.prepare(sql).all(...v)}}}}};
+let baseCalls=0;const host=createInstitutionHost({db,origin:'https://osint.test',base:{fetch:async()=>{baseCalls++;return new Response('base')}},actor:async r=>r.headers.get('cookie')==='valid'?{id:'tenant',admin:false}:null,serviceRequestAllowed:async()=>false});
+for(const path of ['/api/config','/api/social','/api/portal/news','/api/account','/api/admin/config','/assets/private-data'])assert.equal((await host.fetch(new Request('https://osint.test'+path,{headers:{cookie:'valid'}}))).status,403);
+assert.equal(baseCalls,0);assert.equal((await host.fetch(new Request('https://osint.test/api/social',{headers:{'oai-authenticated-user-id':'admin'}}))).status,401);
+assert.equal((await host.fetch(new Request('https://osint.test/kurum',{headers:{cookie:'valid'}}))).status,200);
+raw.prepare('INSERT INTO team_accounts VALUES(?,1)').run('tenant');raw.prepare("INSERT INTO coord_portal_viewers VALUES('tenant',1,'admin','2026-11-13')").run();assert.equal((await host.fetch(new Request('https://osint.test/api/social',{headers:{cookie:'valid'}}))).status,200);
+raw.prepare('UPDATE coord_portal_viewers SET active=0').run();assert.equal((await host.fetch(new Request('https://osint.test/api/social',{headers:{cookie:'valid'}}))).status,403);
+console.log('PASS: outer portal denies institutional users, forged identity rejected, approved viewer grant and revocation');raw.close();

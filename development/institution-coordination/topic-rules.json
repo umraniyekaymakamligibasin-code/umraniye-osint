@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "state": "draft_requires_authority_review",
+  "minimumConfidence": 0.92,
+  "rules": [
+    {"topic":"water_leak","institution":"ISKI_UMR","terms":["su borusu patladı","su borusu patlamış","su kaçağı","temiz su borusu","şebeke suyu akıyor"],"sensitivity":"ordinary"},
+    {"topic":"water_outage","institution":"ISKI_UMR","terms":["sular kesik","su kesintisi","sularımız kesildi"],"sensitivity":"ordinary"},
+    {"topic":"sewer_overflow","institution":"ISKI_UMR","terms":["kanalizasyon taştı","kanalizasyon taşması","rögar taştı","atık su taştı"],"sensitivity":"ordinary"},
+    {"topic":"power_outage","institution":"AYEDAS_UMR","terms":["elektrik kesintisi","elektrikler kesildi","elektrik yok"],"sensitivity":"ordinary"},
+    {"topic":"fallen_power_equipment","institution":"AYEDAS_UMR","terms":["elektrik direği devrildi","direk devrildi","elektrik kablosu sarktı","kopmuş elektrik kablosu"],"sensitivity":"high"},
+    {"topic":"gas_leak_public_hazard","institution":"IGDAS_UMR","terms":["doğalgaz kaçağı","gaz kokusu","gaz sızıntısı"],"sensitivity":"high"},
+    {"topic":"waste_container","institution":"UMR_BELEDIYE","terms":["çöp konteyneri kırık","çöp konteyneri dolu","konteyner alınmadı"],"sensitivity":"ordinary"},
+    {"topic":"street_cleanliness","institution":"UMR_BELEDIYE","terms":["sokakta çöp birikmiş","çöp toplanmıyor","moloz bırakılmış"],"sensitivity":"ordinary"},
+    {"topic":"municipal_roadside_asset","institution":"UMR_BELEDIYE","terms":["kaldırım taşı yerinden çıktı","kaldırım çöktü","yol çukuru"],"sensitivity":"ordinary"},
+    {"topic":"parks_public_space","institution":"UMR_BELEDIYE","terms":["parkta aydınlatma yok","park ekipmanı kırık","oyun grubu kırık"],"sensitivity":"ordinary"},
+    {"topic":"school_facility","institution":"UMR_ILCE_MEM","terms":["okulun çatısı akıyor","okulda kalorifer çalışmıyor","okul binasında bakım"],"sensitivity":"ordinary"},
+    {"topic":"bus_stop_infrastructure","institution":"IETT","terms":["otobüs durağı kırık","durak camı kırılmış","otobüs durağı hasarlı"],"sensitivity":"ordinary"},
+    {"topic":"fire_rescue","institution":"ISTANBUL_ITFAIYE","terms":["yangın çıktı","yangın var","itfaiye müdahalesi"],"sensitivity":"high"},
+    {"topic":"social_assistance_service_access","institution":"UMR_SYDV","terms":["sosyal yardım başvurusu","yardım başvurusu alınmıyor","sosyal yardım hizmeti"],"sensitivity":"restricted"},
+    {"topic":"social_service_access","institution":"UMR_SHM","terms":["sosyal hizmet başvurusu","sosyal hizmet merkezi randevu","sosyal hizmete erişim"],"sensitivity":"restricted"}
+  ],
+  "neverAutoRoute": [
+    "homicide_or_assault", "weapon_or_shooting", "missing_person", "child_or_student_identity",
+    "victim_or_witness_identity", "medical_or_disability_details", "domestic_violence",
+    "crime_allegation", "police_investigation", "social_assistance_case_details", "private_address",
+    "unverified_location", "unclear_or_multiple_authorities"
+  ],
+  "notes": [
+    "Source names do not establish location or institutional competence.",
+    "Only a verified district/neighborhood match from the existing local geography pipeline may satisfy locality.",
+    "All topics and institutions must be formally approved and enabled before projection.",
+    "This draft keyword set is intentionally narrow; no street-name-only matching is allowed."
+  ]
+}

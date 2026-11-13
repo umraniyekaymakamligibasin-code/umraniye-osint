@@ -1,0 +1,52 @@
+import { DatabaseSync } from 'node:sqlite';
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { projectEligibleEvent } from './server/route-event.mjs';
+import { dispatchDueInstitutionNotices } from './server/dispatch-event-email.mjs';
+import { createInstitutionCoordination } from './server/institution-coordination.mjs';
+const raw = new DatabaseSync(':memory:');
+raw.exec('CREATE TABLE team_accounts(id TEXT PRIMARY KEY)');
+raw.exec(readFileSync(new URL('./schema.sql',import.meta.url),'utf8'));
+const db={prepare(sql){let values=[];return {bind(...v){values=v;return this},async first(){return raw.prepare(sql).get(...values)||null},async all(){return {results:raw.prepare(sql).all(...values)}},async run(){return this._run()},_run(){return {meta:{changes:Number(raw.prepare(sql).run(...values).changes)}}}}},async batch(statements){raw.exec('BEGIN IMMEDIATE');try{const r=statements.map(s=>s._run());raw.exec('COMMIT');return r}catch(e){raw.exec('ROLLBACK');throw e}}};
+raw.exec(readFileSync(new URL('./migrations/0012_institution_referrals.sql',import.meta.url),'utf8'));
+const stamp=new Date().toISOString();
+for(const a of ['admin','water','power']) raw.prepare('INSERT INTO team_accounts VALUES(?)').run(a);
+for(const [i,code] of [['i','ISKI'],['p','AYEDAS']]){
+raw.prepare(`INSERT INTO coord_institutions(id,code,display_name,institution_group,approval_status,approval_reference,enabled,email_enabled,created_at,updated_at) VALUES(?,?,?,'utility','approved','approval',1,1,?,?)`).run(i,code,code,stamp,stamp);
+}
+raw.prepare(`INSERT INTO coord_topics(id,code,display_name,sensitivity,approval_status,approval_reference,enabled,created_at,updated_at) VALUES('t','water_leak','Su','ordinary','approved','approval',1,?,?)`).run(stamp,stamp);
+raw.prepare(`INSERT INTO coord_institution_topic_grants VALUES('i','t',1,'approval','admin',?)`).run(stamp);
+for(const n of [1,2])raw.prepare(`INSERT INTO coord_mail_recipients VALUES(?,'i','cipher','v1',?,?,'admin',1,?,?)`).run('r'+n,'hash'+n,stamp,stamp,stamp);
+const api=createInstitutionCoordination({db,authenticate:async r=>({accountId:r.headers.get('actor')||'admin'}),isCentralAdmin:async a=>a.accountId==='admin',verifyCsrf:async r=>r.headers.get('csrf')==='yes',rateLimit:async()=>true,accountExists:async()=>true,isAccountVerified:async()=>true});
+async function req(path,actor='admin',body){return api.handle(new Request('https://osint.test/api/institution'+path,{method:body?'POST':'GET',headers:{actor,csrf:'yes','content-type':'application/json'},body:body?JSON.stringify(body):undefined}))}
+for(const [code,account] of [['ISKI','water'],['AYEDAS','power']])assert.equal((await req('/admin/institutions/'+code+'/members','admin',{accountId:account,role:'case_worker',active:true})).status,200);
+const event={id:'event1',title:'Su kaçağı',description:'su borusu patladı',publishedAt:stamp,firstSeenAt:stamp,locality:{district:'Ümraniye',verified:true,precision:'neighborhood',neighborhood:'Çakmak'}};
+const rules={state:'approved',minimumConfidence:.92,rules:[{topic:'water_leak',institution:'ISKI',terms:['su borusu patladı'],sensitivity:'ordinary',approvalStatus:'approved',approvalReference:'approval'}]};
+const result=await projectEligibleEvent({db,event,rules});assert.equal(result.decision,'projected');assert.equal(raw.prepare('SELECT count(*) n FROM coord_mail_outbox').get().n,2);
+await projectEligibleEvent({db,event,rules});assert.equal(raw.prepare('SELECT count(*) n FROM coord_cases').get().n,1);
+const listed=await (await req('/cases','water')).json();assert.ok(JSON.stringify(listed).includes(result.caseId));
+assert.equal((await req('/cases/'+result.caseId+'?institution=ISKI','power')).status,404);
+assert.equal((await req('/cases/'+result.caseId+'/status','power',{institution:'ISKI',status:'received'})).status,404);
+assert.equal((await req('/admin/catalog','power')).status,404);
+assert.equal((await req('/cases/'+result.caseId+'/status','water',{institution:'ISKI',status:'received'})).status,200);
+assert.equal(raw.prepare("SELECT count(*) n FROM coord_case_history WHERE action='status_change'").get().n,1);
+raw.prepare(`INSERT INTO coord_institution_topic_grants VALUES('p','t',1,'approval','admin',?)`).run(stamp);
+assert.equal((await req('/cases/'+result.caseId+'/refer','water',{institution:'ISKI',targetInstitution:'AYEDAS',topic:'water_leak',mode:'support'})).status,200);
+assert.equal((await req('/cases/'+result.caseId+'/refer','water',{institution:'ISKI',targetInstitution:'AYEDAS',topic:'water_leak',mode:'support'})).status,200);
+assert.equal(raw.prepare('SELECT count(*) n FROM coord_referrals').get().n,1);
+assert.equal(raw.prepare("SELECT count(*) n FROM coord_cases WHERE institution_id='p'").get().n,1);
+assert.equal(raw.prepare("SELECT count(*) n FROM coord_case_history WHERE institution_id='p' AND action='note_added'").get().n,0);
+const sent=[];const send=async x=>sent.push(x);send.supportsIdempotency=true;
+assert.equal((await dispatchDueInstitutionNotices({db,decryptAddress:async()=> 'recipient@example.test',sendWithIdempotency:send,portalUrl:'https://osint.test/kurum'})).sent,2);
+await dispatchDueInstitutionNotices({db,decryptAddress:async()=> 'recipient@example.test',sendWithIdempotency:send,portalUrl:'https://osint.test/kurum'});assert.equal(sent.length,2);
+await projectEligibleEvent({db,event:{...event,id:'historical',historical:true},rules});assert.equal(raw.prepare('SELECT count(*) n FROM coord_mail_outbox').get().n,2);
+assert.equal((await req('/cases/'+result.caseId+'/notes','water',{institution:'ISKI',note:'Ekip görevlendirildi'})).status,200);
+assert.equal((await req('/cases/'+result.caseId+'/notes','power',{institution:'ISKI',note:'Yetkisiz not'})).status,404);
+const detail=await (await req('/cases/'+result.caseId+'?institution=ISKI','water')).json();
+assert.equal(detail.case.role,'case_worker');assert.equal(detail.history.filter(h=>h.action==='note_added').length,1);
+raw.prepare("UPDATE coord_memberships SET role='viewer' WHERE account_id='water'").run();
+assert.equal((await req('/cases/'+result.caseId+'/notes','water',{institution:'ISKI',note:'Görüntüleyici notu'})).status,404);
+raw.prepare("UPDATE coord_institution_topic_grants SET granted=0").run();assert.equal((await (await req('/cases','water')).json()).cases?.length??-1,0);
+console.log('PASS: membership writes, tenant isolation, admin isolation, duplicate suppression, multiple recipients, event-only delivery, historical suppression, grant revocation');
+raw.close();
+

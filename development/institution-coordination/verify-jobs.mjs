@@ -1,0 +1,22 @@
+import { DatabaseSync } from 'node:sqlite';
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { projectEligibleEvent } from './server/route-event.mjs';
+import { dispatchDueInstitutionNotices } from './server/dispatch-event-email.mjs';
+import { createInstitutionCoordination } from './server/institution-coordination.mjs';
+const raw = new DatabaseSync(':memory:');
+raw.exec('CREATE TABLE team_accounts(id TEXT PRIMARY KEY)');
+raw.exec(readFileSync(new URL('./schema.sql',import.meta.url),'utf8'));
+const db={prepare(sql){let values=[];return {bind(...v){values=v;return this},async first(){return raw.prepare(sql).get(...values)||null},async all(){return {results:raw.prepare(sql).all(...values)}},async run(){return this._run()},_run(){return {meta:{changes:Number(raw.prepare(sql).run(...values).changes)}}}}},async batch(statements){raw.exec('BEGIN IMMEDIATE');try{const r=statements.map(s=>s._run());raw.exec('COMMIT');return r}catch(e){raw.exec('ROLLBACK');throw e}}};
+
+raw.exec(readFileSync(new URL('./migrations/0011_institution_event_jobs.sql',import.meta.url),'utf8'));
+const {createInstitutionEventJobs}=await import('./server/institution-event-jobs.mjs');
+let calls=0;const jobs=createInstitutionEventJobs({db,rules:{version:1},project:async()=>{calls++;return {decision:'projected',routes:[]}}});
+assert.equal((await jobs.enqueue({id:'one'})).queued,true);
+assert.equal((await jobs.enqueue({id:'one'})).queued,false);
+assert.equal((await jobs.drain()).processed,1);await jobs.drain();assert.equal(calls,1);
+const second=createInstitutionEventJobs({db,rules:{version:2},project:async()=>{throw Error('temporary')}});
+await second.enqueue({id:'two'});assert.equal((await second.drain()).failed,1);
+assert.equal(raw.prepare("SELECT state FROM coord_event_jobs WHERE event_id='two'").get().state,'queued');
+assert.equal(raw.prepare("SELECT state FROM coord_event_jobs WHERE event_id='one'").get().state,'completed');
+console.log('PASS: durable jobs, duplicate enqueue, acknowledge after success, failed work retained, policy version reprocessing');raw.close();

@@ -1,0 +1,32 @@
+import { DatabaseSync } from 'node:sqlite';
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { projectEligibleEvent } from './server/route-event.mjs';
+import { dispatchDueInstitutionNotices } from './server/dispatch-event-email.mjs';
+import { createInstitutionCoordination } from './server/institution-coordination.mjs';
+const raw = new DatabaseSync(':memory:');
+raw.exec('CREATE TABLE team_accounts(id TEXT PRIMARY KEY,username TEXT UNIQUE,name TEXT,email TEXT,password_hash TEXT,salt TEXT,active INTEGER,created_at TEXT);CREATE TABLE team_sessions(token_hash TEXT,account_id TEXT,expires_at INTEGER)');
+raw.exec(readFileSync(new URL('./schema.sql',import.meta.url),'utf8'));
+const db={prepare(sql){let values=[];return {bind(...v){values=v;return this},async first(){return raw.prepare(sql).get(...values)||null},async all(){return {results:raw.prepare(sql).all(...values)}},async run(){return this._run()},_run(){return {meta:{changes:Number(raw.prepare(sql).run(...values).changes)}}}}},async batch(statements){raw.exec('BEGIN IMMEDIATE');try{const r=statements.map(s=>s._run());raw.exec('COMMIT');return r}catch(e){raw.exec('ROLLBACK');throw e}}};
+
+raw.exec(readFileSync(new URL('./migrations/0010_institution_credentials.sql',import.meta.url),'utf8'));
+const {createInstitutionCredentials}=await import('./server/institution-credentials.mjs');
+const {randomBytes,pbkdf2Sync}=await import('node:crypto');
+raw.exec(`INSERT INTO coord_institutions(id,code,display_name,institution_group,created_at,updated_at) VALUES('i','ISKI_UMR','İSKİ','utility','now','now')`);
+
+const vault=createInstitutionCredentials({db,key:randomBytes(32)});
+assert.equal((await vault.provision('admin')).created,1);
+assert.equal((await vault.provision('admin')).created,0);
+assert.equal(raw.prepare('SELECT count(*) n FROM coord_portal_viewers').get().n,0);
+assert.equal(raw.prepare('SELECT enabled FROM coord_institutions').get().enabled,0);
+const [account]=await vault.list();const secret=await vault.reveal('admin',account.account_id);
+const stored=raw.prepare('SELECT * FROM team_accounts WHERE id=?').get(account.account_id);
+assert.equal(stored.password_hash,pbkdf2Sync(secret.password,stored.salt,100000,32,'sha256').toString('hex'));
+assert.ok(!JSON.stringify(raw.prepare('SELECT * FROM coord_account_credentials').get()).includes(secret.password));
+raw.prepare('INSERT INTO team_sessions VALUES(?,?,1)').run('session',account.account_id);
+await vault.rotate('admin',account.account_id,'New-Strong-Password-2026');
+assert.equal((await vault.reveal('admin',account.account_id)).password,'New-Strong-Password-2026');
+assert.equal(raw.prepare('SELECT count(*) n FROM team_sessions').get().n,0);
+raw.exec("UPDATE team_accounts SET password_hash='self-change'");
+await assert.rejects(()=>vault.reveal('admin',account.account_id),/password_changed_outside_vault/);
+console.log('PASS: idempotent institution accounts, encrypted secrets, login hash compatibility, password rotation, session invalidation, stale secret protection');raw.close();

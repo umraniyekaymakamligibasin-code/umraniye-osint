@@ -13,6 +13,8 @@ ROOTS = {
     'x-shadow': '/opt/umraniye-osint-x-twscrape-deneme',
     'facebook-shadow': '/opt/umraniye-osint-facebook-fbgql-deneme',
     'telegram': '/opt/umraniye-telegram',
+    'development': str(BASE/'development'),
+    'ops': str(BASE/'source-ops'),
 }
 SKIP = {'node_modules','venv','image-tools','browsers','__pycache__','backups','profiles','browser-profiles','data','logs','credentials','sessions','dist'}
 EXT = {'.mjs','.js','.cjs','.ts','.tsx','.jsx','.py','.html','.css','.sql','.md','.txt','.lock','.toml','.yaml','.yml','.sh','.service','.service.saved','.timer','.conf','.ini','.xml','.svg','.woff','.woff2','.ttf','.png','.jpg','.ico'}
@@ -35,7 +37,7 @@ def snapshot():
                 p = pathlib.Path(folder)/name
                 if p.is_symlink() or name.startswith('.') or '.bak' in name or '.pre-' in name or name=='get-pip.py': continue
                 if p.suffix not in EXT and name not in JSON_NAMES and p.suffix != '.json' and name != 'service.saved': continue
-                if any(w in name.lower() for w in ('cookie','credential','session-key','private-key')): continue
+                if any(w in name.lower() for w in ('cookie','credential','session-key','private-key')) and p.suffix not in {'.mjs','.js','.cjs','.ts','.tsx','.jsx','.py','.sql'}: continue
                 if p.stat().st_size > 12_000_000: raise RuntimeError('Oversized source: '+str(p))
                 data = p.read_bytes()
                 if SECRET.search(data): raise RuntimeError('Secret pattern in '+str(p))

@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {classifyForInstitutions} from './server/route-event.mjs';
+const event={title:'su borusu patladı elektrik kesintisi',locality:{district:'Ümraniye',verified:true,precision:'neighborhood'}};
+const rule=(institution,topic,term,other={})=>({institution,topic,terms:[term],sensitivity:'ordinary',approvalStatus:'approved',approvalReference:'test',...other});
+const rules={state:'approved',minimumConfidence:.92,rules:[rule('ISKI_UMR','water_leak','su borusu patladı',{role:'lead'}),rule('AYEDAS_UMR','power_outage','elektrik kesintisi')]};
+let p=classifyForInstitutions(event,rules);assert.equal(p.routes.length,2);assert.equal(p.routes[0].role,'lead');
+p=classifyForInstitutions(event,{...rules,rules:[rules.rules[0],rule('OTHER','water_leak','su borusu patladı')]});assert.equal(p.routes.length,0);assert.equal(p.conflicts.length,1);
+p=classifyForInstitutions(event,{...rules,rules:rules.rules.concat(rules.rules)});assert.equal(p.routes.length,2);
+p=classifyForInstitutions({...event,locality:{district:'Karasu',verified:true,precision:'neighborhood'}},rules);assert.equal(p.routes.length,0);
+p=classifyForInstitutions(event,{...rules,rules:[{...rules.rules[0],approvalStatus:'draft'},rules.rules[1]]});assert.equal(p.routes.length,1);
+console.log('PASS: independent duties, competing authority withheld, duplicate routes collapsed, outside district denied, approval required');

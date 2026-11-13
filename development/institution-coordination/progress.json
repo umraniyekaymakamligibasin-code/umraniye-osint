@@ -1,0 +1,9 @@
+{
+ "updated":"2026-11-13",
+ "liveBaseInstalled":true,
+ "liveMenuInstalled":true,
+ "livePresetsInstalled":"not_confirmed",
+ "localChecksPassed":["tenant_access","notes_and_role_checks","credential_vault","multi_authority","durable_jobs"],
+ "notCompleted":["full_official_scope_catalog","admin_reauthentication_for_password_reveal","event_feed_producer_hook","source_links_and_routing_reason_projection","real_mail_provider_adapter","recipient_management_UI","single_institution_list_UI","full_browser_and_mobile_test","combined_version_checked_installer"],
+ "doNotDeployLocalTreeBlindly":true
+}

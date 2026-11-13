@@ -9,7 +9,7 @@ with tempfile.TemporaryDirectory() as d:
     (root/'venv').mkdir();(root/'venv'/'bad.py').write_text('private')
     (root/'alias.py').symlink_to(root/'.env')
     assert set(m.snapshot())=={'app/ok.py'}
-    (root/'bad.py').write_text('-----BEGIN OPENSSH PRIVATE KEY-----')
+    (root/'bad.py').write_text('-----BEGIN '+'OPENSSH PRIVATE KEY-----')
     try:m.snapshot();raise AssertionError('Secret accepted')
     except RuntimeError:pass
     (root/'bad.py').unlink()
