@@ -409,3 +409,6 @@ actorReady.then(actor=>{if(actor?.admin){const a=document.getElementById('icerik
   }
 })();
 
+
+/* Tasarım önizleme anahtarı (2. aşama). Yalnız ?tasarim= ile açan kişide görünür; seçim yapılınca kaldırılacak. */
+;(()=>{try{if(localStorage.getItem('osint-tasarim-onizleme')!=='1')return;}catch{return;}const current=document.documentElement.getAttribute('data-tasarim')||'mevcut',box=document.createElement('nav');box.className='tasarim-anahtari';box.setAttribute('aria-label','Tasarım önizleme');box.innerHTML='<span>Tasarım</span>'+[['mevcut','Mevcut'],['a','A'],['b','B'],['c','C']].map(([v,t])=>'<a href="?tasarim='+v+'"'+(v===current?' aria-current="true"':'')+'>'+t+'</a>').join('');document.body.append(box);})();
