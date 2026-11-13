@@ -19,8 +19,11 @@ ROOTS = {
 SKIP = {'node_modules','venv','image-tools','browsers','__pycache__','backups','profiles','browser-profiles','data','logs','credentials','sessions','dist'}
 EXT = {'.mjs','.js','.cjs','.ts','.tsx','.jsx','.py','.html','.css','.sql','.md','.txt','.lock','.toml','.yaml','.yml','.sh','.service','.service.saved','.timer','.conf','.ini','.xml','.svg','.woff','.woff2','.ttf','.png','.jpg','.ico'}
 JSON_NAMES = {'package.json','package-lock.json','tsconfig.json','config.example.json','rules-manifest.json','RELEASE.json'}
-SECRET = re.compile(rb'-----BEGIN (?:OPENSSH |RSA |EC )?PRIVATE KEY-----|(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})|\b\d{8,12}:[A-Za-z0-9_-]{30,}\b|\bAKIA[0-9A-Z]{16}\b')
-ASSIGNED_SECRET = re.compile(rb'''(?im)^\s*(?:export\s+)?(?:const\s+|let\s+|var\s+)?(?:[A-Z_]*(?:PASSWORD|SECRET|API_KEY|ACCESS_TOKEN|BOT_TOKEN)[A-Z_]*)\s*[:=]\s*["']([^"'\r\n]{8,})["']''')
+SECRET = re.compile(rb'-----BEGIN (?:OPENSSH |RSA |EC |DSA |PGP |ENCRYPTED )?PRIVATE KEY-----|(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})|\b\d{8,12}:[A-Za-z0-9_-]{30,}\b|\b(?:AKIA|ASIA)[0-9A-Z]{16}\b|\bAIza[0-9A-Za-z_-]{35}\b|\bxox[abposr]-[0-9A-Za-z-]{10,}|\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|"(?:auth_token|ct0|sessionid|c_user|xs|ds_user_id|csrftoken)"\s*:\s*"[^"]{8,}"')
+ASSIGNED_SECRET = re.compile(rb'''(?im)^\s*(?:export\s+)?(?:const\s+|let\s+|var\s+)?(?:[A-Z_]*(?:PASSWORD|SECRET|API_KEY|ACCESS_TOKEN|BOT_TOKEN)[A-Z_]*)\s*[:=]\s*["']([^"'\r\n]{8,})["']|"[a-z_]*(?:password|passwd|secret|api_key|apikey|access_token|refresh_token|bot_token|app_password)[a-z_]*"\s*:\s*"([^"\r\n]{8,})"''')
+# Data/config files (not code) whose names suggest credentials or browser sessions are never exported.
+SENSITIVE_NAME = ('cookie','credential','session','token','secret','password','passwd','private-key','session-key','storage_state','storage-state','smtp','auth','accounts','.env')
+CODE_SUFFIXES = {'.mjs','.js','.cjs','.ts','.tsx','.jsx','.py','.sql','.sh','.md'}
 
 def run(*args):
     return subprocess.run(args,cwd=REPO,check=True,text=True,capture_output=True,timeout=90).stdout.strip()
@@ -37,12 +40,12 @@ def snapshot():
                 p = pathlib.Path(folder)/name
                 if p.is_symlink() or name.startswith('.') or '.bak' in name or '.pre-' in name or name=='get-pip.py': continue
                 if p.suffix not in EXT and name not in JSON_NAMES and p.suffix != '.json' and name != 'service.saved': continue
-                if any(w in name.lower() for w in ('cookie','credential','session-key','private-key')) and p.suffix not in {'.mjs','.js','.cjs','.ts','.tsx','.jsx','.py','.sql'}: continue
+                if any(w in name.lower() for w in SENSITIVE_NAME) and p.suffix not in CODE_SUFFIXES: continue
                 if p.stat().st_size > 12_000_000: raise RuntimeError('Oversized source: '+str(p))
                 data = p.read_bytes()
                 if SECRET.search(data): raise RuntimeError('Secret pattern in '+str(p))
                 for match in ASSIGNED_SECRET.finditer(data):
-                    value=match.group(1).lower()
+                    value=(match.group(1) or match.group(2)).lower()
                     if not any(t in value for t in (b'example',b'placeholder',b'change',b'your_',b'/var/',b'/etc/',b'/opt/',b'process.env')):
                         raise RuntimeError('Review secret assignment in '+str(p))
                 files[prefix+'/'+p.relative_to(root).as_posix()] = data
