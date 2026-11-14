@@ -1,0 +1,29 @@
+{
+  "result": "reading_hotfix_prepared_not_installed",
+  "files": {
+    "instagram-media/scanner.py": {
+      "before": "1ee6104ccf7de30e3ba82020619bd836ee5bb047d2165643bf907e7acfe88aac",
+      "after": "b58b07c3b1b63235de5914e838249bfbd23ef236fdc10f9a182ad1ddaf4152a2"
+    },
+    "application/scripts/osint-reading-audit.py": {
+      "before": "c679d1140548e9a180b72e0446e631bb91994d8d56c9711775ca4a3d843eba2d",
+      "after": "fce7823035b2d831d7e4a8cce22288f4c07784fd20bf28fc93c6e9ebb2ef5ba5"
+    },
+    "application/worker/index.js": {
+      "before": "0dd70253a2e1441b3ceaae4b0ac1e9ec4db52fdbda6a0a081a808cd0f5c93e18",
+      "after": "f3850f3560f750e80d7f008675ed3737c97b605f0535da88c6a1e830b4610891"
+    },
+    "application/src/assets/portal.js": {
+      "before": "a6d84969b73adec5d69b0f0967f8f7546dea50e376a4ffd44e60b06a0b9e7fd7",
+      "after": "92bfa4d5a6586f001307aea84c858417a3244eb2fe411e59a018ac4ad71174f6"
+    }
+  },
+  "scheduledCollectorFixtureTest": {
+    "successfulBatches": 15,
+    "failedBatches": 0,
+    "externalRequests": 0
+  },
+  "cooldownRegressionTestPassed": true,
+  "counterRemovalBrowserTestPassed": true,
+  "newLivePostVerified": false
+}

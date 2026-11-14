@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {createHash} from 'node:crypto';
+const root=process.argv[2];
+const {default:worker}=await import(pathToFileURL(root+'/worker/index.js'));
+const {createCollector}=await import(pathToFileURL(root+'/server/collector.mjs'));
+const {openDatabase}=await import(pathToFileURL(root+'/server/database.mjs'));
+const dir=await mkdtemp(join(tmpdir(),'osint-automation-route-'));const DB=openDatabase(join(dir,'test.sqlite'));
+const key='fixture-internal-scheduled-key';const env={DB,OSINT_AUTOMATION_KEY_SHA256:createHash('sha256').update(key).digest('hex')};
+const origin='https://fixture.invalid',logs=[],requested=[];const originalFetch=globalThis.fetch;
+globalThis.fetch=async(input)=>{const u=new URL(typeof input==='string'?input:input.url||String(input));requested.push(u.href);
+ return new Response(u.pathname==='/robots.txt'?'User-agent: *\nAllow: /':'<?xml version="1.0"?><rss version="2.0"><channel><title>Empty automated test feed</title></channel></rss>',{status:200,headers:{'Content-Type':u.pathname==='/robots.txt'?'text/plain':'application/rss+xml'}});};
+try{
+ const call=(path,method='POST',token,extra={})=>worker.fetch(new Request(origin+path,{method,headers:{...(token?{'X-OSINT-Service-Key':token}:{}),...extra}}),env,{});
+ assert.equal((await call('/api/automation/refresh?batch=0','POST')).status,401);
+ assert.equal((await call('/api/automation/refresh?batch=0','POST','wrong',{'oai-authenticated-user-id':'spoof','oai-authenticated-user-email':'spoof@example.invalid'})).status,401);
+ assert.equal((await call('/api/automation/refresh?batch=0','GET',key)).status,405);
+ assert.equal((await call('/api/automation/refresh?batch=-1','POST',key)).status,400);
+ assert.equal((await call('/api/automation/instructions','GET',key)).status,404);
+ assert.equal((await call('/mcp','POST',key)).status,404);
+ const collector=createCollector(worker,env,origin,{serviceKey:key,log:s=>logs.push(JSON.parse(s))});
+ const result=await collector.run();await collector.stop();
+ assert(result.successful>0,'actual scheduled collector must reach the feed reader');
+ assert(requested.length>0,'feed reader must be reached through the internal route');
+ assert.equal(result.failed,0,'empty valid test feeds must complete without failed batches');
+ console.log(JSON.stringify({result:'scheduled_collection_route_passed',successfulBatches:result.successful,failedBatches:result.failed,mockedSourceRequests:requested.length,externalRequests:0,realDatabaseWrites:0,messagesSent:0,invalidKeysDenied:true,legacyMCPDisabled:true}));
+}finally{globalThis.fetch=originalFetch;DB.close();await rm(dir,{recursive:true,force:true});}
