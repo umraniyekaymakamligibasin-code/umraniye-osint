@@ -1,0 +1,376 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sosyal Medya Gündemi · Ümraniye OSINT</title><style>
+*{box-sizing:border-box}body{margin:0;background:#f4f5f7;color:#253044;font:16px/1.6 'Segoe UI',Arial,sans-serif}header{background:#a31a2c;color:white;padding:25px max(20px,calc((100vw - 1100px)/2))}h1{margin:0;font-size:27px}main{max-width:1140px;margin:25px auto;padding:0 20px}a{color:#a31a2c}button,select,input,.button{padding:10px 14px;border:1px solid #ced4de;border-radius:7px;background:white;color:#253044;font:inherit}.tools{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:18px 0}label{display:flex;flex-direction:column;font-size:14px}article,.notice{background:white;padding:22px;border:1px solid #dfe4ea;border-radius:12px;margin:15px 0}article h2{margin:6px 0;font-size:20px}article h2 a{text-decoration:none}small,.muted{color:#657183}.badge{background:#f4e6e9;color:#981b2b;padding:3px 9px;border-radius:5px;font-size:13px}.dates{display:flex;gap:22px;flex-wrap:wrap;padding-top:12px;border-top:1px solid #e5e8ed;font-size:14px}.summary{white-space:pre-wrap}.notice{border-left:4px solid #a31a2c}button{cursor:pointer}a:focus-visible,button:focus-visible{outline:3px solid #cfa53d}
+.event-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.event-top .muted{margin-left:auto;font-size:13px}
+article h2{line-height:1.35;margin-top:14px;color:#253044}
+.summary{line-height:1.7;overflow-wrap:anywhere}
+details{margin-top:16px;border-top:1px solid #e5e8ed;padding-top:12px}
+summary{cursor:pointer;font-weight:600;color:#a31a2c}
+.source-list{margin-top:10px}
+.source-row{display:flex;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;border-bottom:1px solid #eef0f3;padding:10px 0;
+  font-size:14px}
+.source-row small{display:inline}
+.priority-guide{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px;font-size:12px}
+.priority-guide span{padding:6px 9px;border:1px solid #9ca3af66;border-radius:6px}
+.source-text{white-space:pre-wrap;font-size:14px;line-height:1.65}.source-row>div{min-width:0;flex:1}.source-row a{flex-shrink:0}@media(max-width:650px){.source-row{display:block}.source-row a{display:inline-block;margin-top:8px}}
+.institution-header{display:flex;gap:18px;align-items:center}.institution-header img{display:block;background:white;border-radius:50%;padding:3px}.institution-name{font-weight:600;font-size:17px}.institution-unit{font-size:14px;opacity:.95}.institution-header h1{font-size:25px;margin-top:4px}@media(max-width:500px){.institution-header{gap:12px;padding:18px 16px}.institution-header img{width:54px;height:54px}.institution-name{font-size:15px}.institution-unit{font-size:12px}.institution-header h1{font-size:21px}}
+</style><style>[data-institutional-nav][hidden]{display:none!important}</style></head><body>
+<header class="institution-header"><a href="/" aria-label="Haber Gündemi"><img src="/assets/umraniye-kaymakamligi-logo.png" width="70" height="70" alt="T.C. Ümraniye Kaymakamlığı logosu"></a><div><div class="institution-name">T.C. Ümraniye Kaymakamlığı</div><div class="institution-unit">Basın ve Halkla İlişkiler Müdürlüğü</div><h1>Sosyal Medya Gündemi</h1></div></header><main><div class="tools"><a class="button" href="/">Haber Gündemi</a> <a class="button" href="/sosyal-medya" aria-current="page">Sosyal Medya</a><a href="/kurumsal-etiketler" class="button" data-institutional-nav="" hidden>Kurumsal Etiketler</a> <a class="button" href="/yonetim">Yönetici Paneli</a><button id="logout">Çıkış yap</button></div>
+<div class="tools"><label>Zaman aralığı<select id="range"><option value="today">Bugün</option><option value="week">Bu hafta</option><option value="month">Bu ay</option><option value="all" selected>Son 2 ay</option></select></label><label>Platform<select id="platform"><option value="">Tüm platformlar</option><option value="x">X</option><option value="facebook">Facebook</option><option value="instagram">Instagram</option></select></label><label>Paylaşımlarda ara<input id="query" type="search" placeholder="Kişi, ifade veya etiket"></label></div><p id="state" role="status"></p><section id="results" aria-live="polite"></section>
+<footer class="muted">Ümraniye Kaymakamlığı · Basın ve Halkla İlişkiler Müdürlüğü<br>© 2026 Hakan Bilgin · Tüm hakları saklıdır.</footer></main><script type="module">
+import {groupEventRecords} from "/assets/event-grouping.js";
+function canonicalFacebookDisplay(e){
+ const d=e?.facebookDecision;
+ if((e?.platform||e?.provider)!=='facebook'||e.facebookManaged!==true||d?.version!=='facebook-display-v1'||d.display!==true||!d.sourceId||!d.sourcePageUrl)return false;
+ try{const u=new URL(e.url),s=new URL(d.sourcePageUrl);const hosts=['facebook.com','www.facebook.com','m.facebook.com'];return u.protocol==='https:'&&s.protocol==='https:'&&hosts.includes(u.hostname)&&hosts.includes(s.hostname)&&!u.port&&!u.username&&!u.password&&!s.username&&!s.password&&Number.isFinite(Date.parse(e.publishedAt))&&/^\/(?:.*\/(?:posts|videos)\/[^/]+|reel\/\d+|videos\/\d+|permalink\/[A-Za-z0-9_-]+|permalink.php|story.php)\/?$/.test(u.pathname);}catch{return false;}
+}
+function facebookDisplayWindow(e,now=Date.now()){
+ const age=now-Date.parse(e.publishedAt);return canonicalFacebookDisplay(e)&&age>=-60000&&(age<=48*3600000||e.facebookDecision.existingEvent===true);
+}
+
+
+const governorPage='https://www.facebook.com/umraniyekaymakamligi/';
+function isGovernorActivity(e){
+ if(!e||!['facebook'].includes(e.platform||e.provider)||e.facebookManaged!==true||e.institutionalContext!==true||e.priorityLevel!=='P3'||e.notificationEligible!==false)return false;
+ try{const u=new URL(e.url);if(u.protocol!=='https:'||u.username||u.password||u.port||!['facebook.com','www.facebook.com','m.facebook.com'].includes(u.hostname))return false;
+  if(/^\/umraniyekaymakamligi\/posts\//i.test(u.pathname))return true;
+  if(['/permalink.php','/story.php'].includes(u.pathname)&&u.searchParams.get('id')==='100069283686696'&&u.searchParams.get('story_fbid'))return true;
+  return String(e.institutionalSourceUrl||'').toLowerCase().replace(/\/?$/,'/')===governorPage&&/^\/(?:reel|videos)\/\d+\/?$/.test(u.pathname);
+ }catch{return false;}
+}
+function governorDisplayTime(e,now=Date.now()){
+ const timestamp=Date.parse(e.publishedAt);return isGovernorActivity(e)&&Number.isFinite(timestamp)&&now-timestamp>=-60000&&now-timestamp<=48*3600000;
+}
+
+
+const fbFold=v=>String(v||'').toLocaleLowerCase('tr-TR').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/ı/g,'i').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+function fbURL(value){try{const u=new URL(value);if(!['https:','http:'].includes(u.protocol)||!['facebook.com','www.facebook.com','m.facebook.com','mbasic.facebook.com'].includes(u.hostname)||u.username||u.password||u.port)return null;return u;}catch{return null;}}
+function fbIdentity(e){const own=String(e.facebookPostId||'');if(/^\d+(?:_\d+)?$/.test(own))return own.split('_').at(-1);const u=fbURL(e.url);return u?.searchParams.get('story_fbid')||u?.pathname.match(/\/(?:posts|permalink|reel|videos)\/([A-Za-z0-9_-]+)/)?.[1]||null;}
+function fbAuthor(e){const named=String(e.sourceName||e.viewSource||'').match(/@([A-Za-z0-9._-]+)/)?.[1];if(named)return named.toLowerCase();const u=fbURL(e.sourcePageUrl)||fbURL(e.url);const handle=u?.pathname.match(/^\/([^/]+)\/(?:posts|videos)\//)?.[1];if(handle)return handle.toLowerCase();return fbFold(e.sourceName||e.viewSource||'');}
+function facebookRecordKeys(e){
+ if(e.platform!=='facebook'&&e.provider!=='facebook')return [];
+ const keys=[],identity=fbIdentity(e),u=fbURL(e.url);if(identity)keys.push('post:'+identity);
+ if(u){const q=new URLSearchParams();for(const k of ['id','story_fbid','fbid','v'])if(u.searchParams.has(k))q.set(k,u.searchParams.get(k));q.sort();keys.push('url:'+u.pathname.replace(/\/+$/,'')+'?'+q);}
+ const author=fbAuthor(e),text=fbFold(e.description||e.title),published=e.publishedAt;
+ if(author&&text.length>=20&&typeof published==='string'&&published.includes('T')&&Number.isFinite(Date.parse(published)))keys.push('content:'+author+'|'+new Date(published).toISOString()+'|'+text);
+ return keys;
+}
+function fbMerge(a,b){
+ const early=[a.firstSeenAt||a.collectedAt,b.firstSeenAt||b.collectedAt].filter(v=>v&&Number.isFinite(Date.parse(v))).sort((x,y)=>Date.parse(x)-Date.parse(y))[0];
+ const late=[a.lastSeenAt||a.collectedAt,b.lastSeenAt||b.collectedAt].filter(v=>v&&Number.isFinite(Date.parse(v))).sort((x,y)=>Date.parse(y)-Date.parse(x))[0];
+ const merged={...a,firstSeenAt:early||a.firstSeenAt,collectedAt:early||a.collectedAt,lastSeenAt:late||a.lastSeenAt,duplicateRecordIds:[...new Set([...(a.duplicateRecordIds||[]),b.id,...(b.duplicateRecordIds||[])].filter(x=>x&&x!==a.id))]};
+ if(String(b.description||'').length>String(a.description||'').length)merged.description=b.description;
+ if(a.sources||b.sources)merged.sources=dedupeFacebookRecords([...(a.sources||[]),...(b.sources||[])]);
+ return merged;
+}
+function dedupeFacebookRecords(records){
+ const result=[],index=new Map();for(const item of records){const keys=facebookRecordKeys(item);let found;
+  for(const key of keys){const at=index.get(key);if(at===undefined)continue;const existing=result[at];if(key.startsWith('content:')){const x=fbIdentity(existing),y=fbIdentity(item);if(x&&y&&x!==y&&(/^\d+$/.test(x)===/^\d+$/.test(y)))continue;}found=at;break;}
+  if(found===undefined){found=result.length;result.push({...item});}else result[found]=fbMerge(result[found],item);
+  for(const key of keys)if(!index.has(key))index.set(key,found);
+ }
+ return result;
+}
+
+
+const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let records=[],epoch=0,leaving=false,lastPayload='',queryTimer=0;
+// Biçimleyiciler bir kez kurulur: filtre değişiminde her kayıt için yeniden Intl nesnesi üretmek listeyi donduruyordu.
+const dayFormat=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Istanbul'}),longFormat=new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',dateStyle:'long',timeStyle:'short'});
+const validDate=v=>{const d=new Date(v);return Number.isFinite(d.getTime())?d:null;};
+const day=v=>{const d=validDate(v);return d?dayFormat.format(d):'';};
+const format=v=>!v?'Belirtilmemiş':/^\d{4}-\d{2}-\d{2}$/.test(v)?v+' · saat belirtilmemiş':validDate(v)?longFormat.format(validDate(v))+' TSİ':'Tarih belirsiz';
+function clear(){leaving=true;epoch++;records=[];lastPayload='';clearTimeout(queryTimer);$('results').replaceChildren();$('state').textContent='Oturum kapandı';}
+
+function cleanFacebook(value){
+  let s=String(value||'').replace(/\s+/g,' ').trim();
+  s=s.replace(/^(?:Facebook\s+){2,}/i,'');
+  s=s.replace(/^Facebook\s+(?=[A-ZÇĞİÖŞÜ])/,'');
+  s=s.replace(/^.{2,100}?\s*[·•]\s*Takip Et\s+\d{1,2}\s+(?:Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+\d{4}\s+(?:Pazartesi|Salı|Çarşamba|Perşembe|Cuma|Cumartesi|Pazar),\s*\d{1,2}:\d{2}\s*(?:[·|]\s*)*/i,'');
+  s=s.replace(/^\s*[·|•]\s*/,'');
+  s=s.replace(/\s+Daha fazlasını gör\b.*$/i,'');
+  s=s.replace(/\s+\d+(?:\s+\d+)?\s+Yorum yaz\b.*$/i,'');
+  s=s.replace(/\s+Yorum yaz\b.*$/i,'');
+  return s.trim();
+}
+function authorName(e){
+  if(e.platform==='x'){try{const u=new URL(e.url),handle=u.pathname.match(/^\/([A-Za-z0-9_]+)\/status\/\d+/)?.[1];if(handle){const raw=String(e.sourceName||'').replace(/^X\s*[·|]\s*/i,''),at=raw.toLowerCase().indexOf('@'+handle.toLowerCase());const label=at>=0?raw.slice(0,at).replace(/[·|\s]+$/,'').trim():'';return (label?label+' ':'')+'@'+handle+' · X';}}catch{}}
+  if(e.platform!=='facebook')return e.sourceName||'Kaynak';
+  let s=String(e.description||e.title||'').replace(/\s+/g,' ').trim();
+  s=s.replace(/^(?:Facebook\s+){2,}/i,'').replace(/^Facebook\s+/i,'');
+  const m=s.match(/^([^·|]{2,90}?)\s*[·•]\s*Takip Et\b/i);
+  return m?m[1].trim():(
+    e.sourceName&&!/Facebook hesabı/i.test(e.sourceName)
+      ?e.sourceName:'Facebook kaynağı'
+  );
+}
+function shorten(s,n){
+  s=String(s||'').trim();
+  if(s.length<=n)return s;
+  return s.slice(0,n).replace(/\s+\S*$/,'')+'…';
+}
+
+// OSINT_SOCIAL_LOCATION_UI_V1
+function locationLabel(e){
+  if(e.locationVerified===true)
+    return 'Konum doğrulandı';
+  if(e.locationStatus==='review_required')
+    return 'Konum doğrulaması gerekli';
+  if(e.locationStatus==='local_indicated')
+    return 'Yerel konum belirtilmiş (teyitsiz)';
+  return 'Konum henüz değerlendirilmedi';
+}
+function groupLocationLabel(items){
+  if(items.some(e=>e.locationStatus==='review_required'))
+    return 'Konum doğrulaması gerekli';
+  if(items.every(e=>e.locationVerified===true))
+    return 'Konum doğrulandı';
+  if(items.every(e=>e.locationStatus==='local_indicated'))
+    return 'Yerel konum belirtilmiş (teyitsiz)';
+  return 'Konum durumu tam değerlendirilmedi';
+}
+function recordTime(value){
+  if(!value)return 'Tarih belirtilmedi';
+  const raw=String(value);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(raw))
+    return raw+' · Saat belirtilmedi';
+  return format(raw);
+}
+function cleanEntry(e){
+  const facebook=e.platform==='facebook';
+  let body=facebook?cleanFacebook(e.description||e.title):
+    String(e.description||e.title||'').trim();
+  if(facebook&&body.length<18)body=cleanFacebook(e.title);
+  const title=facebook?shorten(body,155):
+    String(e.title||'').trim();
+  return {...e,viewTitle:title||'Başlık belirtilmemiş',
+    viewText:body,viewSource:/^@[a-z0-9._-]+(?: · Facebook)?$/i.test(String(e.sourceName||''))?e.sourceName:authorName(e)};
+}
+function norm(s){
+  return String(s||'').toLocaleLowerCase('tr-TR')
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/ı/g,'i').replace(/[^a-z0-9]+/g,' ').trim();
+}
+const ignored=new Set(
+  'umraniye istanbul turkiye haber son dakika olay korkutan bir ve ile için icin olan oldu olarak sonucu sonra daha fazla gor takip et facebook bugun dun yerde yerinin birinci katindaki'.split(' ')
+);
+const generic=new Set(
+  'sanayi site isci yaral haber olay kaza polis ekip hastane'.split(' ')
+);
+function stem(w){
+  if(w.startsWith('balkon'))return 'balkon';
+  if(w.startsWith('cok'))return 'cok';
+  if(w.startsWith('yaral'))return 'yaral';
+  if(w.startsWith('isci'))return 'isci';
+  if(w.startsWith('site'))return 'site';
+  if(w.startsWith('yang'))return 'yangin';
+  if(w.startsWith('depre'))return 'deprem';
+  return w.length>10?w.slice(0,9):w;
+}
+function terms(s){
+  return new Set(norm(s).split(' ')
+    .filter(w=>(w.length>=3||/^\d{1,2}$/.test(w))&&!ignored.has(w))
+    .map(stem));
+}
+function incidentKind(s){
+  const t=norm(s);
+  if(/\bbalkon\w*/.test(t)&&/\bcok\w*/.test(t))return 'balkon-cokme';
+  if(/\byangin\b|\balev\w*/.test(t))return 'yangin';
+  if(/\bdeprem\w*/.test(t))return 'deprem';
+  if(/\bsilah\w*/.test(t))return 'silah';
+  if(/\bhirsiz\w*/.test(t))return 'hirsizlik';
+  if(/\bcok\w*/.test(t))return 'cokme';
+  return '';
+}
+function placeAnchor(s){
+  const m=norm(s).match(/\b([a-z]{4,})\s+sanayi\s+site\w*/);
+  return m&&!['umraniye','istanbul'].includes(m[1])?m[1]:'';
+}
+function groupItems(items){
+ const publications=items.map(e=>({...e,title:e.viewTitle,description:e.viewText,sources:[{...e,title:e.viewTitle,description:e.viewText}]}));
+ return groupEventRecords(publications).map(group=>({items:group.sources.map(cleanEntry)}));
+}
+function safeLink(value){
+  try{
+    const u=new URL(value);
+    const hosts=['facebook.com','www.facebook.com','m.facebook.com',
+      'x.com','www.x.com','twitter.com','www.twitter.com',
+      'instagram.com','www.instagram.com'];
+    return u.protocol==='https:'&&hosts.includes(u.hostname)
+      ?u.href:'#';
+  }catch{return '#'}
+}
+
+
+
+function relevantNews(e){
+  if(e.institutionalReference?.targets?.length)return true;
+  // OSINT_FACEBOOK_REVIEW_V2: keep Facebook eligibility inside its own policy.
+  if(e.facebookDecision?.version==='facebook-display-v1')return canonicalFacebookDisplay(e);
+  if(e.geoDictionary?.version==='geo-dictionary-v1'&&e.geoDictionary.matches?.length)return e.geoDictionary.localCandidate===true;
+  if(!e.publishedAt ||
+     !Number.isFinite(Date.parse(e.publishedAt)))return false;
+  const t=norm((e.viewTitle||'')+' '+(e.viewText||''));
+
+  // Kaynak adi veya arama kelimesi degil,
+  // haberin kendi icerigi yerel olmalidir.
+  if(!/\b(?:umraniye|dudullu|ihlamurkuyu|elmalikent|armaganevler|yamanevler)(?:deki|daki|den|dan|nin|nun|de|da|ye|ya|li)?\b/.test(t)&&!isGovernorActivity(e))return false;
+
+  // Belirgin reklam ve ticari tanitimlar.
+  if(/\b(?:reklam|sponsorlu|spotcu|melodizenith|platinum)\b/.test(t))
+    return false;
+
+  const serious=/\b(?:kavga\w*|darp\w*|cinayet\w*|olum\w*|yangin\w*|kaza\w*|yaral\w*|cok\w*|gocuk\w*|patla\w*|deprem\w*|sel|baskin\w*|hirsiz\w*|dolandir\w*|saldir\w*|gozalti\w*|tutuk\w*|yakalan\w*|vefat\w*|hayatini kaybet\w*|silah\w*|bicak\w*)\b/.test(t);
+
+  const commercial=/\b(?:kampanya|indirim|firsat|siparis|satilik|kiralik|alisveris|magaza|urun|stok|fiyat|satis)\b/.test(t);
+  if(commercial&&!serious)return false;
+
+  // Bir yer adi tek basina haber degildir.
+  const development=/\b(?:asayis\w*|trafik\w*|yol\w* kapan\w*|kesinti\w*|afet\w*|acil\w*|polis\w*|ambulans\w*|itfaiye\w*|operasyon\w*|denetim\w*|sorustur\w*|inceleme\w*|tahliye\w*|uyari\w*|karar\w*|duyuru\w*|iptal\w*|toplanti\w*|torem\w*|ziyaret\w*|proje\w*|acilis\w*|basvuru\w*|aciklama\w*)\b/.test(t);
+
+  return serious||development;
+}
+
+function newestFirst(groups){
+  const latest=g=>{
+    const times=g.items.map(e=>Date.parse(e.publishedAt))
+      .filter(Number.isFinite);
+    return times.length?Math.max(...times):0;
+  };
+  return groups.sort((a,b)=>latest(b)-latest(a));
+}
+
+function shortSummary(value){
+  const text=String(value||'').replace(/\s+/g,' ').trim();
+  const parts=text.split(/(?<=[.!?])\s+(?=[A-ZÇĞİÖŞÜ0-9])/);
+  return shorten(parts.slice(0,2).join(' '),260);
+}
+
+
+const priorityNames={
+  1:"Kritik / Acil",
+  2:"Önemli",
+  3:"Takip Edilecek",
+  4:"Bilgilendirme"
+};
+
+const priorityHelp={
+  1:"Can güvenliği ve acil müdahale gerektiren durum",
+  2:"Önemli asayiş, trafik ve altyapı gelişmesi",
+  3:"Takip edilmesi gereken yerel gelişme",
+  4:"Rutin haber ve bilgilendirme"
+};
+
+function priorityGuide(){
+  return '<div class="priority-guide">'+
+    [1,2,3,4].map(n=>
+      '<span title="'+esc(priorityHelp[n])+'">'+
+      '<strong>P'+n+'</strong> · '+
+      esc(priorityNames[n])+'</span>'
+    ).join('')+'</div>';
+}
+
+function eventSummary(items){
+  const choices=items.map(e=>{
+    const sentences=String(e.viewText||'')
+      .replace(/\s+/g,' ').trim()
+      .split(/(?<=[.!?])\s+(?=[A-ZÇĞİÖŞÜ0-9])/u)
+      .map(s=>s.trim())
+      .filter(s=>s.length>=16 &&
+        !/^(?:Facebook|Takip Et|Yorum Yap)/iu.test(s));
+
+    const local=/Ümraniye|Dudullu|Çakmak|Güven Sanayi/iu;
+    const event=/yangın|kaza|çök|yaralan|yaralı|saldırı|operasyon|kesinti|tahliye|deprem|uyarı|toplantı|açıklama/iu;
+    const outcome=/yaralan|yaralı|hayatını kaybet|hastaneye kaldır|gözaltına al|tahliye edil/iu;
+
+    const first=sentences.find(x=>
+      local.test(x)&&event.test(x)
+    )||sentences[0]||"";
+
+    const second=!outcome.test(first)
+      ?sentences.find(x=>x!==first&&outcome.test(x))
+      :null;
+
+    const text=first+(second?" "+second:"");
+    const score=
+      (local.test(first)?3:0)+
+      (event.test(first)?3:0)+
+      (second?2:0)+
+      (text.length>=40?1:0);
+
+    return {text,score};
+  }).filter(x=>x.text.length>=16);
+
+  choices.sort((a,b)=>b.score-a.score);
+  let result=choices[0]?.text||
+    "Yeterli olay açıklaması bulunamadı. Kaynakları inceleyiniz.";
+
+  if(result.length>320)
+    result=result.slice(0,317).replace(/\s+\S*$/,'')+"…";
+
+  return result;
+}
+
+function draw(){
+  const today=day(Date.now()),range=$('range').value;
+  const weekDate=new Date(today+'T12:00:00+03:00');
+  weekDate.setUTCDate(weekDate.getUTCDate()-((weekDate.getUTCDay()+6)%7));
+  const cutoff=range==='today'?today:
+    range==='week'?day(weekDate):
+    range==='month'?today.slice(0,7)+'-01':null;
+  const platform=$('platform').value;
+  const q=$('query').value.toLocaleLowerCase('tr-TR');
+
+  const rows=dedupeFacebookRecords(records).map(cleanEntry).filter(e=>e.sourceId!=='dha-direct'&&relevantNews(e)&&
+    (!platform||e.platform===platform)&&
+    (!cutoff||day(e.publishedAt)>=cutoff)&&
+    (!q||(e.viewTitle+' '+e.viewText+' '+e.viewSource)
+      .toLocaleLowerCase('tr-TR').includes(q))
+  );
+  const groups=newestFirst(groupItems(rows));
+  $('state').textContent=groups.length+' olay · '+rows.length+' paylaşım';
+
+  $('results').innerHTML=groups.map(g=>{
+    const items=dedupeFacebookRecords(g.items).sort((a,b)=>{const x=Date.parse(a.publishedAt),y=Date.parse(b.publishedAt);if(Number.isFinite(x)&&Number.isFinite(y))return y-x;if(Number.isFinite(x))return -1;if(Number.isFinite(y))return 1;return Date.parse(b.firstSeenAt||b.collectedAt||0)-Date.parse(a.firstSeenAt||a.collectedAt||0);});
+    const sourceCount=items.length;
+    const lead=[...items].sort((a,b)=>
+      b.viewText.length-a.viewText.length)[0];
+    const priority=Math.min(...items.map(e=>
+      Number(String(e.priorityLevel||'P4').match(/[1-4]/)?.[0]||4)));
+    const dates=items.map(e=>e.publishedAt).filter(Boolean)
+      .sort((a,b)=>Date.parse(a)-Date.parse(b));
+    const firstSeen=items.map(e=>e.firstSeenAt||e.collectedAt)
+      .filter(Boolean).sort((a,b)=>Date.parse(a)-Date.parse(b))[0];
+    const platforms=[...new Set(items.map(e=>
+      ({x:'X',facebook:'Facebook',instagram:'Instagram'})[e.platform]
+       ||'Sosyal medya'))].join(' · ');
+    const sources=items.map(e=>
+      '<div class="source-row"><div><strong>'+esc(({x:'X',facebook:'Facebook',instagram:'Instagram'})[e.platform]+' · '+e.viewSource)+
+      '</strong><small> · Yayın: '+esc(recordTime(e.publishedAt))+' · İlk tespit: '+esc(recordTime(e.firstSeenAt||e.collectedAt))+' · Konum: '+esc(locationLabel(e))+
+      '</small>'+(e.institutionalReference?.label?'<small>'+esc(e.institutionalReference.label)+'</small>':'')+'<p class="source-text">'+esc(e.fullText||e.description||e.title||'')+'</p></div><a href="'+esc(safeLink(e.url))+
+      '" target="_blank" rel="noopener noreferrer">Paylaşımı aç</a></div>'
+    ).join('');
+
+    return '<article><div class="event-top"><span class="badge">'+
+      esc(platforms)+'</span><span class="badge" title="'+esc(priorityHelp[priority])+'">P'+priority+' · '+esc(priorityNames[priority])+
+      '</span><span class="muted">'+sourceCount+
+      ' kaynak</span><span class="muted">'+esc(groupLocationLabel(items))+'</span></div><h2>'+esc(lead.viewTitle)+
+      '</h2>'+((lead.institutionalReference?.label||lead.visibilityLabel)?'<small>'+esc(lead.institutionalReference?.label||lead.visibilityLabel)+'</small>':'')+'<p class="summary">'+
+      esc(eventSummary(items))+'</p><details><summary>Gönderi metnini göster</summary>'+items.map(e=>'<p class="summary">'+esc(e.fullText||e.description||e.title||'')+'</p>'+(['partial_text','storage_limited','not_verified_complete'].includes(e.textStatus)?'<small>Metnin tamamı alınmış olmayabilir; orijinal paylaşımı kontrol edin.</small>':'')).join('')+'</details>'+
+      '<div class="dates"><div><strong>İlk yayın:</strong> '+
+      esc(format(dates[0]))+
+      '</div><div><strong>Son yayın:</strong> '+esc(format(dates.at(-1)))+
+      '</div><div><strong>İlk tespit:</strong> '+
+      esc(format(firstSeen))+
+      '</div></div><details><summary>Kaynakları göster ('+
+      sourceCount+')</summary><div class="source-list">'+
+      sources+'</div></details></article>';
+  }).join('')||'<div class="notice">Kayıt bulunamadı.</div>';
+  
+}
+
+async function load(){const serial=++epoch;try{const r=await fetch('/api/social',{credentials:'same-origin',cache:'no-store'});if(r.status===401){clear();location.replace('/giris');return}if(!r.ok)throw Error();const payload=await r.text();if(serial!==epoch||leaving)return;
+// Veri değişmediyse listeyi baştan çizme: açık 'Kaynakları göster' bölümleri ve kaydırma konumu korunur.
+if(payload===lastPayload){if($('state').textContent.startsWith('Paylaşımlar yüklenemedi'))draw();return;}lastPayload=payload;const d=JSON.parse(payload);records=d.items.flatMap(e=>(e.sources?.length?e.sources:[e]).map(s=>({...e,...s,sources:undefined,platform:s.platform||e.platform,firstSeenAt:s.firstSeenAt||s.collectedAt||(s.url===e.url?e.firstSeenAt||e.collectedAt:null),priorityLevel:s.priorityLevel||e.priorityLevel}))).filter(e=>['x','facebook','instagram'].includes(e.platform));records=[...new Map(records.map(e=>[e.platform+'|'+e.url,e])).values()];draw()}catch{if(!leaving)$('state').textContent='Paylaşımlar yüklenemedi. Yeniden deneyin.'}}
+for(const id of ['range','platform'])$(id).onchange=draw;$('query').oninput=()=>{clearTimeout(queryTimer);queryTimer=setTimeout(draw,200);};$('logout').onclick=async()=>{clear();try{await fetch('/api/logout',{method:'POST',credentials:'same-origin'})}finally{location.replace('/giris')}};document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!leaving)load()});load();setInterval(()=>{if(!document.hidden&&!leaving)load()},30000);
+</script><script>fetch('/api/session',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(s=>{document.querySelectorAll('[data-institutional-nav]').forEach(n=>n.hidden=!s.adminUnlocked);}).catch(()=>{});</script></body></html>

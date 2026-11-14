@@ -1,0 +1,11 @@
+-- Structural definitions from the live schema; no application rows.
+CREATE TABLE IF NOT EXISTS common_keyword_groups(id TEXT PRIMARY KEY,name TEXT NOT NULL,kind TEXT NOT NULL,priority TEXT NOT NULL,context TEXT NOT NULL,family TEXT NOT NULL,position INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS common_keyword_members(keyword_id INTEGER NOT NULL REFERENCES facebook_keywords(id),group_id TEXT NOT NULL REFERENCES common_keyword_groups(id),provider TEXT NOT NULL,enabled INTEGER NOT NULL,origin TEXT NOT NULL,PRIMARY KEY(keyword_id,group_id,provider));
+CREATE TABLE IF NOT EXISTS common_keyword_state(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS facebook_keywords(id INTEGER PRIMARY KEY,term TEXT NOT NULL,normalized TEXT NOT NULL UNIQUE,group_name TEXT NOT NULL CHECK(group_name IN ('konum','olay')),enabled INTEGER NOT NULL DEFAULT 1, aliases TEXT NOT NULL DEFAULT '[]');
+CREATE TABLE IF NOT EXISTS facebook_post_matches(post_id TEXT NOT NULL REFERENCES facebook_posts(stable_post_id),keyword_id INTEGER NOT NULL REFERENCES facebook_keywords(id) ON DELETE CASCADE,PRIMARY KEY(post_id,keyword_id));
+CREATE TABLE IF NOT EXISTS facebook_posts(stable_post_id TEXT PRIMARY KEY,source_id TEXT NOT NULL REFERENCES facebook_sources(source_id),published_at TEXT,first_seen_at TEXT NOT NULL,last_seen_at TEXT NOT NULL,fingerprint TEXT,data TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS facebook_scan_runs(id TEXT PRIMARY KEY,source_id TEXT NOT NULL,started_at TEXT NOT NULL,ended_at TEXT,status TEXT NOT NULL,read_count INTEGER NOT NULL DEFAULT 0,new_count INTEGER NOT NULL DEFAULT 0,error_code TEXT);
+CREATE TABLE IF NOT EXISTS facebook_sources(source_id TEXT PRIMARY KEY,page_name TEXT NOT NULL,page_url TEXT NOT NULL UNIQUE,page_id TEXT,enabled INTEGER NOT NULL DEFAULT 1,access_method TEXT NOT NULL DEFAULT 'graph_api',access_status TEXT NOT NULL DEFAULT 'ERİŞİM GEREKLİ',local_context INTEGER NOT NULL DEFAULT 0,last_attempt_at TEXT,last_success_at TEXT,last_post_at TEXT,last_post_id TEXT,last_error_code TEXT,last_error_message TEXT,collected_count INTEGER NOT NULL DEFAULT 0,next_retry_at TEXT,initialized_at TEXT);
+CREATE TABLE IF NOT EXISTS lab_telegram_baseline(reference_hash TEXT PRIMARY KEY,created_at TEXT NOT NULL);
+INSERT OR IGNORE INTO common_keyword_state(id,revision) VALUES(1,1);

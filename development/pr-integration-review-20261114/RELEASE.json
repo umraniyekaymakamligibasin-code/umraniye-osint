@@ -1,0 +1,289 @@
+{
+  "result": "isolated_candidate_verified_not_deployed",
+  "files": {
+    "application/drizzle/0013_runtime_foundation.sql": {
+      "before": null,
+      "after": "010466c56d28d25b0455026ed036075a8fd430c97c9d10ad34be4e8f9d562551"
+    },
+    "application/scripts/build.mjs": {
+      "before": null,
+      "after": "05690282d54578b7d6799e2ec8a02c291b8754a31babcd7e0fcbf5e3c693a5d3"
+    },
+    "application/scripts/check-sources.mjs": {
+      "before": null,
+      "after": "b30e7cfd4ff6e93ca6e7951b882e7a1332e4888012ada81769b9757faaa84391"
+    },
+    "application/scripts/instagram-intelligence-v1.py": {
+      "before": "4031b9a2fa65e643fb92cf90f19e5c8544d97c19f9cd29d77dc83eeb1b8f8f1c",
+      "after": "e1234e5df6427c0f784d1328a34c41d159acc966019c778742e75ae10692ca10"
+    },
+    "application/scripts/preview-integrations.mjs": {
+      "before": null,
+      "after": "7d6cc10f73958839c81cda599873ad36643a138577a9cb17661d3e313c64a24b"
+    },
+    "application/scripts/run-tests.mjs": {
+      "before": null,
+      "after": "c5028e09f8120997228077f8b07706a9a1ff0110bac80ee879eb26035cd9161d"
+    },
+    "application/scripts/test-server.mjs": {
+      "before": null,
+      "after": "3866dd177dd9f29752516240b83f4af841099a81285bb34688be015e3143571b"
+    },
+    "application/scripts/validate-trial.mjs": {
+      "before": null,
+      "after": "4772fdd02690d31e33f96300952d310a69379afb65415621a4cc74df307e5539"
+    },
+    "application/server/browser-login.mjs": {
+      "before": "f830b833ddc10b402f5d845e5920cc1719ce10a21f59ea53e5e1988477b3eb65",
+      "after": "3557b6c5174e15f023a77565e4852adba20e049432a3022c43b3827c8a1c541d"
+    },
+    "application/server/browser-research.mjs": {
+      "before": "c5bdc538a14db9ad3dd0f4eddd2cf1fadb020f7525e95eb62afbe7ee651ec16a",
+      "after": "d85036ca322fe58fc8167ef9db99f8a9a55d5103390b58dbbde3acef79a1818d"
+    },
+    "application/server/child-env.mjs": {
+      "before": null,
+      "after": "cdb640965f0a690059c5fa72faeffe57e2439f1d2c23f6ca6bc4ad735a524fd6"
+    },
+    "application/server/content-moderation.mjs": {
+      "before": "47b1b765cf2d94e7e9e906e1fbc98a04e86c707a5979452546675660376db84d",
+      "after": "13556ffa0719fb8827903e670d7aa8b939a4726be11550785ab7ad3282da8848"
+    },
+    "application/server/content-retention.mjs": {
+      "before": "a63ffac34730baf0ade5ca29d7028dc5f151c2b3fd15ff5b2cc6d8661969cb97",
+      "after": "d87a83d4573602360fdeec26ffe94966e25dd616f0cb62daf7d3143005653675"
+    },
+    "application/server/delivery-scheduler.mjs": {
+      "before": "9ed98deaf763786993c359c6ea4827df75e625a9ad686266428ad2b412813988",
+      "after": "afcbc5bdbae54d5bc1b59853adb02e096b4368a2d2a1fda91a140ed41ba24314"
+    },
+    "application/server/dha-collector.py": {
+      "before": "95312ef43f4877bda500845cbe3b3e0ec95d2e6a96b51d400c8823454867e3ea",
+      "after": "563a7cd554fea5531d7d67ff6296d352d638001c99d269020b3367fb42bf39b0"
+    },
+    "application/server/dha-preview.py": {
+      "before": "19eb374f068cff04a9699fd9fd78cce5e9b90a1ba35d72695aa8062f6784f59a",
+      "after": "becaa9181e9567687e4aa7f4982f70c43270d1ee70195080ed1a93a207c4c9d7"
+    },
+    "application/server/geo-dictionary.mjs": {
+      "before": "ee9e00d1d48b1ada02b9f161642343caef8a1ec8d9ec0fe62ef610e1a4fdfc75",
+      "after": "fc8807f6a022c7c927b41bc75f4f8ae7f9ac4e89d9090f64973bef0ebb35580e"
+    },
+    "application/server/http.mjs": {
+      "before": "87297084d493c2d5077b08cb3815570e3f6cbe761f46bdf7b7df69ee0e00c17b",
+      "after": "225232fa851b37733145003056b75c2d980eb8c14cc800bc50a83f2740492a3b"
+    },
+    "application/server/institution-coordination/server/gmail-sender.mjs": {
+      "before": "d3bcfbb803a355e5ca131b6c52353d6f10a361838a02f491da59125cf892bafb",
+      "after": "92e640d388cf04a2719a73528a50801e819eacd1085d4f52aa435bbec81bbc2f"
+    },
+    "application/server/institution-coordination/server/gmail-smtp.py": {
+      "before": "0e326a3c8d66a74306e2115cf7f458e503c9a985a43c663046e3d629f8ea0a34",
+      "after": "ea2081757b9480d6f0bf0e70175892526634e6dcd81ba715f227e01374c8ecd7"
+    },
+    "application/server/institution-coordination/server/institution-coordination.mjs": {
+      "before": "bdf121ffd44ff460da97bb80c0adcbe38a2b9ceadf70d9621b999a27b264aa90",
+      "after": "31cd600c3f292891adef3f54a8f8e7957bd61fd69b7c7189c8629589cdb13499"
+    },
+    "application/server/institution-coordination/server/institution-credentials.mjs": {
+      "before": "094c32d2a3e8209b00261b962dadd12cc5773735541edfc303fff6eb88a1ef37",
+      "after": "8adbc450d57c3dd2994ffacc137874a52f17d0cb24f5fdc0dd825b1c00ad2035"
+    },
+    "application/server/institution-coordination/server/institution-host.mjs": {
+      "before": "3e483766f3d5d0a08ae77c64e8ffa6101a4f5259b51edaac5a4e9d8a57ed279f",
+      "after": "7b893f6ec2b95f2dde64154f80831679807d17cd5c8964b7592a3dbe7204ad4e"
+    },
+    "application/server/institution-coordination/server/institution-recipients.mjs": {
+      "before": "fc4bcb2cca82160ad825df31ed32a943ae5507445851b5bcde4f6a12d91f453d",
+      "after": "caf12da4f2765d5f0a26d3cecd5e72c91c37a9ebea064da0b45c03da6c505565"
+    },
+    "application/server/institution-coordination/web/admin.js": {
+      "before": "26c605a93daea0ff79842d608589dc7e3c6994c51b0e61ea3df8fe49ec3b3ef6",
+      "after": "4ed3b8d1ab5c8a5a77a9b34ae87f4f04117c7549d8eb98ad182156b1a37dca1a"
+    },
+    "application/server/institution-coordination/web/institution.js": {
+      "before": "06b091d415df497fb06f1d7281a73193d6a728cc3faa776a6e294519f45f07c4",
+      "after": "2291dc9df01799060788cbed7e0e566c23179d74ab90615b7f7ec83223d15532"
+    },
+    "application/server/integrations.html": {
+      "before": "9f9f2eb41decc3e4fd0c13f9af121db9660d824043911cf5ead51a3decf15945",
+      "after": "375b4d4d706dc67fcdbafb3702181ccb67f2e37890ab34f4075a3b5129b9b49c"
+    },
+    "application/server/integrations.mjs": {
+      "before": "84752a32b9d70f1a0d6a10436b531b09dbbab332e9e95a99bea516b43e98d06a",
+      "after": "b1364faaa7d72ad4d903bbd8c5a3efd7284325ade7ffa07dc18febc15314fc2c"
+    },
+    "application/server/news-reader.mjs": {
+      "before": "f9e87116ac484bef81f7d3acf39e500703a8c406c3c2cb9832d825103c263fbc",
+      "after": "801910a72526d8e3539c007d08568a4d927cbbb8b83bf2b43cef83df8c03b5d0"
+    },
+    "application/server/news-thumbnails.mjs": {
+      "before": "015d3ae1def370711e3597b3252acead413177965a8dea27f78701c0bcc88635",
+      "after": "2c744d547e724a72e336951b46fa01e2d6943ea906a2bfe7f8e2ff491ac69e08"
+    },
+    "application/server/panel-management.mjs": {
+      "before": "7372c9ea283ece171d7c67317fb1f1ed74a3ed22f2d7d2fc931e555911cec714",
+      "after": "d7668cb670f6abd2673f2239e92385f8371dbe5a5b3479b69917f0da67819ddb"
+    },
+    "application/server/portal-api.mjs": {
+      "before": "3dc1925a8b3a82139171c73ab38e36eb9f37f069ebf1d5b765d8523d6ac01b22",
+      "after": "56e3ef7821cc3b361eb0255a65f1d64088d2b3e67d587a0aeef82a7fb59179ac"
+    },
+    "application/server/portal-shell.mjs": {
+      "before": "cc47e69d23ae7b9b16df58b7a80e99beca1be7f8ddb40a7ed75b6416a61f1910",
+      "after": "2efbe88b81e2b2d2af4e204caeb36d0bbb01828d8e96850a461a3bb7730693f7"
+    },
+    "application/server/request-budget.mjs": {
+      "before": "ad6a38ccc7f32ebd9382832765a8ba190abbb47243755bec96950f9ee5d1c2d8",
+      "after": "b42e9d2856aca61f0d78c6be8f6740faf9b3883c41a739d91660a6c3a6e0f652"
+    },
+    "application/server/social.html": {
+      "before": "19ebca1e226a1bd8e597bfbc0eb051d7ab0d76daf6abe3cbf3f4a557abbc6d2b",
+      "after": "c8c6350979703a47e4ce8adfb8b714ed816e247a036efac976f3e25564c55623"
+    },
+    "application/server/start.mjs": {
+      "before": "a6aab3e24c7dde1b586b616b5be060974650add78ddba77db7b9a1f56bed05b5",
+      "after": "cdd355359844feb98fd7682ce0805b528c87a96beb58c7243286a5f3ae370e01"
+    },
+    "application/server/telegram-event-queue.mjs": {
+      "before": "91b032f7cc46ad3c09a8c558a320478597cbfa396281fa31d3d9493b25dd8210",
+      "after": "aa35104e044ab5ef99beb6146cbd3294aff71ac4a095cca8c02025212b0d9adc"
+    },
+    "application/src/admin.html": {
+      "before": "5ca782c87b01bd2eeef707b3b9eaebab4cde6fe3c412e129eedde33c35ff3845",
+      "after": "fa53303b57d358667bc7e5fa6c8d914f740215d6d6871c9c589d1d9d1caa88fb"
+    },
+    "application/src/app.html": {
+      "before": "af86d382ac00b14b73357f43e88e15e1f96a7fd05c272fbf88da8283da7f54e5",
+      "after": "fe98b71fb2075e8dbc56fc925731fc7e3699aae218f9fcf1affcafa81f194ec5"
+    },
+    "application/src/assets/content-moderation-ui.js": {
+      "before": "c61bca7c521f00019ac4437119602e08749dcab0eab9bd3a71e3ce672511e1ec",
+      "after": "af7aad48ddf2c571abe6725f8ef672ed440d1602590fe25e17aad765611fd3ef"
+    },
+    "application/src/assets/portal.css": {
+      "before": "47471d02d0778857e4a6ca118006873acd722f501c8874a24c11991cf7b9b97d",
+      "after": "7ab583c596dca4c9bdbd285a5cdd94ff1a669c945ab79465226078db80d54a84"
+    },
+    "application/src/assets/portal.js": {
+      "before": "eb9c1aa09f8962f57176edf79d96b315f82f9f7dab169aa68c68d175a29a59e2",
+      "after": "a6d84969b73adec5d69b0f0967f8f7546dea50e376a4ffd44e60b06a0b9e7fd7"
+    },
+    "application/src/assets/umraniye-kaymakamligi-logo.png": {
+      "before": "c464a0cfd55f2a815d8f53492007de753777360f1015ea2722e3526da5a4d104",
+      "after": "cd6ad4d49f6e3cb333b92dff93f2133dda77d9c66a248d08c11bfac16bc97bc3"
+    },
+    "application/src/event-equivalence.js": {
+      "before": "cbf599d8861e0c172840bb16876c9d77fddd1c8b58cce3adbd9f571886933a46",
+      "after": "9ab90a05bd7e57475ac8d990d041efe145e6fed99485ed85fe2899dac6cc18a9"
+    },
+    "application/src/intelligence.js": {
+      "before": "42fefe4d925bc71deafcdbf33de0c0c3f0904fb38a757d3e14e54ab63df2cfd3",
+      "after": "dd1a125964ad4aeb986c3d1e0453a0ad8ba2edc4fa9533549f0c312e53cd14e0"
+    },
+    "application/src/portal.html": {
+      "before": "38d5dc63c280feee4af61300132c500cad711b25c73ee5622ddf669c0f9da040",
+      "after": "02cad1915a16a561997571076fe03d60467f08d39336acbbe16ae07018b3b657"
+    },
+    "application/src/retention.js": {
+      "before": "1aab1e86b9674517d4c68f95eabe271f253e3a618ff40d0076196e107135b730",
+      "after": "dee00d1154b32b889cfc1da956b54abd66bed6042cbcb4bcc1e700e42778e235"
+    },
+    "application/src/workspace.html": {
+      "before": "3bf0d4ffd60c022010aae972d1a64674c9221a0c75723c7c79ccb4dc3d0c5a7f",
+      "after": "fff36c67dc36952663d1722410d429c31c2e17b34442cd983943195daf4e76a6"
+    },
+    "application/worker/index.js": {
+      "before": "80f038abf5f03cd6bf62fbc47f201d3c887a9012e9e93e9a69feed9d84def973",
+      "after": "0dd70253a2e1441b3ceaae4b0ac1e9ec4db52fdbda6a0a081a808cd0f5c93e18"
+    },
+    "browser/collector.py": {
+      "before": "2f152cd84b36b41324e9d7c92ad570f39ecc5067cf3b661d38d55d760cc62890",
+      "after": "c366836713f248d9bfc05f309ae8fa7f63e3f7b9d03197a3f10416c379814cb8"
+    },
+    "browser/login-browser.sh": {
+      "before": "430a9136586c70e53c655b884d91bafd5abf2e2074cd2732535c6e56b896482b",
+      "after": "39a1322737b6500918f8df3ba0255b73bc4e4e495fcb02fa7b87b9aab765c9c8"
+    },
+    "browser/x_reader_v1.py": {
+      "before": "e5c61b29e50d3bbbf216e4bf2e1d53caee89e4ee422401f9c48ed21c12d224ab",
+      "after": "ddff5f3b17418e11ccdb359b6cc38976495fdc6eb7ddfbb3443ba840c74691d1"
+    },
+    "facebook-shadow/prepare.py": {
+      "before": "03945fc0122a849409261b2b11b9bf2b7d1a206d4b343d9d35742f000096b4ab",
+      "after": "c4af42bd1d6da6889356eb2baa1c83d6343b4f2ad86720347e61b1b58214febe"
+    },
+    "facebook-shadow/publish.py": {
+      "before": "df466c18b3fb90c2c012cb5c21b53906936251a316430128c7c556f289a9dc80",
+      "after": "8a01a97c27063be833c547aa5c7dcb28bc2ee1e245b3c8f4b498d60178403a75"
+    },
+    "facebook-shadow/reader.py": {
+      "before": "be01f6ff718b1612eccdb80850cdad42495616a6aa99cba4f1850a47c59e0111",
+      "after": "92ad7abffd20b26c7e9e653a9f619b31df6a711610fc51edf9f3db62992a24c3"
+    },
+    "facebook-shadow/rules-manifest.json": {
+      "before": "128ef19f0515b7e170dd408c70f693d4f129ecc6225bec00daf35f81f124b65b",
+      "after": "36f1401621b8d05e725e3131c2ee91a7cf5768758cf52e75dc226faf9c50c733"
+    },
+    "facebook-shadow/rules/server/geo-dictionary.mjs": {
+      "before": "ee9e00d1d48b1ada02b9f161642343caef8a1ec8d9ec0fe62ef610e1a4fdfc75",
+      "after": "fc8807f6a022c7c927b41bc75f4f8ae7f9ac4e89d9090f64973bef0ebb35580e"
+    },
+    "facebook-shadow/rules/src/intelligence.js": {
+      "before": "42fefe4d925bc71deafcdbf33de0c0c3f0904fb38a757d3e14e54ab63df2cfd3",
+      "after": "dd1a125964ad4aeb986c3d1e0453a0ad8ba2edc4fa9533549f0c312e53cd14e0"
+    },
+    "instagram-api/publish_status.py": {
+      "before": "bec4febabce4c919cf586b88928190a08b1ae29caffd39ece534e2fdab63d307",
+      "after": "4d94b8885e4704f0ad6195d2f5b6d43e7ad07e6b8ae65f796848669e87168785"
+    },
+    "instagram-api/worker.py": {
+      "before": "d187bf9d339f6990b7297c89c4ff5871350a7fe13dde8a46ece4e5402fc5f862",
+      "after": "548c6a8d25a1da7abb947f6df43b986f61d4e63d1001b61d735820ef46e0406d"
+    },
+    "instagram-media/scanner.py": {
+      "before": "876f62db81705d0cd753bae9449fbe375253badf8ef5e4f676bb3ea6d74c1f86",
+      "after": "1ee6104ccf7de30e3ba82020619bd836ee5bb047d2165643bf907e7acfe88aac"
+    },
+    "x-shadow/coverage.py": {
+      "before": "9c164dedb580da9d8059936951676ca97d56f5da2142f7851fa1cac0dbde6711",
+      "after": "2c9abd7a6efac33357f79546a0d5d412b4d9b74d3a0175d02986344a5cd6fe75"
+    },
+    "x-shadow/prepare.py": {
+      "before": "3736f28a96871f414f0788cc5cff9570e05e8810da279b3faf5c457b7c1cdede",
+      "after": "6c4c07f7eb2ac5612a90febc47fd2dff7fa2a0411838a98a2d312b022fdd441e"
+    },
+    "x-shadow/rules-manifest.json": {
+      "before": "fa66b855bb7af69c7621aa67997d04e59be51b10c15694d26729830e602eddb5",
+      "after": "47770cde6a0c20dafe1a9edc407dc89b365a2ffd6dd55cedb4e7eaec8822ea3a"
+    },
+    "x-shadow/rules/server/geo-dictionary.mjs": {
+      "before": "ee9e00d1d48b1ada02b9f161642343caef8a1ec8d9ec0fe62ef610e1a4fdfc75",
+      "after": "fc8807f6a022c7c927b41bc75f4f8ae7f9ac4e89d9090f64973bef0ebb35580e"
+    },
+    "x-shadow/rules/server/local-scope-policy.mjs": {
+      "before": "a9f7f3ac5a7ce3f13ff9d110db60ae74ae58eb32a2a150d30cdfd6b5659bb5ee",
+      "after": "c8180a6ab16682e5c58dc5223548f6220e4e5d121bd2cf8db587359cbf63d10b"
+    },
+    "x-shadow/rules/server/social-quality.mjs": {
+      "before": "78a843629d6430086d230d4e76f24e461a19eba07cdf2ae1091e7bc96ba96fac",
+      "after": "42d3bed2c202766e2c4ca400023420f2a1384ba65a3751b9bc0862a87d765e40"
+    },
+    "x-shadow/rules/server/social-source-context.mjs": {
+      "before": null,
+      "after": "8a95324dd48839593afd35e82f6d01929e63522f62effa93c66433e8edd8b5f0"
+    },
+    "x-shadow/rules/src/intelligence.js": {
+      "before": "42fefe4d925bc71deafcdbf33de0c0c3f0904fb38a757d3e14e54ab63df2cfd3",
+      "after": "dd1a125964ad4aeb986c3d1e0453a0ad8ba2edc4fa9533549f0c312e53cd14e0"
+    },
+    "x-shadow/worker.py": {
+      "before": "ebb8a5fd425acc3176f5ea8aef4c8438eec1a5f2d1bcc38d7827870eaa6201a0",
+      "after": "cf5d32655c464f88a35c624a04c9a3ce1cdbd1ce33310efe31fd105c56adac35"
+    }
+  },
+  "retentionMonths": 6,
+  "designPRIncluded": false,
+  "telegramSettingsChanged": false,
+  "gatewayRestartRequired": false
+}

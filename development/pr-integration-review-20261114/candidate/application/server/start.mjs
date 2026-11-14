@@ -1,0 +1,45 @@
+import {createPortalShell} from './portal-shell.mjs';
+import {maintainBackups} from './maintenance.mjs';
+import {loadInstitutionalTargets} from './institutional-targets.mjs';
+import {loadCentralKeywords} from './central-keywords.mjs';
+import {loadGeoDictionary} from './geo-dictionary.mjs';
+import {mkdir} from 'node:fs/promises';
+import {join,resolve} from 'node:path';
+import worker from '../worker/index.js';
+import {openDatabase} from './database.mjs';
+import {createHttpServer} from './http.mjs';
+import {createCollector} from './collector.mjs';
+import {validateOwner} from './owner-policy.mjs';
+import {createIntegrations} from './integrations.mjs';
+import {randomBytes} from 'node:crypto';
+import {accountKey,createAccountStore} from './accounts.mjs';
+import {createBrowserLogin} from './browser-login.mjs';
+import {createBrowserProxy} from './browser-proxy.mjs';
+if(Number(process.versions.node.split('.')[0])<24)throw Error('Node.js 24 LTS veya üzeri gerekli.');
+const origin=process.env.PUBLIC_ORIGIN,parsed=new URL(origin||'http://invalid');
+if(parsed.protocol!=='https:'||parsed.pathname!=='/'||parsed.search||parsed.hash||parsed.username||parsed.password)throw Error('PUBLIC_ORIGIN yalnız HTTPS site kökü olmalı.');
+const password=process.env.OSINT_ADMIN_PASSWORD||'';
+validateOwner(process.env.OSINT_ADMIN_USERNAME,password,process.env.OSINT_ALLOW_SHORT_OWNER_PASSWORD==='true');
+const dir=resolve(process.env.DATA_DIR||'./data');await mkdir(dir,{recursive:true,mode:0o700});
+const DB=openDatabase(join(dir,'osint.sqlite')),enabled=process.env.COLLECTOR_ENABLED==='true'||process.env.OSINT_NEWS_COVERAGE_ENABLED==='true';
+await loadGeoDictionary(DB);
+await loadCentralKeywords(DB);
+await loadInstitutionalTargets(DB);
+const env={DB,OSINT_ADMIN_USERNAME:process.env.OSINT_ADMIN_USERNAME,OSINT_ADMIN_PASSWORD:password,OSINT_ADMIN_EMAIL:process.env.OSINT_ADMIN_EMAIL||'',OSINT_ADMIN_SESSION_VERSION:process.env.OSINT_ADMIN_SESSION_VERSION||'1',OSINT_AUTO_UPDATE_ENABLED:String(enabled)};
+const port=Number(process.env.PORT||3000);if(!Number.isInteger(port)||port<1024||port>65535)throw Error('PORT 1024–65535 arasında olmalı.');
+const serviceKey=randomBytes(32).toString('hex');
+const accountStore=process.env.OSINT_LAB_ENABLED==='true'?createAccountStore(DB,await accountKey(join(dir,'accounts.key'))):null;
+const browserKey=accountStore&&process.env.OSINT_BROWSER_ENABLED==='true'?(await accountKey(join(dir,'browser-service.key'))).toString('hex'):'';
+const loginManager=browserKey?createBrowserLogin({dataDir:dir}):null;
+const collector=createCollector(worker,env,parsed.origin,{serviceKey,onBatch:()=>{portal.invalidate();return lab?.enqueuePublished()}});
+const lab=process.env.OSINT_LAB_ENABLED==='true'?createIntegrations(worker,env,{origin:parsed.origin,accountStore,browserKey,loginManager,allowedHosts:(process.env.OSINT_LAB_ALLOWED_HOSTS||'www.youtube.com').split(','),token:process.env.TELEGRAM_BOT_TOKEN||'',chatId:process.env.TELEGRAM_CHAT_ID||'',telegramMode:process.env.TELEGRAM_MODE||'dry-run',youtubeKey:process.env.YOUTUBE_API_KEY||''}):null;
+if(lab)env.OSINT_LAB_SERVICE_KEY=serviceKey;
+const portal=createPortalShell(lab?.worker||worker,env,{origin:parsed.origin,socialItems:lab?()=>lab.socialItems():async()=>[]});
+const server=createHttpServer(portal.worker,env,{origin:parsed.origin,port,browserProxy:loginManager?createBrowserProxy(worker,env,{origin:parsed.origin}):null,trustCloudflare:process.env.TRUST_CLOUDFLARE==='true'});
+let timer,initial,backupTimer,deliveryTimer,backingUp=false,closing=false,cycling=null;
+function cycle(){if(cycling)return cycling;cycling=(async()=>{try{await collector.run()}catch{console.error('{"event":"collection_failed"}')}if(lab)await lab.run()})().finally(()=>{cycling=null});return cycling;}
+async function backup(){if(backingUp)return;backingUp=true;try{const path=join(dir,'backups');await mkdir(path,{recursive:true,mode:0o700});const file=join(path,'osint-'+new Date().toISOString().replace(/[:.]/g,'-')+'.sqlite');await DB.backupTo(file);try{const retention=await maintainBackups(path);if(retention.removed)console.log(JSON.stringify({event:'backup_retention',...retention}));}catch{console.error('{"event":"backup_retention_skipped"}');}console.log(JSON.stringify({event:'backup_completed',at:new Date().toISOString()}))}catch{console.error(JSON.stringify({event:'backup_failed'}))}finally{backingUp=false}}
+server.listen(port,'127.0.0.1',()=>{console.log(JSON.stringify({event:'server_started',address:'127.0.0.1:'+port,collector:enabled,integrations:!!lab}));if(enabled){initial=setTimeout(()=>cycle().catch(()=>console.error('{"event":"collection_failed"}')),5000);timer=setInterval(()=>cycle().catch(()=>console.error('{"event":"collection_failed"}')),600000)}if(!enabled&&lab){initial=setTimeout(()=>lab.run().catch(()=>console.error('rss_cycle_failed')),5000);timer=setInterval(()=>lab.run().catch(()=>console.error('rss_cycle_failed')),600000)}if(lab)deliveryTimer=setInterval(()=>lab.drain().catch(()=>console.error('{"event":"delivery_failed"}')),30000);backup();backupTimer=setInterval(backup,86400000)});
+server.on('error',()=>{console.error('{"event":"server_start_failed"}');process.exit(1)});
+async function stop(){if(closing)return;closing=true;loginManager?.stop();clearTimeout(initial);clearInterval(timer);clearInterval(backupTimer);clearInterval(deliveryTimer);const watchdog=setTimeout(()=>process.exit(1),90000);watchdog.unref();const closed=new Promise(r=>server.close(r));await collector.stop();await cycling?.catch(()=>{});if(lab)await lab.stop().catch(()=>console.error('{"event":"integrations_stop_failed"}'));await closed;while(backingUp)await new Promise(r=>setTimeout(r,50));await backup();DB.close();clearTimeout(watchdog)}
+process.on('SIGTERM',stop);process.on('SIGINT',stop);

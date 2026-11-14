@@ -1,0 +1,12 @@
+# Observed versions; no automatic installation or hash assurance.
+dateparser==1.4.3
+greenlet==3.5.6
+pip==25.1.1
+playwright==1.64.1
+pyee==14.0.0
+python-dateutil==4.0.0
+pytz==2026.6
+regex==2026.9.29
+typing_extensions==4.16.0
+tzdata==2026.6
+tzlocal==5.4.5
