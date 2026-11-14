@@ -114,7 +114,9 @@ export function createContentModeration({base,env,origin,socialItems,actor,inval
     if(request.method==='POST'&&pathname==='/api/moderation/action'){
       if(request.headers.get('Origin')!==origin)return Response.json({error:'İstek kaynağı reddedildi'},{status:403});
       const raw=await request.text();if(raw.length>5000)return Response.json({error:'İstek çok büyük'},{status:413});
-      const input=JSON.parse(raw),action=input.action,item=input.item||{},who=a.id||a.name||'admin';
+      let input;try{input=JSON.parse(raw);}catch{return Response.json({error:'Geçersiz istek'},{status:400});}
+      if(!input||typeof input!=='object')return Response.json({error:'Geçersiz istek'},{status:400});
+      const action=input.action,item=input.item||{},who=a.id||a.name||'admin';
       if(!['hide','dismiss','restore','suppress'].includes(action))return Response.json({error:'Geçersiz işlem'},{status:400});
       if(action==='restore'){
         if(typeof item.key!=='string'||!/^[a-f0-9]{64}$/.test(item.key))return Response.json({error:'Geçersiz kayıt'},{status:400});
@@ -128,10 +130,13 @@ export function createContentModeration({base,env,origin,socialItems,actor,inval
         let e;try{e=JSON.parse(row.data)}catch{return Response.json({error:'Kuyruk verisi bozuk'},{status:400})}
         await save(e,'hidden',who,'Yönetici kuyruktan kaldırdı');
         await db.prepare("UPDATE lab_outbox SET status='expired',last_error='admin_suppressed' WHERE id=? AND status IN ('pending','unknown')").bind(item.queueId).run();
-      }else if(action==='dismiss'){
-        await save(item,'dismissed',who,'Filtrelenenler listesinden arşivlendi');
       }else{
-        await save(item,'hidden',who,s(input.reason,500));
+        // Istemcinin gonderdigi url/title/stream guvenilmez: kayit sunucu verisinden id (yoksa baglanti) ile bulunur.
+        const want=idOf(item),link=want?'':canonical(urlOf(item));if(!want&&!link)return Response.json({error:'Geçersiz kayıt'},{status:400});
+        const found=(await rawEvents(request)).find(e=>{const k=identities(e);return want?k.ids.includes(want):k.urls.includes(link);});
+        if(!found)return Response.json({error:'Kayıt bulunamadı'},{status:404});
+        if(action==='dismiss')await save(found,'dismissed',who,'Filtrelenenler listesinden arşivlendi');
+        else await save(found,'hidden',who,s(input.reason,500));
       }
       return Response.json({ok:true},{headers:{'Cache-Control':'no-store'}});
     }

@@ -699,7 +699,11 @@ async def collect(pw,account,word,session_check=False):
                         found=[]
                         if account['provider']=='x':
                             if target=='https://x.com/notifications':
-                                try:found.extend(await asyncio.wait_for(read_x_notifications(page,DATA/('x-notifications-'+hashlib.sha256(account['profileURL'].encode()).hexdigest()[:24]+'.json')),timeout=30))
+                                # Soft deadline: the reader stops, saves its checkpoint/pending links and returns what it read.
+                                # Cancelling it at 30 s discarded all of that. The hard limit only guards an in-flight page
+                                # operation and keeps the call inside the existing 150 s X round budget.
+                                soft=min(30,max(5,128-(time.monotonic()-started)))
+                                try:found.extend(await asyncio.wait_for(read_x_notifications(page,DATA/('x-notifications-'+hashlib.sha256(account['profileURL'].encode()).hexdigest()[:24]+'.json'),deadline=time.monotonic()+soft),timeout=soft+20))
                                 except asyncio.TimeoutError:print(json.dumps({'event':'x_notifications_budget_reached','directSourcesAlreadyScanned':True}),flush=True)
                             else:found.extend(await read_x_posts(page))
                         elif account['provider']=='instagram':

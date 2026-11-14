@@ -10,7 +10,7 @@ export function createPortalShell(base,env,{origin,socialItems}){
  const assetResponse=createAssetResponder(assets,new URL('../src/assets/',import.meta.url));
  const portal=createPortalAPI(base,env,{origin,live:true,socialItems});
  const moderation=createContentModeration({base,env,origin,socialItems,actor:portal.actor,invalidate:portal.invalidate});
- function styled(html){return html.replace('</head>','<link rel="stylesheet" href="/assets/admin-portal.css"></head>').replace('</body>','<div style="padding:18px;text-align:center;font-size:12px;color:#667085">© 2026 Hakan Bilgin. Tüm hakları saklıdır.</div></body>');}
+ function styled(html){const page=html.replace('</head>','<link rel="stylesheet" href="/assets/admin-portal.css"></head>');return page.includes('Hakan Bilgin')?page:page.replace('</body>','<div style="padding:18px;text-align:center;font-size:12px;color:#667085">© 2026 Hakan Bilgin. Tüm hakları saklıdır.</div></body>');}
  const worker={async fetch(request,...args){
     const u=new URL(request.url);
     if(u.pathname==='/icerik-denetim'){const a=await portal.actor(request);if(!a)return Response.redirect(origin+'/giris',302);if(!a.admin)return new Response('Yonetici yetkisi gerekli',{status:403});return new Response(moderation.html,{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}}); }

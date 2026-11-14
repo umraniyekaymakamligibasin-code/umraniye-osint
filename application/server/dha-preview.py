@@ -6,7 +6,7 @@ ARCHIVE = BASE + "/istanbul/umraniye-haber/"
 
 def fetch(url):
     return subprocess.check_output(
-        ["curl", "-fsSL", "--max-time", "15", url],
+        ["curl", "-fsSL", "--proto", "=https", "--proto-redir", "=https", "--max-redirs", "5", "--max-time", "15", url],
         text=True, timeout=20
     )
 

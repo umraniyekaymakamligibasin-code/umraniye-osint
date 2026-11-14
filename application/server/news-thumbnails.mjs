@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import {mkdir,readFile,writeFile,rename,readdir,stat,unlink} from 'node:fs/promises';
 import {join} from 'node:path';
 import {spawn} from 'node:child_process';
+import {childEnv} from './child-env.mjs';
 import {publicAddress} from './safe-feed.mjs';
 import {robotsAllows} from '../worker/index.js';
 const LIMIT=24576;
@@ -35,7 +36,7 @@ export function imageMetadata(html,pageURL){
  return null;
 }
 function encode(python,script,data){return new Promise((resolve,reject)=>{
- const child=spawn(python,[script],{stdio:['pipe','pipe','ignore']}),chunks=[];let bytes=0;
+ const child=spawn(python,[script],{stdio:['pipe','pipe','ignore'],env:childEnv()}),chunks=[];let bytes=0;
  const timer=setTimeout(()=>{child.kill();reject(Error('thumbnail_timeout'));},6000);
  child.stdout.on('data',chunk=>{bytes+=chunk.length;if(bytes>LIMIT){child.kill();reject(Error('thumbnail_too_large'));}else chunks.push(chunk);});
  child.on('error',reject);child.on('close',code=>{clearTimeout(timer);if(code!==0||!bytes)return reject(Error('thumbnail_decode_failed'));resolve(Buffer.concat(chunks));});child.stdin.on('error',()=>{});child.stdin.end(data);

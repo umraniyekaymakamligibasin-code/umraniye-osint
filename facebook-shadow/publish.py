@@ -37,7 +37,7 @@ def pending(source,ledger,now):
         row['title']=str(row['title'] or row['fullText'] or '')[:400]
         row['description']=str(row['description'] or row['fullText'] or '')[:3000]
         row['fullText']=str(row['fullText'] or row['description'])[:30000]
-        row['sourceName']=str(row['sourceName'] or row['author'] or 'X')[:100]
+        row['sourceName']=str(row['sourceName'] or row['author'] or 'Facebook')[:100]
         row['platform']='facebook';row['reader']='fbgql-backup'
         row['facebookPostId']=e.get('facebookPostId') or e['id']
         row['sourcePageUrl']=e.get('sourcePageUrl');row['facebookSourceId']=e.get('facebookSourceId')

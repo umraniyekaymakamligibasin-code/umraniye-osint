@@ -1,5 +1,5 @@
 """Publish only whitelisted, non-secret API health fields for the application."""
-import datetime,json,os,pathlib,pwd,re,tempfile
+import datetime,json,os,pathlib,pwd,re,secrets
 APP_USER='osintdeneme'
 SOURCE=pathlib.Path('/var/lib/umraniye-osint-instagram-api/status.json')
 DEST=pathlib.Path('/var/lib/umraniye-osint-instagram-api-public/status.json')
@@ -20,11 +20,18 @@ def main():
     if DEST.is_symlink() or DEST.parent.is_symlink():raise RuntimeError('unsafe_export_path')
     user=pwd.getpwnam(APP_USER)
     DEST.parent.mkdir(mode=0o750,exist_ok=True)
-    os.chown(DEST.parent,0,user.pw_gid);os.chmod(DEST.parent,0o750)
-    fd,temporary=tempfile.mkstemp(prefix='.api-status-',dir=DEST.parent)
+    dfd=os.open(DEST.parent,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
     try:
-        with os.fdopen(fd,'w',encoding='utf-8') as stream:
-            json.dump(value,stream,ensure_ascii=False);stream.flush();os.fsync(stream.fileno())
-        os.chown(temporary,0,user.pw_gid);os.chmod(temporary,0o640);os.replace(temporary,DEST)
-    finally:pathlib.Path(temporary).unlink(missing_ok=True)
+        os.fchown(dfd,0,user.pw_gid);os.fchmod(dfd,0o750)
+        temporary='.api-status-'+secrets.token_hex(8)
+        fd=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=dfd)
+        try:
+            with os.fdopen(fd,'w',encoding='utf-8') as stream:
+                os.fchown(stream.fileno(),0,user.pw_gid);os.fchmod(stream.fileno(),0o640)
+                json.dump(value,stream,ensure_ascii=False);stream.flush();os.fsync(stream.fileno())
+            os.replace(temporary,DEST.name,src_dir_fd=dfd,dst_dir_fd=dfd)
+        finally:
+            try:os.unlink(temporary,dir_fd=dfd)
+            except FileNotFoundError:pass
+    finally:os.close(dfd)
 if __name__=='__main__':main()

@@ -18,7 +18,7 @@ export function createEventQueue(DB,{now=Date.now}={}){
   if(match){
    byId.set(id,match);
    if(sourceList(payload).every(s=>sourceList(match.p).some(old=>old.url===s.url)))return{merged:true,id:match.id};
-   const current=await DB.prepare('SELECT data,status FROM lab_outbox WHERE id=?').bind(match.id).first();if(!current){loadedChat=null;return put(chat,e,payload,id)}
+   const current=await DB.prepare('SELECT data,status FROM lab_outbox WHERE id=?').bind(match.id).first();if(!current){loadedChat=null;if(retries>=3)throw Error('outbox_record_missing');return put(chat,e,payload,id,retries+1)}
    const old=JSON.parse(current.data),urls=new Map(sourceList(old).map(s=>[s.url,s]));for(const s of sourceList(payload))if(s.url&&!urls.has(s.url))urls.set(s.url,s);
    if(urls.size>sourceList(old).length){
     const updated={...old,eventSources:[...urls.values()],needsSourceUpdate:true};

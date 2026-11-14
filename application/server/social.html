@@ -74,10 +74,13 @@ function dedupeFacebookRecords(records){
 }
 
 
-const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let records=[],epoch=0,leaving=false;
-const day=v=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Istanbul'}).format(new Date(v));
-const format=v=>!v?'Belirtilmemiş':/^\d{4}-\d{2}-\d{2}$/.test(v)?v+' · saat belirtilmemiş':new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',dateStyle:'long',timeStyle:'short'}).format(new Date(v))+' TSİ';
-function clear(){leaving=true;epoch++;records=[];$('results').replaceChildren();$('state').textContent='Oturum kapandı';}
+const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let records=[],epoch=0,leaving=false,lastPayload='',queryTimer=0;
+// Biçimleyiciler bir kez kurulur: filtre değişiminde her kayıt için yeniden Intl nesnesi üretmek listeyi donduruyordu.
+const dayFormat=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Istanbul'}),longFormat=new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',dateStyle:'long',timeStyle:'short'});
+const validDate=v=>{const d=new Date(v);return Number.isFinite(d.getTime())?d:null;};
+const day=v=>{const d=validDate(v);return d?dayFormat.format(d):'';};
+const format=v=>!v?'Belirtilmemiş':/^\d{4}-\d{2}-\d{2}$/.test(v)?v+' · saat belirtilmemiş':validDate(v)?longFormat.format(validDate(v))+' TSİ':'Tarih belirsiz';
+function clear(){leaving=true;epoch++;records=[];lastPayload='';clearTimeout(queryTimer);$('results').replaceChildren();$('state').textContent='Oturum kapandı';}
 
 function cleanFacebook(value){
   let s=String(value||'').replace(/\s+/g,' ').trim();
@@ -366,6 +369,8 @@ function draw(){
   
 }
 
-async function load(){const serial=++epoch;try{const r=await fetch('/api/social',{credentials:'same-origin',cache:'no-store'});if(r.status===401){clear();location.replace('/giris');return}if(!r.ok)throw Error();const d=await r.json();if(serial!==epoch||leaving)return;records=d.items.flatMap(e=>(e.sources?.length?e.sources:[e]).map(s=>({...e,...s,sources:undefined,platform:s.platform||e.platform,firstSeenAt:s.firstSeenAt||s.collectedAt||(s.url===e.url?e.firstSeenAt||e.collectedAt:null),priorityLevel:s.priorityLevel||e.priorityLevel}))).filter(e=>['x','facebook','instagram'].includes(e.platform));records=[...new Map(records.map(e=>[e.platform+'|'+e.url,e])).values()];draw()}catch{if(!leaving)$('state').textContent='Paylaşımlar yüklenemedi. Yeniden deneyin.'}}
-for(const id of ['range','platform'])$(id).onchange=draw;$('query').oninput=draw;$('logout').onclick=async()=>{clear();try{await fetch('/api/logout',{method:'POST',credentials:'same-origin'})}finally{location.replace('/giris')}};document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!leaving)load()});load();setInterval(()=>{if(!document.hidden&&!leaving)load()},30000);
+async function load(){const serial=++epoch;try{const r=await fetch('/api/social',{credentials:'same-origin',cache:'no-store'});if(r.status===401){clear();location.replace('/giris');return}if(!r.ok)throw Error();const payload=await r.text();if(serial!==epoch||leaving)return;
+// Veri değişmediyse listeyi baştan çizme: açık 'Kaynakları göster' bölümleri ve kaydırma konumu korunur.
+if(payload===lastPayload){if($('state').textContent.startsWith('Paylaşımlar yüklenemedi'))draw();return;}lastPayload=payload;const d=JSON.parse(payload);records=d.items.flatMap(e=>(e.sources?.length?e.sources:[e]).map(s=>({...e,...s,sources:undefined,platform:s.platform||e.platform,firstSeenAt:s.firstSeenAt||s.collectedAt||(s.url===e.url?e.firstSeenAt||e.collectedAt:null),priorityLevel:s.priorityLevel||e.priorityLevel}))).filter(e=>['x','facebook','instagram'].includes(e.platform));records=[...new Map(records.map(e=>[e.platform+'|'+e.url,e])).values()];draw()}catch{if(!leaving)$('state').textContent='Paylaşımlar yüklenemedi. Yeniden deneyin.'}}
+for(const id of ['range','platform'])$(id).onchange=draw;$('query').oninput=()=>{clearTimeout(queryTimer);queryTimer=setTimeout(draw,200);};$('logout').onclick=async()=>{clear();try{await fetch('/api/logout',{method:'POST',credentials:'same-origin'})}finally{location.replace('/giris')}};document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!leaving)load()});load();setInterval(()=>{if(!document.hidden&&!leaving)load()},30000);
 </script><script>fetch('/api/session',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(s=>{document.querySelectorAll('[data-institutional-nav]').forEach(n=>n.hidden=!s.adminUnlocked);}).catch(()=>{});</script></body></html>

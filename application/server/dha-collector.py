@@ -24,18 +24,24 @@ def fetch(url):
     if not url.startswith(BASE + "/"):
         raise ValueError("Izin verilmeyen adres")
     return subprocess.check_output(
-        ["curl", "-fsSL", "--max-time", "18",
+        ["curl", "-fsSL", "--proto", "=https", "--proto-redir", "=https", "--max-redirs", "5", "--max-time", "18",
          "--max-filesize", "2000000", url],
         text=True, timeout=23
     )
 
 def candidates():
     found = {}
-    for page_url in PAGES + PAGES:
-        try:
-            page = fetch(page_url)
-        except Exception as exc:
-            print("KAYNAK HATASI:", page_url, str(exc)[:100])
+    # Her liste sayfası başarılıysa bir kez indirilir; yalnız hata durumunda bir kez
+    # yeniden denenir (önceden PAGES + PAGES ile her sayfa koşulsuz iki kez çekiliyordu).
+    for page_url in PAGES:
+        page = None
+        for _attempt in range(2):
+            try:
+                page = fetch(page_url)
+                break
+            except Exception as exc:
+                print("KAYNAK HATASI:", page_url, str(exc)[:100])
+        if page is None:
             continue
 
         blocks = re.split(r'<div class="news__item\b', page)[1:]

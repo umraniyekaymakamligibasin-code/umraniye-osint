@@ -155,7 +155,7 @@ def candidates(conn):
             for row in conn.execute("SELECT data FROM lab_items WHERE published_at>=? ORDER BY published_at DESC LIMIT 1800",((dt.datetime.now(UTC)-dt.timedelta(days=3)).isoformat(),)):
                 try:item=json.loads(row[0]);u=canonical(item.get('url'))
                 except (ValueError,TypeError,AttributeError):continue
-                if u and (item.get('platform')=='instagram' or item.get('sourceName','').lower().find('instagram')>=0):
+                if u and (item.get('platform')=='instagram' or str(item.get('sourceName') or '').lower().find('instagram')>=0):
                     old=allitems.get(u)
                     if old and len(str(old.get('fullText') or old.get('description') or ''))>len(str(item.get('fullText') or item.get('description') or '')):continue
                     allitems[u]={**item,'url':u,'_origin':'database'}

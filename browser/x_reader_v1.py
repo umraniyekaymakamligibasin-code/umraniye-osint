@@ -39,9 +39,13 @@ async def read_x_posts(page,known_urls=None):
 
 NOTIFICATION_LINKS=r'''() => [...new Set([...document.querySelectorAll('[data-testid="primaryColumn"] a[href],main a[href]')].flatMap(a=>{try{const u=new URL(a.href),m=u.pathname.match(/^\/([A-Za-z0-9_]+)\/status\/(\d+)(?:\/.*)?$/);return u.protocol==='https:'&&['x.com','www.x.com','twitter.com','www.twitter.com'].includes(u.hostname)&&m?['https://x.com/'+m[1]+'/status/'+m[2]]:[]}catch{return []}}))].slice(0,200)'''
 
-async def read_x_notifications(page,state_path):
+async def read_x_notifications(page,state_path,deadline=None):
  import pathlib,os,re
- started=time.monotonic();posts={};links=set();scrolls=0;unchanged=0;stop='scroll_limit';resolved=0;errors=0
+ started=time.monotonic();posts={};links=set();scrolls=0;unchanged=0;stop='scroll_limit';resolved=0;errors=0;abandoned=0;exhausted=[]
+ # A caller deadline (monotonic) ends work early, but state is still saved and read posts are returned.
+ detail_until=started+90 if deadline is None else min(started+90,deadline)
+ scroll_until=started+60 if deadline is None else min(started+60,deadline-max(8,(deadline-started)*0.35))
+ card_until=min(started+45,scroll_until)
  def thermal_pause():
   try:
    for folder in pathlib.Path('/sys/class/hwmon').glob('hwmon*'):
@@ -70,7 +74,7 @@ async def read_x_notifications(page,state_path):
    if cards:bottom_keys=cards[-3:]
    if old_keys and not frontier_reached and len(old_keys&set(cards))>=min(2,len(old_keys)):frontier_reached=True;reached_at=scrolls
    eligible_cards=[k for k in cards if k not in done_cards and k not in visited_cards]
-   if eligible_cards and card_attempts<4 and time.monotonic()-started<45:
+   if eligible_cards and card_attempts<4 and time.monotonic()<card_until:
     key=eligible_cards[0];visited_cards.add(key);card_attempts+=1;post,non_post=await read_notification_card(page,key)
     if post:posts[post['url']]=post;card_reads+=1;done_cards.add(key);last_read_keys=(last_read_keys+[key])[-3:]
     elif non_post:done_cards.add(key)
@@ -88,7 +92,7 @@ async def read_x_notifications(page,state_path):
    if old_frontier and not frontier_reached and len(old_frontier&set(found))>=min(2,len(old_frontier)):frontier_reached=True;reached_at=scrolls
    after=await page.evaluate('() => ({y:scrollY,h:document.documentElement.scrollHeight})');moved=after['y']!=before['y'] or after['h']!=before['h']
    unchanged=unchanged+1 if not moved and len(links)==previous else 0
-   if time.monotonic()-started>60:stop='time_budget';break
+   if time.monotonic()>scroll_until:stop='time_budget';break
    if len(set(state['pending'])|links-set(state['done'])-set(posts))>=1900:stop='pending_queue_capacity';break
    # UMRANIYE_X_EMPTY_RECOVERY_V2_20261109
    if scrolls>=4 and unchanged>=4 and not cards and not posts and not links and not seen_cards:
@@ -119,13 +123,13 @@ async def read_x_notifications(page,state_path):
    if scrolls>=20 and unchanged>=4:stop='end_of_feed';break
    if scrolls>=20 and frontier_reached and scrolls-reached_at>=(20 if old_frontier else 40):stop='increment_completed';break
  done=set(state['done'])|set(posts);existing=set(state['pending'])-done
- fresh=sorted(links-done-existing,key=lambda u:int(u.rsplit('/',1)[-1]),reverse=True)
- pending=sorted(existing|set(fresh[:max(0,2000-len(existing))]),key=lambda u:int(u.rsplit('/',1)[-1]),reverse=True)
+ # Newest links win at capacity: a full queue of old or unreadable links must not block new notifications.
+ pending=sorted(existing|(links-done),key=lambda u:int(u.rsplit('/',1)[-1]),reverse=True)[:2000]
  eligible=[u for u in pending if float(state['retryAt'].get(u,0))<=time.time()]
  # Bounded exact-post reads; pending URLs survive restarts. No second content database.
  selected=eligible[:7]+([eligible[-1]]if len(eligible)>7 else [])
  for url in dict.fromkeys(selected):
-  if time.monotonic()-started>90 or thermal_pause():break
+  if time.monotonic()>detail_until or thermal_pause():break
   try:
    await page.goto(url,wait_until='domcontentloaded',timeout=8000)
    await page.wait_for_selector('article[data-testid="tweet"] time[datetime],article[role="article"] time[datetime]',timeout=5000)
@@ -135,6 +139,12 @@ async def read_x_notifications(page,state_path):
   except Exception:
    errors+=1;state['attempts'][url]=int(state['attempts'].get(url,0))+1
    if state['attempts'][url]>=3:state['retryAt'][url]=time.time()+900
+   # Deleted/protected posts never resolve; stop retrying so they cannot occupy the queue forever.
+   if state['attempts'][url]>=6:exhausted.append(url)
+ # Abandon only when other posts were readable this round; a throttled or logged-out round must not drop links.
+ if resolved:
+  for url in exhausted:
+   if url in pending:pending.remove(url);done.add(url);abandoned+=1
  state_path.parent.mkdir(parents=True,exist_ok=True);temp=state_path.with_suffix('.tmp')
  try:
   checkpoint=bottom if frontier_reached and bottom and stop!='pending_queue_capacity' else state['frontier']
@@ -149,7 +159,7 @@ async def read_x_notifications(page,state_path):
  if notice=='explicitly_empty' and locals().get('_view',{}).get('rowCount',0)>1:notice='unreadable'
  if notice not in ('readable','explicitly_empty','login_required','rate_limited','page_error','time_budget'):notice='unreadable'
  page._osint_reader_trace={'postsRead':len(posts),'datedPosts':len(posts),'notificationStatus':notice,'timeBudgets':int(stop=='time_budget')}
- print(json.dumps({'event':'x_notifications_reader','status':'readable' if posts else 'no_dated_posts','minimumScrolls':20,'maximumScrolls':120,'scrolls':scrolls,'previousCheckpointFound':frontier_reached if old_frontier or old_keys else None,'checkpointSaved':bool(checkpoint or checkpoint_keys),'notificationCardsSeen':len(seen_cards),'notificationCardsOpened':card_attempts,'notificationCardPostsRead':card_reads,'notificationCardErrors':card_errors,'deferredNotificationCards':len(deferred_cards),'stopReason':stop,'notificationPostLinks':len(links),'detailPostsRead':resolved,'detailReadErrors':errors,'pendingPostLinks':len(pending),'uniqueDatedPosts':len(posts),'elapsedMs':round((time.monotonic()-started)*1000)}),flush=True)
+ print(json.dumps({'event':'x_notifications_reader','status':'readable' if posts else 'no_dated_posts','minimumScrolls':20,'maximumScrolls':120,'scrolls':scrolls,'previousCheckpointFound':frontier_reached if old_frontier or old_keys else None,'checkpointSaved':bool(checkpoint or checkpoint_keys),'notificationCardsSeen':len(seen_cards),'notificationCardsOpened':card_attempts,'notificationCardPostsRead':card_reads,'notificationCardErrors':card_errors,'deferredNotificationCards':len(deferred_cards),'stopReason':stop,'notificationPostLinks':len(links),'detailPostsRead':resolved,'detailReadErrors':errors,'detailReadAbandoned':abandoned,'pendingPostLinks':len(pending),'uniqueDatedPosts':len(posts),'elapsedMs':round((time.monotonic()-started)*1000)}),flush=True)
  return list(posts.values())[:100]
 
 NOTIFICATION_CARDS=r'''() => {
