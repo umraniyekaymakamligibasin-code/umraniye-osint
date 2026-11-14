@@ -32,5 +32,7 @@
   "consoleErrors": [],
   "liveDataOrBackendVerified": false,
   "fixturesOnly": true,
-  "liveSiteChanged": false
+  "liveSiteChanged": false,
+  "authenticatedAssetRoute": true,
+  "anonymousAssetRequiresLogin": true
 }

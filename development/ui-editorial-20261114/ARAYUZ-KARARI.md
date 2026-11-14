@@ -20,7 +20,7 @@ Değişen üç dosya:
 
 ## Doğrulama
 
-Yerel, ayrı profilli headless Chrome ile 320, 390, 768, 1024, 1440 ve 1920 piksel genişlikleri kontrol edildi. Yatay taşma yok. Kurumsal metinler görünür. Kart/liste geçişi, haber/sosyal medya gezinmesi, platform filtresi, olay dosyası aç/kapat ve mobil menü kontrolleri geçti. JavaScript çalışma hatası yakalanmadı.
+Yerel, ayrı profilli headless Chrome ile 320, 390, 768, 1024, 1440 ve 1920 piksel genişlikleri kontrol edildi. Yatay taşma yok. Kurumsal metinler görünür. Kart/liste geçişi, haber/sosyal medya gezinmesi, platform filtresi, olay dosyası aç/kapat ve mobil menü kontrolleri geçti. JavaScript çalışma hatası yakalanmadı. Gerçek uygulama modülünde yeni CSS yolunun yetkili oturumda 200, oturumsuz istekte giriş yönlendirmesi döndürdüğü ayrıca doğrulandı; veritabanına erişilmedi.
 
 Ekran görüntüleri açıkça belirtilmiş arayüz test kayıtları içerir; canlı haber görüntüsü değildir. Test girdileri hiçbir OSINT veritabanına yazılmadı. Bu kontrol, canlı veri veya sunucu yetki denetiminin doğrulaması değildir. Yetki mantığı değiştirilmedi.
 
