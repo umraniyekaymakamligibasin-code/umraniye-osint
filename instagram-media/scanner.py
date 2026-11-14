@@ -308,7 +308,7 @@ def run_scan(dry=False):
                 stats['errors']+=1
                 kind=type(exc).__name__
                 log('ig_extra_account_error',reason=kind)
-                if any(term in kind.lower() for term in ('rate','wait','challenge','loginrequired','feedback','blocked','429')):
+                if any(term in kind.lower() for term in ('rate','wait','throttl','toomanyrequest','challenge','loginrequired','feedback','blocked','429')):
                     state['cooldownUntil']=time.time()+BASE_COOLDOWN
                     log('ig_extra_cooldown_set',seconds=BASE_COOLDOWN)
                     break

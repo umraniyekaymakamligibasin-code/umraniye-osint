@@ -1238,6 +1238,8 @@ const application = {
     if(url.pathname==='/api/public/export'){const data=await publishedData(env);return new Response(eventsCSV(reportEvents(data.events,url)),{headers:{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename=Umraniye_OSINT.csv'}})}
     if(url.pathname==='/api/public/map')return json(MAP_DATA);
     if(url.pathname==='/api/refresh')return publicRefresh(request,env,ctx,url);
+    // The in-process scheduled collector still uses this exact, secret-authenticated route.
+    if(url.pathname==='/api/automation/refresh')return serviceUpdate(request,env,ctx,url);
     if(url.pathname==='/mcp'||url.pathname.startsWith('/api/automation/'))return json({error:'Bulunamadı'},404);
     if(url.pathname==='/yonetim'||url.pathname==='/yonetim/ekip')return await adminSession(request,env,user)?htmlResponse(ADMIN_HTML):loginPage(user);
     if(['/api/admin/login','/api/admin/logout'].includes(url.pathname)){try{return await passwordAction(request,env,user,url)}catch{return json({error:'Giriş işlemi tamamlanamadı. Yeniden deneyin.'},503)}}

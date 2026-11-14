@@ -26,8 +26,8 @@ def summarize(provider,records,at):
   if provider=='news':
    if event!='collection_completed':continue
    status='interrupted' if record.get('stopped') else 'completed'
-   result['successfulSourceOperations']=result.get('successfulSourceOperations',0)+int(record.get('successful',0))
-   result['failedSourceOperations']=result.get('failedSourceOperations',0)+int(record.get('failed',0))
+   result['successfulBatchOperations']=result.get('successfulBatchOperations',0)+int(record.get('successful',0))
+   result['failedBatchOperations']=result.get('failedBatchOperations',0)+int(record.get('failed',0))
   elif provider=='instagram':
    if record.get('transport')!='instagram_graph_api':continue
   elif not record.get('status') or not record.get('mode'):continue
@@ -68,7 +68,11 @@ def journal(unit):
 
 def aggregate_db(path,query):
  try:
-  if not path.is_file():return {'available':False,'reason':'not_present'}
+  try:
+   info=path.stat()
+  except PermissionError:return {'available':False,'reason':'permission_denied'}
+  except FileNotFoundError:return {'available':False,'reason':'not_present'}
+  if not __import__('stat').S_ISREG(info.st_mode):return {'available':False,'reason':'not_regular_file'}
   con=sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True,timeout=3)
   try:
    con.execute('PRAGMA query_only=ON')
