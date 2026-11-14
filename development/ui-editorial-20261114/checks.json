@@ -1,0 +1,36 @@
+{
+  "result": "isolated_ui_checks_passed",
+  "desktop": {
+    "overflow": false,
+    "brand": true,
+    "platformTitle": true,
+    "cards": "grid",
+    "hiddenAdmin": true,
+    "cardWidth": 413.5
+  },
+  "mobile": {
+    "overflow": false,
+    "brand": true,
+    "platformTitle": true,
+    "cards": "grid",
+    "hiddenAdmin": true,
+    "cardWidth": 362
+  },
+  "widthsChecked": [
+    320,
+    390,
+    768,
+    1024,
+    1440,
+    1920
+  ],
+  "navigation": true,
+  "cardListSwitch": true,
+  "detailOpenClose": true,
+  "platformFilter": true,
+  "mobileMenu": true,
+  "consoleErrors": [],
+  "liveDataOrBackendVerified": false,
+  "fixturesOnly": true,
+  "liveSiteChanged": false
+}

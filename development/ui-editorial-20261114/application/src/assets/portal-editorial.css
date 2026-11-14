@@ -1,0 +1,154 @@
+/* OSINT editorial interface. Presentation only; collector/auth/delivery rules are unchanged. */
+html[data-ui="editorial"] {
+  --red: #b91c24;
+  --ink: #18212f;
+  --muted: #667085;
+  --border: #e6e8ec;
+  background: #f5f6f8;
+  color-scheme: light;
+}
+html[data-ui="editorial"] body { background: #f5f6f8; }
+html[data-ui="editorial"] .masthead {
+  min-height: 102px; padding: 18px 32px; gap: 24px;
+  border-top: 4px solid var(--red); box-shadow: 0 2px 10px #18212f04;
+}
+html[data-ui="editorial"] .identity { gap: 14px; min-width: 0; }
+html[data-ui="editorial"] .identity img { width: 58px; height: 58px; flex: 0 0 58px; }
+html[data-ui="editorial"] .identity strong { font-size: 18px; line-height: 1.35; letter-spacing: .3px; }
+html[data-ui="editorial"] .identity b { font-size: 12px; letter-spacing: 1.25px; margin-top: 3px; }
+html[data-ui="editorial"] .identity small { display: block; font-size: 12px; line-height: 1.5; margin-top: 3px; }
+html[data-ui="editorial"] .platform-title { display: block; font-size: 13px; padding-left: 24px; }
+html[data-ui="editorial"] .header-tools { gap: 12px; flex-shrink: 0; }
+html[data-ui="editorial"] .newswire { height: auto; min-height: 38px; padding: 8px 32px; gap: 18px; font-size: 12px; }
+html[data-ui="editorial"] .newswire p { min-width: 0; }
+html[data-ui="editorial"] .app-layout { grid-template-columns: 218px minmax(0,1fr); max-width: 1760px; }
+html[data-ui="editorial"] .sidebar { padding: 24px 12px; }
+html[data-ui="editorial"] .sidebar nav a { min-height: 44px; padding: 11px 13px; font-size: 14px; border-radius: 8px; }
+html[data-ui="editorial"] .sidebar nav a.active { background: #fdf0f1; color: #a51b24; }
+html[data-ui="editorial"] .sidebar-heading { margin-bottom: 12px; }
+html[data-ui="editorial"] .sidebar-note { padding: 14px; margin-top: 28px; }
+html[data-ui="editorial"] main { padding: 28px 30px 0; }
+html[data-ui="editorial"] .page-heading { gap: 18px; margin-bottom: 22px; }
+html[data-ui="editorial"] .eyebrow { font-size: 10px; letter-spacing: 1.6px; margin-bottom: 9px; }
+html[data-ui="editorial"] h1 { font-size: clamp(25px,2.1vw,30px); line-height: 1.2; letter-spacing: -.65px; }
+html[data-ui="editorial"] .page-heading p { font-size: 14px; margin-top: 8px; line-height: 1.6; }
+html[data-ui="editorial"] .button,
+html[data-ui="editorial"] .icon-button,
+html[data-ui="editorial"] .tab { min-height: 44px; }
+html[data-ui="editorial"] .searchbar {
+  background: #fff; padding: 12px; border: 1px solid var(--border); border-radius: 12px;
+  gap: 10px; margin-bottom: 20px; box-shadow: 0 2px 6px #18212f03;
+}
+html[data-ui="editorial"] .search-input { flex: 1 1 260px; min-width: 180px; }
+html[data-ui="editorial"] .search-input input { font-size: 15px; }
+html[data-ui="editorial"] .searchbar select { min-height: 44px; max-width: 180px; }
+html[data-ui="editorial"] .searchbar > .advanced { width: auto; flex: 0 0 auto; }
+html[data-ui="editorial"] .searchbar > .advanced[open] { width: 100%; flex-basis: 100%; }
+html[data-ui="editorial"] #notice.live-update { padding: 0; margin: 0 0 16px; border: 0; background: transparent; }
+html[data-ui="editorial"] .metrics { gap: 12px; margin-bottom: 24px; }
+html[data-ui="editorial"] .metric { min-height: 82px; padding: 14px 16px; box-shadow: none; border-radius: 10px; }
+html[data-ui="editorial"] .metric span { font-size: 12px; line-height: 1.5; }
+html[data-ui="editorial"] .metric strong { font-size: 25px; line-height: 1.2; margin-top: 5px; }
+html[data-ui="editorial"] .metric > i { padding: 9px; background: #f5f6f8; color: #667085; }
+html[data-ui="editorial"] .home-columns { grid-template-columns: minmax(0,1fr) 280px; gap: 24px; }
+html[data-ui="editorial"] .section-heading { margin: 0 0 14px; }
+html[data-ui="editorial"] .section-heading h2 { font-size: 19px; letter-spacing: -.25px; }
+html[data-ui="editorial"] .hero-grid { grid-template-columns: minmax(0,1.3fr) minmax(220px,1fr); gap: 14px; margin-bottom: 28px; }
+html[data-ui="editorial"] .lead-story { box-shadow: 0 3px 12px #18212f04; }
+html[data-ui="editorial"] .lead-story .story-media { height: 210px; }
+html[data-ui="editorial"] .lead-copy { padding: 18px; }
+html[data-ui="editorial"] .lead-copy h2 { font-size: 25px; line-height: 1.35; letter-spacing: -.5px; }
+html[data-ui="editorial"] .lead-copy p { font-size: 15px; line-height: 1.65; }
+html[data-ui="editorial"] .mini-stack { gap: 10px; align-content: start; }
+html[data-ui="editorial"] .mini-story { padding: 15px; border-radius: 10px; display: block; width: 100%; }
+html[data-ui="editorial"] .mini-story h3 { font-size: 15px; line-height: 1.5; }
+/* Keep cards as cards. The existing list/cards control still chooses the view. */
+html[data-ui="editorial"] .card-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; background: transparent; }
+html[data-ui="editorial"] .home-news-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+html[data-ui="editorial"] .card-grid .news-row { display: flex; flex-direction: column; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: #fff; overflow: hidden; }
+html[data-ui="editorial"] .card-grid .story-media { width: 100%; height: 156px; flex: 0 0 156px; }
+html[data-ui="editorial"] .card-grid .row-copy { padding: 17px; flex: 1; display: flex; flex-direction: column; min-width: 0; }
+html[data-ui="editorial"] .card-grid h3 { min-height: 0; font-size: 17px; line-height: 1.5; margin: 0 0 9px; }
+html[data-ui="editorial"] .card-grid .news-row p { font-size: 14px; line-height: 1.65; -webkit-line-clamp: 2; margin: 0 0 14px; }
+html[data-ui="editorial"] .card-grid .metadata { margin-top: auto; gap: 7px; font-size: 12px; }
+html[data-ui="editorial"] .headline-button { overflow-wrap: anywhere; }
+html[data-ui="editorial"] .story-media { background: #eef1f4; }
+html[data-ui="editorial"] .media-fallback { color: #667085; padding: 16px; text-align: center; font-size: 13px; }
+html[data-ui="editorial"] .lead-story .story-media.no-image { height: 105px; }
+html[data-ui="editorial"] .card-grid .story-media.no-image { height: 100px; flex-basis: 100px; }
+html[data-ui="editorial"] .social-card { padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px #18212f03; }
+html[data-ui="editorial"] .social-card h3 { font-size: 18px; line-height: 1.5; }
+html[data-ui="editorial"] .social-card p { font-size: 15px; line-height: 1.75; }
+html[data-ui="editorial"] .social-meta { padding-top: 12px; border-top: 1px solid var(--border); line-height: 1.75; }
+html[data-ui="editorial"] .rail-panel { padding: 17px; border-radius: 12px; box-shadow: none; }
+html[data-ui="editorial"] .rail-heading { font-size: 15px; }
+html[data-ui="editorial"] .rail-item { padding: 14px 0; }
+html[data-ui="editorial"] .rail-item h3 { font-size: 14px; line-height: 1.55; }
+html[data-ui="editorial"] .tabs { scrollbar-width: thin; }
+html[data-ui="editorial"] .tab { white-space: nowrap; padding: 11px 15px; }
+html[data-ui="editorial"] .pagination { gap: 12px; margin: 24px 0; }
+html[data-ui="editorial"] .pagination span { color: #667085; }
+html[data-ui="editorial"] #event-dialog { max-width: 920px; width: calc(100% - 32px); max-height: calc(100dvh - 32px); border-radius: 14px; }
+html[data-ui="editorial"] .dialog-bar { position: sticky; top: 0; z-index: 2; background: #fff; }
+html[data-ui="editorial"] #event-content .full-text { font-size: 16px; line-height: 1.8; overflow-wrap: anywhere; }
+html[data-ui="editorial"] footer { padding: 24px 0; margin-top: 32px; border-top: 1px solid var(--border); }
+html[data-ui="editorial"] :is(a,button,input,select,summary):focus-visible { outline: 3px solid #9d2736; outline-offset: 3px; }
+@media(min-width:1700px) {
+  html[data-ui="editorial"] .home-news-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media(max-width:1250px) {
+  html[data-ui="editorial"] .app-layout { grid-template-columns: 192px minmax(0,1fr); }
+  html[data-ui="editorial"] main { padding: 24px 22px 0; }
+  html[data-ui="editorial"] .home-columns { grid-template-columns: minmax(0,1fr); }
+  html[data-ui="editorial"] .right-column { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+  html[data-ui="editorial"] .card-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  html[data-ui="editorial"] .platform-title { font-size: 12px; padding-left: 16px; }
+}
+@media(max-width:980px) {
+  html[data-ui="editorial"] .app-layout { grid-template-columns: minmax(0,1fr); }
+  html[data-ui="editorial"] .masthead { flex-wrap: wrap; padding: 16px 22px; gap: 12px; }
+  html[data-ui="editorial"] .platform-title { order: 3; flex-basis: 100%; border: 0; border-top: 1px solid var(--border); padding: 9px 0 0; font-size: 12px; }
+  html[data-ui="editorial"] .platform-title br { display: none; }
+  html[data-ui="editorial"] .platform-title strong::before { content: " "; }
+  html[data-ui="editorial"] .header-tools { margin-left: auto; }
+}
+@media(max-width:700px) {
+  html[data-ui="editorial"] .masthead { padding: 13px 14px; gap: 10px; }
+  html[data-ui="editorial"] .identity { gap: 9px; flex: 1 1 220px; }
+  html[data-ui="editorial"] .identity img { width: 43px; height: 43px; flex-basis: 43px; }
+  html[data-ui="editorial"] .identity strong { font-size: 12px; line-height: 1.4; max-width: none; }
+  html[data-ui="editorial"] .identity b { font-size: 10px; letter-spacing: .6px; }
+  html[data-ui="editorial"] .identity small { font-size: 10px; }
+  html[data-ui="editorial"] .header-tools { gap: 4px; }
+  html[data-ui="editorial"] .newswire { padding: 9px 14px; gap: 10px; }
+  html[data-ui="editorial"] .wire-label { font-size: 10px; white-space: nowrap; }
+  html[data-ui="editorial"] main { padding: 20px 14px 0; }
+  html[data-ui="editorial"] .page-heading { margin-bottom: 18px; flex-wrap: wrap; }
+  html[data-ui="editorial"] .page-heading > .button { font-size: 12px; padding: 9px 12px; }
+  html[data-ui="editorial"] .searchbar { padding: 10px; flex-wrap: wrap; }
+  html[data-ui="editorial"] .search-input { flex-basis: 100%; min-width: 0; }
+  html[data-ui="editorial"] .searchbar > select { display: block; flex: 1 1 120px; max-width: none; width: auto; font-size: 13px; }
+  html[data-ui="editorial"] .searchbar > .advanced { display: block; }
+  html[data-ui="editorial"] .metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+  html[data-ui="editorial"] .metric { padding: 13px; min-height: 78px; }
+  html[data-ui="editorial"] .metric strong { font-size: 23px; }
+  html[data-ui="editorial"] .hero-grid { grid-template-columns: minmax(0,1fr); gap: 12px; }
+  html[data-ui="editorial"] .lead-story .story-media { height: 185px; }
+  html[data-ui="editorial"] .lead-copy h2 { font-size: 23px; }
+  html[data-ui="editorial"] .card-grid,
+  html[data-ui="editorial"] .home-news-grid,
+  html[data-ui="editorial"] .right-column,
+  html[data-ui="editorial"] .social-grid { grid-template-columns: minmax(0,1fr); }
+  html[data-ui="editorial"] .card-grid .story-media { height: 162px; flex-basis: 162px; }
+  html[data-ui="editorial"] .card-grid .news-row p { display: -webkit-box; }
+  html[data-ui="editorial"] .card-grid h3 { font-size: 18px; }
+  html[data-ui="editorial"] .social-top { gap: 10px; }
+  html[data-ui="editorial"] .social-top > div { min-width: 0; overflow-wrap: anywhere; }
+  html[data-ui="editorial"] .social-bottom { flex-wrap: wrap; }
+  html[data-ui="editorial"] .tab { padding: 11px 13px; font-size: 13px; }
+  html[data-ui="editorial"] #event-content { padding: 18px; }
+  html[data-ui="editorial"] .detail-grid { grid-template-columns: minmax(0,1fr); }
+}
+@media(prefers-reduced-motion:reduce) {
+  html[data-ui="editorial"] * { scroll-behavior: auto !important; transition: none !important; }
+}

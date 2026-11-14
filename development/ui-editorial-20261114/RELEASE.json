@@ -1,0 +1,17 @@
+{
+  "result": "ui_candidate_prepared_not_deployed",
+  "files": {
+    "src/portal.html": {
+      "before": "02cad1915a16a561997571076fe03d60467f08d39336acbbe16ae07018b3b657",
+      "after": "81df97706206a2a499fff1617387d9b81e77bf2e8de66abab43411fe99e4784a"
+    },
+    "server/portal-shell.mjs": {
+      "before": "2efbe88b81e2b2d2af4e204caeb36d0bbb01828d8e96850a461a3bb7730693f7",
+      "after": "e76966b1f4b41a5f8eca85446f01659f78a7a2b416deb59f55951ec113d234bd"
+    },
+    "src/assets/portal-editorial.css": {
+      "before": null,
+      "after": "026a397aca5882cc94e7efbfc5e34aa5c60563f264bc05e5091b3830614a3f73"
+    }
+  }
+}
