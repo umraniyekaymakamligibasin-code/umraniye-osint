@@ -23,6 +23,8 @@ Sorun yalnız tarama sıklığı değildir. Haber toplayıcısının iç yolu bi
 | Zamanlama | Instagram medya zamanlayıcısı kapalı olsa da sıralı denetleyici bu işi kendi planından başlatabiliyor. | Yalnız timer kapatmak ilgili işi durdurmaya yetmiyor. Tek etkin çalışma planı gerekli. P1. |
 | Ölçüm betiği | Yetki engelli dizinde `is_file()` false sonucu “dosya yok” diye raporlanabiliyor. Haber günlüklerindeki başarılı/başarısız değerler kaynak değil grup sayısı. | Yanlış teşhis riski. P0/P1. |
 
+DHA ayrı bileşeninde son iki saatlik günlük penceresinde kayıt görülmedi. Bu tek başına arıza kanıtı değildir; etkin zamanlama, son tetikleme ve son gerçek kaynak sonucu ayrıca doğrulanmalıdır. DHA'nın yalnız haber akışına katılması ve Telegram/diğer sağlayıcılardan ayrı kimliği korunur.
+
 Zaman sınırı: son Instagram örneği 14 Kasım 23:28 TSİ civarındadır. Sonraki normal turlar durumu değiştirebilir. Hata gözlemleri tekil gönderi veya tekil kaynak sayısı değildir.
 
 ## Hazırlanan acil düzeltmeler
