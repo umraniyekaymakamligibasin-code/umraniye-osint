@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const {publicInstagramAPIState}=await import(pathToFileURL(process.argv[2]));
+const now=Date.now(),at=new Date(now).toISOString(),retryAt=new Date(now+600000).toISOString();
+const old=publicInstagramAPIState({status:'completed',activeSources:13,sources:[],at},now);
+assert.equal(old.status,'no_sources_attempted');
+const waiting=publicInstagramAPIState({status:'completed',activeSources:13,waitingSources:13,sources:[],at,waitingSourceStates:[{handle:'fixture',retryAt,code:200,subcode:5258005}]},now);
+assert.equal(waiting.status,'source_backoff');assert.equal(waiting.retryAt,retryAt);assert.equal(waiting.sources[0].status,'backoff');assert.equal(waiting.sources[0].code,200);
+assert.equal(waiting.lastContentReadAt,null);
+const valid=publicInstagramAPIState({status:'completed',activeSources:1,at,lastContentReadAt:at,sources:[{handle:'fixture',status:'readable',read:1}],waitingSourceStates:[{handle:'fixture',retryAt}]},now);
+assert.equal(valid.status,'completed');assert.equal(valid.sources.length,1);assert.equal(valid.lastContentReadAt,at);
+const expired=publicInstagramAPIState({status:'source_backoff',tokenExpiresAt:new Date(now-1000).toISOString()},now);
+assert.equal(expired.status,'token_expired');
+console.log('PASS: waiting/empty rounds are not healthy reads; retry and actual read time preserved; expiry overrides status');

@@ -42,7 +42,7 @@ Zaman sınırı: son Instagram örneği 14 Kasım 23:28 TSİ civarındadır. Son
 - Korumalı veritabanı “yok” diye raporlanmadı.
 - Gösterge kutularının DOM'da oluşmadığı ve altı ekran genişliğinde mevcut arayüz kontrollerinin geçtiği doğrulandı.
 
-Bu düzeltmeler **kurulum paketi olarak hazırlanmıştır**. Yeni canlı haber kazanımı henüz bunlarla doğrulanmış değildir. Kurulum için sudo parolasını kullanıcının girmesi gerekir.
+15 Kasım güncellemesi: bu dört dosyalık düzeltme kullanıcı tarafından kuruldu. Sonraki normal haber turlarında 15 başarılı / 0 başarısız grup gözlendi; medya okuyucusunun bir saatlik beklemesi doğrulandı. Tüm yeni haberlerin yakalandığı doğrulanmış değildir. Sağlayıcı erişimi ve durum raporlaması için ayrı 15 Kasım paketi hazırlandı.
 
 ## Aşama 1 — Erişim ve operasyonu düzelt
 

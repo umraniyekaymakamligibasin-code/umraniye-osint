@@ -1,0 +1,22 @@
+{
+  "instagram-api/worker.py": {
+    "before": "548c6a8d25a1da7abb947f6df43b986f61d4e63d1001b61d735820ef46e0406d",
+    "after": "c97190d1d75df30e791568db56bdcc4fd9985d022ecf5c2c3f992739d280fa73"
+  },
+  "instagram-api/publish_status.py": {
+    "before": "4d94b8885e4704f0ad6195d2f5b6d43e7ad07e6b8ae65f796848669e87168785",
+    "after": "29bb800de3a788bef675ed3041a1046f488ca1cdf280adce6052e7fc2715af59"
+  },
+  "application/server/instagram-api-state.mjs": {
+    "before": "d7f1cdbe89f691ac859d0d220a5347e06ed4a65aaf5453ea4b061acb0998971a",
+    "after": "002f65c289014b366209a5668eab0fa82e193a147d3c3f60d54029d5c1f97343"
+  },
+  "application/src/admin.html": {
+    "before": "fa53303b57d358667bc7e5fa6c8d914f740215d6d6871c9c589d1d9d1caa88fb",
+    "after": "45966a1f4e104199b98407619a55e9dc3c476ae4c0accf96cd0d541dd5a15280"
+  },
+  "facebook-shadow/reader.py": {
+    "before": "92ad7abffd20b26c7e9e653a9f619b31df6a711610fc51edf9f3db62992a24c3",
+    "after": "a765963191d7f854ff795f7c0815895507a6a250f86363a2efbf10723e62d785"
+  }
+}
