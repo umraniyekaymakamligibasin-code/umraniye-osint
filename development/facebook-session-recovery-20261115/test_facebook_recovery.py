@@ -13,6 +13,9 @@ class Access(unittest.TestCase):
  def test_rate_pause_survives_generation(self):
   state=a.access_state([{'status':'rate_limited'}],3,100)
   self.assertTrue(a.is_paused(state,4,101));self.assertFalse(a.is_paused(state,4,4000))
+ def test_simultaneous_rate_and_challenge_keeps_rate_wait(self):
+  state=a.access_state([{'status':'rate_limited'},{'status':'blocked','reasons':{'account_verification_required':1}}],3,100)
+  self.assertEqual(state['reason'],'rate_limited');self.assertTrue(a.is_paused(state,4,101))
  def test_generic_403_not_login(self):
   state=a.access_state([{'status':'blocked','reasons':{'http_status':403}}]*4,3,100)
   self.assertEqual(state['reason'],'shared_access_restricted');self.assertFalse(state['requiresManualLogin'])
