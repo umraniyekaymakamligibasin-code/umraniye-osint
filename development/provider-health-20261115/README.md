@@ -6,7 +6,7 @@
 - Facebook umraniyehaberlerii adresine tek, çerezsiz ve yönlendirme takip etmeyen istek 302 /login/ döndürdü. Bu örnekte engel kaydırma değil erişimdir. Diğer sayfaların aynı nedenle başarısız olduğu varsayılmaz.
 - Instagram API son gözleminde 13 kaynak beklemede ve sıfır okuma var. Meta 200/5258005 hatasının kesin nedeni yalnız sayısal koddan belirlenemez. Beklemeler sıfırlanmadı; yeni API taraması zorlanmadı.
 
-## Hazır; henüz canlıya kurulmadı
+## Canlıya kuruldu ve kaynak sürümleri doğrulandı
 Beş dosyalık sürüm kilitli paket: osint-saglayici-durum-duzelt.py.
 - Bekleyen, boş sonuç veren, erişim hatası yaşayan ve gerçekten içerik okuyan Instagram turları ayrılır.
 - Kaynak bazında yeniden deneme zamanı, sayısal hata kodu ve son gerçek içerik okuma zamanı yöneticiye gösterilir. Token ve ham hata metni yayımlanmaz.
@@ -25,4 +25,4 @@ Kurucu dosya SHA256 değerlerini tekrar doğrular, yedek alır, aktif tarama tur
 5. DHA etkin çalışma planının ayrıca doğrulanması ve güncel GitHub notlarındaki kalan maddeler.
 6. Arayüz tasarım adayı ayrı taslaktır; bu paket tasarımı canlıya taşımaz.
 
-Canlı kurulum ve dış tarayıcı görünümü henüz doğrulanmadı. Hiçbir bileşen için yüzde 100 kapsam iddiası yoktur.
+Kullanıcı 15 Kasım 08:42:45 UTC tarihinde beş dosyalık paketi kurdu. Beş canlı dosyanın sürüm kilidi, GitHub aynası ve origin/main eşitliği doğrulandı; yerel 3001/3000 kurulum kontrolü geçti. Yedek: /var/backups/umraniye-osint-reviewed/provider-health-20261115T084245Z. Kullanıcı ekran görüntüsü yeni bekleme ve son gerçek okuma alanlarını gösteriyor; dış tarayıcı etkileşimleri ajan tarafından henüz sınanmadı. Hiçbir bileşen için yüzde 100 kapsam iddiası yoktur.
