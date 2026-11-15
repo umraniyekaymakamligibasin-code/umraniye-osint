@@ -5,13 +5,23 @@ const count=v=>Number.isSafeInteger(v)?Math.max(0,Math.min(v,1000000)):0;
 const date=v=>typeof v==='string'&&Number.isFinite(Date.parse(v))?new Date(v).toISOString():null;
 const safe=v=>typeof v==='string'&&/^[a-z0-9_]{1,60}$/.test(v)?v:null;
 export function publicInstagramAPIState(value,now=Date.now()){
- const rows=Array.isArray(value.sources)?value.sources:[];
+ const actualRows=Array.isArray(value.sources)?value.sources:[];
+ const waiting=Array.isArray(value.waitingSourceStates)?value.waitingSourceStates:[];
+ const seen=new Set(actualRows.map(r=>r.handle));
+ const rows=[...actualRows,...waiting.filter(r=>!seen.has(r.handle)).map(r=>({...r,status:'backoff',read:0}))];
  const completed=date(value.completedAt)||date(value.at);
  const expired=!!date(value.tokenExpiresAt)&&Date.parse(value.tokenExpiresAt)<=now;
- return {available:true,transport:'instagram_graph_api',status:expired?'token_expired':safe(value.status)||'unknown',
+ let status=safe(value.status)||'unknown';
+ // Older publishers called a round with no attempted source "completed" too.
+ if(status==='completed'&&!actualRows.length&&count(value.activeSources))status=count(value.waitingSources)||waiting.length?'source_backoff':'no_sources_attempted';
+ const retries=waiting.map(r=>date(r.retryAt)).filter(Boolean).sort();
+ const retryAt=date(value.retryAt)||(status==='source_backoff'?retries[0]||null:null);
+ return {available:true,transport:'instagram_graph_api',status:expired?'token_expired':status,
   at:date(value.at),completedAt:completed,stale:!completed||now-Date.parse(completed)>900000,
-  nextExpectedScanAt:date(value.retryAt)|| (completed?new Date(Date.parse(completed)+300000).toISOString():null),
-  retryAt:date(value.retryAt),pauseReason:safe(value.pauseReason),pauseCode:Number.isSafeInteger(value.pauseCode)?value.pauseCode:null,sourceBudgetPerRound:count(value.sourceBudgetPerRound),deferredSources:count(value.deferredSources),
+  lastContentReadAt:date(value.lastContentReadAt),
+  nextExpectedScanAt:retryAt|| (completed?new Date(Date.parse(completed)+300000).toISOString():null),
+  retryAt,pauseReason:safe(value.pauseReason),pauseCode:Number.isSafeInteger(value.pauseCode)?value.pauseCode:null,sourceBudgetPerRound:count(value.sourceBudgetPerRound),deferredSources:count(value.deferredSources),
+  waitingSources:count(value.waitingSources),attemptedSources:count(value.attemptedSources),readSources:count(value.readSources),failedSources:count(value.failedSources),
   intervalSeconds:300,activeSources:count(value.activeSources),pending:count(value.pending),
   tokenExpiresAt:date(value.tokenExpiresAt),tokenRenewalDue:expired||value.tokenRenewalDue===true,
   sources:rows.slice(0,200).filter(r=>typeof r.handle==='string'&&/^[a-z0-9_.]{1,30}$/.test(r.handle)).map(r=>({

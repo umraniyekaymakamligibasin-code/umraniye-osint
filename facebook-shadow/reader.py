@@ -28,7 +28,14 @@ class BoundedTransport:
         try:
             with self.session.request(method,url,headers=headers,data=data,timeout=min(8,remaining),allow_redirects=False,stream=True) as r:
                 if r.status_code in (401,403,429):raise GuardStop('public_access_blocked' if r.status_code!=429 else 'rate_limited')
-                if 300<=r.status_code<400:raise GuardStop('redirect_requires_review')
+                if 300<=r.status_code<400:
+                    # Do not follow redirects or bypass login. Classify the real access gate.
+                    from urllib.parse import urljoin
+                    destination=urlsplit(urljoin(url,r.headers.get('Location','')))
+                    if destination.scheme=='https' and destination.hostname in ('www.facebook.com','facebook.com') and destination.port in (None,443) and not destination.username and not destination.password:
+                        if destination.path.startswith(('/checkpoint/','/challenge/')):raise GuardStop('human_verification_required')
+                        if destination.path.startswith(('/login/','/login.php','/recover/')):raise GuardStop('public_access_blocked')
+                    raise GuardStop('redirect_requires_review')
                 if r.status_code!=200:raise GuardStop('http_error_'+str(r.status_code))
                 chunks=[];size=0
                 for chunk in r.iter_content(65536):

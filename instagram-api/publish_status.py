@@ -4,7 +4,18 @@ APP_USER='osintdeneme'
 SOURCE=pathlib.Path('/var/lib/umraniye-osint-instagram-api/status.json')
 DEST=pathlib.Path('/var/lib/umraniye-osint-instagram-api-public/status.json')
 def public_status(value):
-    result={k:value[k] for k in ('at','completedAt','status','activeSources','pending','tokenExpiresAt','tokenRenewalDue','panelHealthUpdated','retryAt','pauseReason','pauseCode','sourceBudgetPerRound','deferredSources') if k in value}
+    result={k:value[k] for k in ('at','completedAt','status','activeSources','pending','tokenExpiresAt','tokenRenewalDue','panelHealthUpdated','retryAt','pauseReason','pauseCode','sourceBudgetPerRound','deferredSources','waitingSources','attemptedSources','readSources','failedSources','lastContentReadAt') if k in value}
+    result['waitingSourceStates']=[]
+    for row in value.get('waitingSourceStates',[])[:200]:
+        if isinstance(row,dict) and re.fullmatch(r'[a-z0-9_.]{1,30}',str(row.get('handle',''))):
+            item={'handle':row['handle'],'reason':row.get('reason') if row.get('reason') in ('source_backoff','source_unavailable_to_api') else 'source_backoff'}
+            for key in ('code','subcode'):
+                if type(row.get(key)) is int:item[key]=row[key]
+            try:
+                instant=datetime.datetime.fromisoformat(str(row.get('retryAt','')).replace('Z','+00:00'))
+                if instant.tzinfo:item['retryAt']=instant.isoformat()
+            except ValueError:pass
+            result['waitingSourceStates'].append(item)
     result['sources']=[]
     for row in value.get('sources',[])[:200]:
         if not isinstance(row,dict) or not re.fullmatch(r'[a-z0-9_.]{1,30}',str(row.get('handle',''))):continue

@@ -41,6 +41,27 @@ def atomic(path, value):
     os.replace(temp, path)
 
 
+def finish_report(report, attempted):
+    rows = report.get('sources') or []
+    report['attemptedSources'] = attempted
+    report['readSources'] = sum(r.get('status') == 'readable' and r.get('read', 0) > 0 for r in rows)
+    report['failedSources'] = sum(r.get('status') in ('api_error', 'read_error') for r in rows)
+    if report.get('status') not in (None, 'completed'):
+        return report
+    if not attempted:
+        report['status'] = 'source_backoff' if report.get('waitingSources') else ('no_active_sources' if not report.get('activeSources') else 'no_sources_attempted')
+    elif report['readSources']:
+        report['status'] = 'partial_read' if report['failedSources'] else 'completed'
+    else:
+        report['status'] = 'source_errors' if report['failedSources'] else 'empty_results'
+    if report['status'] in ('source_backoff', 'source_errors'):
+        retries = [r.get('retryAt') for r in rows + report.get('waitingSourceStates', []) if r.get('retryAt')]
+        if retries:
+            report['retryAt'] = min(retries)
+        report['pauseReason'] = 'source_access_error' if report['failedSources'] else 'sources_waiting'
+    return report
+
+
 class MetaError(Exception):
     def __init__(self, error):
         self.code = error.get('code')
@@ -254,6 +275,8 @@ class Worker:
         started = now()
         report = {'at': iso(), 'transport': 'instagram_graph_api', 'activeSources': len(self.handles),
                   'sources': [], 'ingestion': [], 'browserStarted': False}
+        previous_read = self.db.execute('SELECT max(last_success) FROM source_progress').fetchone()[0]
+        report['lastContentReadAt'] = iso(previous_read) if previous_read else None
         report['tokenExpiresAt'] = iso(self.credentials['expiresAt']) if self.credentials.get('expiresAt') else None
         report['tokenRenewalDue'] = bool(self.credentials.get('expiresAt') and self.credentials['expiresAt'] - now() < 7 * 86400)
         fingerprint = __import__('hashlib').sha256(self.credentials['token'].encode()).hexdigest()
@@ -294,7 +317,8 @@ class Worker:
         report['waitingSourceStates'] = []
         for handle in waiting:
             health = self.db.execute('SELECT retry_at,code FROM health WHERE handle=?', (handle,)).fetchone()
-            report['waitingSourceStates'].append({'handle': handle, 'retryAt': iso(health[0]),
+            match = re.fullmatch(r'meta_error_(\d+)_(\d+)', str(health[1]))
+            report['waitingSourceStates'].append({'handle': handle, 'retryAt': iso(health[0]), 'code': int(match[1]) if match else None, 'subcode': int(match[2]) if match else None,
                 'reason': 'source_unavailable_to_api' if str(health[1]) == 'meta_error_110_2207013' else 'source_backoff'})
         report['sourceBudgetPerRound'] = 3
         report['deferredSources'] = max(0, len(self.handles)-len(waiting)-len(order))
@@ -363,6 +387,7 @@ class Worker:
                     break
                 failures = (health[1] if health else 0) + 1
                 wait = 86400 if error.subcode == 2207013 else min(86400, 300 * 2 ** min(failures, 8))
+                row['retryAt'] = iso(now()+wait)
                 self.db.execute('INSERT OR REPLACE INTO health VALUES(?,?,?,?)', (handle, now()+wait, failures, str(error)))
                 self.db.commit()
             except Exception as error:
@@ -398,8 +423,9 @@ class Worker:
         self.db.execute('DELETE FROM posts WHERE discovered<?', (now()-184*86400,))
         self.db.commit()
         report['pending'] = self.db.execute("SELECT count(*) FROM posts WHERE status='pending'").fetchone()[0]
-        report.setdefault('status', 'completed')
-        return report
+        if total_read:
+            report['lastContentReadAt'] = iso()
+        return finish_report(report, attempted)
 
 
 def main():
