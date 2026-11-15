@@ -20,6 +20,8 @@ LINK = re.compile(r'^https://(?:www\.)?instagram\.com/(?:p|reel)/[A-Za-z0-9_-]+/
 # Each source is read only every few rounds, so the former 1-hour cut-off silently dropped posts
 # that were discovered 1-3 hours after publication.
 FRESH_SECONDS = 3 * 3600
+ACCESS_BLOCK_CODE = 'meta_error_200_5258005'
+ACCESS_RECHECK_SECONDS = 1800
 
 
 def now():
@@ -190,6 +192,40 @@ class Worker:
             a.get('provider') == 'instagram' and a.get('enabled') is not False
             for a in config.get('accounts', []))
 
+    def access_blocked(self, report, fingerprint):
+        """Recover app-wide access blocks without resetting unrelated source failures."""
+        gate = self.control('access_pause') or {}
+        legacy = self.db.execute('SELECT 1 FROM health WHERE code=? LIMIT 1', (ACCESS_BLOCK_CODE,)).fetchone()
+        if not gate and not legacy:
+            return False
+        retry_at = gate.get('retryAt', 0)
+        status = 'api_access_blocked'
+        if gate.get('fingerprint') != fingerprint or retry_at <= now():
+            try:
+                result = graph(self.credentials['igUserId'], self.credentials['token'], {'fields': 'id'})
+                if str(result.get('id', '')) != str(self.credentials['igUserId']):
+                    raise ValueError('account_identity_mismatch')
+            except MetaError as error:
+                status = 'api_access_blocked' if (error.code, error.subcode) == (200, 5258005) else 'access_recheck_failed'
+            except Exception:
+                status = 'access_recheck_failed'
+            else:
+                self.db.execute('DELETE FROM health WHERE code=?', (ACCESS_BLOCK_CODE,))
+                self.db.commit()
+                self.control('access_pause', {})
+                return False
+            retry_at = now() + ACCESS_RECHECK_SECONDS
+            self.control('access_pause', {'fingerprint': fingerprint, 'retryAt': retry_at, 'status': status})
+        else:
+            status = gate.get('status', status)
+        report.update(status=status, pauseReason='meta_access_blocked', pauseCode=200, retryAt=iso(retry_at))
+        try:
+            report['ingestion'].append(self.drain())
+        except Exception as error:
+            report['ingestion'].append({'status': 'bridge_pending_retry', 'errorType': type(error).__name__})
+        report['pending'] = self.db.execute("SELECT count(*) FROM posts WHERE status='pending'").fetchone()[0]
+        return True
+
     def discover(self, handle, cursor=None):
         modifier = '.after(' + cursor + ')' if cursor else ''
         if cursor and not re.fullmatch(r'[A-Za-z0-9_=\-]+', cursor):
@@ -312,6 +348,8 @@ class Worker:
         if not self.panel_enabled():
             report['status'] = 'panel_paused'
             return report
+        if self.access_blocked(report, fingerprint):
+            return report
         order, waiting = self.source_order()
         report['waitingSources'] = len(waiting)
         report['waitingSourceStates'] = []
@@ -367,6 +405,13 @@ class Worker:
                 self.db.commit()
             except MetaError as error:
                 row.update(status='api_error', code=error.code, subcode=error.subcode)
+                if (error.code, error.subcode) == (200, 5258005):
+                    retry_at = now() + ACCESS_RECHECK_SECONDS
+                    self.control('access_pause', {'fingerprint': fingerprint, 'retryAt': retry_at, 'status': 'api_access_blocked'})
+                    report.update(status='api_access_blocked', pauseReason='meta_access_blocked', pauseCode=200, retryAt=iso(retry_at))
+                    self.source_progress(row)
+                    report['sources'].append(row)
+                    break
                 if error.code == 190:
                     self.control('global_pause', {'fingerprint': fingerprint, 'authRequired': True})
                     report['status'] = 'token_renewal_required'
@@ -446,7 +491,10 @@ def main():
             finally:
                 worker.db.close()
         except Exception as error:
-            report = {'at': iso(), 'status': 'collector_error', 'errorType': type(error).__name__}
+            detail = getattr(error, 'reason', None)
+            # Keep diagnostics safe: never serialize URLs, headers, tokens, or response bodies.
+            report = {'at': iso(), 'status': 'collector_error', 'errorType': type(error).__name__,
+                      'errorReason': type(detail).__name__ if detail is not None else None}
         report['completedAt'] = iso()
         atomic(directory / 'status.json', report)
         print(json.dumps(report, ensure_ascii=False), flush=True)

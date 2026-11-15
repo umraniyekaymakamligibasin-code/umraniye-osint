@@ -29,7 +29,7 @@ async def _collect(pw,account,config,data,network_guard,cleaned,folder):
     try:previous_access=json.loads(access_path.read_text(encoding='utf-8'))
     except (OSError,ValueError):previous_access={}
     if is_paused(previous_access,generation):
-        print(json.dumps({'event':'facebook_access_paused','reason':previous_access.get('reason'),'retryAt':previous_access.get('retryAt')}),flush=True)
+        print(json.dumps({'event':'facebook_access_paused','reason':previous_access.get('reason'),'retryAt':previous_access.get('retryAt'),'requiresManualLogin':previous_access.get('requiresManualLogin',False)}),flush=True)
         return {'provider':'facebook','profileURL':account['profileURL'],'status':'verification_paused','posts':[],'terms':[]}
 
     detail_path=data/'facebook-detail-v6.json'
@@ -39,7 +39,7 @@ async def _collect(pw,account,config,data,network_guard,cleaned,folder):
     if not selected:result['status']='no_visible_results';return result
     context=await pw.chromium.launch_persistent_context(str(folder),channel='chromium',headless=True,args=['--autoplay-policy=user-gesture-required'],chromium_sandbox=True,locale='tr-TR',timezone_id='Europe/Istanbul',viewport={'width':1280,'height':900},accept_downloads=False,service_workers='block')
     await context.route('**/*',lambda route:network_guard(route,interactive=False))
-    semaphore=asyncio.Semaphore(2);observed=[];source_reads=[]
+    semaphore=asyncio.Semaphore(1);observed=[];source_reads=[]
     async def source(s):
         async with semaphore:
             if time.monotonic()-started>58:return

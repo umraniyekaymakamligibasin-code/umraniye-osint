@@ -9,12 +9,23 @@ def quoted(value):
 
 
 def plans(groups,sources,cursor,now):
-    handles=list(dict.fromkeys(str(s.get('handle') or '').lstrip('@') for s in sources if s.get('enabled',True) and not s.get('removedAt') and re.fullmatch(r'@?[A-Za-z0-9_]{1,15}',str(s.get('handle') or ''))))
-    batches=[handles[i:i+4] for i in range(0,len(handles),4)]
+    # These five are mention targets by the owner's explicit instruction.
+    mention_only={'tc_umraniye','yukselcelikmia','umraniyeilcemem','umraniyenufus','umraniye_tarim'}
+    active=[s for s in sources if s.get('enabled') in (True,1) and not s.get('removedAt') and re.fullmatch(r'@?[A-Za-z0-9_]{1,15}',str(s.get('handle') or ''))]
+    targets=list(dict.fromkeys(str(s['handle']).lstrip('@').lower() for s in active if s.get('institutional') or s.get('mentions') or str(s['handle']).lstrip('@').lower() in mention_only))
+    handles=list(dict.fromkeys(str(s['handle']).lstrip('@').lower() for s in active if str(s['handle']).lstrip('@').lower() not in targets))
     out=[]
-    for n in range(min(4,len(batches))):
-        batch=batches[(cursor*4+n)%len(batches)]
+    batches=[handles[i:i+4] for i in range(0,len(handles),4)]
+    for n in range(min(2,len(batches))):
+        batch=batches[(cursor*2+n)%len(batches)]
         out.append({'kind':'accounts','base':'('+' OR '.join('from:'+h for h in batch)+')'})
+    batches=[targets[i:i+3] for i in range(0,len(targets),3)]
+    for n in range(min(2,len(batches))):
+        batch=batches[(cursor*2+n)%len(batches)]
+        base='('+' OR '.join('(@'+h+' OR to:'+h+')' for h in batch)+')'
+        # Exclude all target institutions as authors, including cross-mentions.
+        base+=' '+' '.join('-from:'+h for h in targets)
+        out.append({'kind':'mentions','base':base})
     terms=list(dict.fromkeys(q for g in groups if g.get('kind')!='konum' for t in g.get('terms',[]) if (q:=quoted(t))))
     words=[terms[i:i+5] for i in range(0,len(terms),5)]
     if words:out.append({'kind':'keywords','base':'(Ümraniye OR Umraniye OR Dudullu) ('+' OR '.join(words[cursor%len(words)])+')'})
