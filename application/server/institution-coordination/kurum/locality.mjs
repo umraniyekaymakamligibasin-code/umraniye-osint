@@ -66,11 +66,11 @@ export function localityCikar(event) {
   const incelemeGerekli = e.locationStatus === 'review_required'
     || e.locationStatus === 'local_indicated';
 
-  // 4) Metinden ilce ipucu. Yalnizca BASLIK + OZET + ilk 400 karakter
-  //    dikkate alinir: uzun İstanbul/ Türkiye haberlerinde Ümraniye'nin
+  // 4) Metinden ilce ipucu. Yalnizca BASLIK + OZET + ilk 250 karakter
+  //    dikkate alinir: uzun İstanbul/Türkiye haberlerinde Ümraniye'nin
   //    tesadufen gecmesi olayi yerel yapmaz (Nazilli/Üsküdar sizmasi).
   const metinBas = normalize([e.title, e.summary,
-    String(e.description || e.fullText || e.text || '').slice(0, 400)].filter(Boolean).join(' '));
+    String(e.description || e.fullText || e.text || '').slice(0, 250)].filter(Boolean).join(' '));
   const metindeIlce = ILCE.test(metinBas);
 
   // 5) Belirsizse dogrulanmamis kabul et.

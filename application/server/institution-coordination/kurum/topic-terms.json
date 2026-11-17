@@ -149,10 +149,13 @@
     ],
     "public_health_facility": [
       "saglik ocagi",
-      "hastane",
       "poliklinik",
       "acil servis",
-      "asi"
+      "asi",
+      "devlet hastanesi",
+      "sehir hastanesi",
+      "hastane acil",
+      "hastane bahce"
     ],
     "health_service_access": [
       "muayene",
@@ -196,8 +199,8 @@
       "afad",
       "acil durum",
       "kriz masasi",
-      "tahliye",
-      "afet"
+      "afet",
+      "bina tahliye"
     ],
     "multi_agency_incident": [
       "cok kurum",

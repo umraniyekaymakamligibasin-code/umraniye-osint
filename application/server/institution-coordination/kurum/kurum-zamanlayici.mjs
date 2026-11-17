@@ -350,6 +350,7 @@ async function baglamTuru(db, mods, kural, a) {
   };
 
   let yazilan = 0;
+  const gorulenBaslik = new Set();
   for (const e of olaylar) {
     s.denenen++;
     const k = mods.baglam.baglamliDegerlendir(e, { katalog, profiller, izinler });
@@ -365,6 +366,10 @@ async function baglamTuru(db, mods, kural, a) {
       if (s.rotalar.length < 15) {
         s.rotalar.push({ olay: e.id, kurum: r.institution, konu: r.topic, guven: r.confidence });
       }
+      // Ayni basliktaki sendika/servis kopyalari ayni turda tek vakaya iner.
+      const anahtar = `${r.institution}|${r.topic}|${mods.baglam.normalize(e.title || '')}`;
+      if (gorulenBaslik.has(anahtar)) { s.mukerrer++; continue; }
+      gorulenBaslik.add(anahtar);
       if (a.kuru) continue;
       if (yazilan >= limit) continue;              // kucuk paket: tur basina en fazla `limit` YENI vaka
       const p = await mods.projeksiyon.projectContextEvent({

@@ -146,7 +146,10 @@ export function baglamliDegerlendir(event, { katalog, profiller, izinler }) {
   if (hassas) return { decision: 'held', reason: hassas, routes: [] };
 
   const d = duyuruAnaliz(norm, genel);
-  if (d.duyuru && !d.olay) {
+  // Basliktaki olay sinyali yoksa metindeki "duyuru/egitim/toren" icerigi
+  // olayi gercek bir olay gibi gostermemeli (ornek: AFAD gonullu egitimi).
+  const dBaslik = duyuruAnaliz(normalize(event.title || ''), genel);
+  if (d.duyuru && !dBaslik.olay) {
     return { decision: 'held', reason: 'announcement_not_incident', routes: [], duyuru: d.duyuruTerim.slice(0, 5) };
   }
 

@@ -143,6 +143,17 @@ const su = olay('Ümraniye su kaçağı',
 const dSu = karar(su);
 kontrol('su kacagi ISKIye gider', kurumlarD(dSu).includes('ISKI_UMR'), JSON.stringify(kurumlarD(dSu)));
 
+const afad = olay('Ümraniye’de 650 AFAD gönüllüsü eğitimlerini tamamladı',
+  'Ümraniye’de düzenlenen programda gönüllülere yangın ve afet tatbikatı yaptırıldı.');
+const dAfad = karar(afad);
+kontrol('gonullu egitim duyurusu tutulur', dAfad.decision === 'held'
+  && /announcement/.test(dAfad.reason), dAfad.reason);
+
+const tahliye = olay('Kubilay cinayeti davasında tahliye talebi',
+  'Ümraniye’de görülen davanın duruşmasında sanık için tahliye talebi sunuldu.');
+const dTahliye = karar(tahliye);
+kontrol('mahkeme/tahliye haberi vaka uretmez', dTahliye.decision === 'held', dTahliye.reason);
+
 // --------------------------------------- 4. gercek semali yazma testi
 console.log('== GERCEK SEMA / YAZMA');
 const TEST = join(tmpdir(), 'osint-baglam-test');

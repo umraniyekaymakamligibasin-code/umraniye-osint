@@ -14,7 +14,8 @@
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import fs from 'node:fs';
-import { profilleriYukle, terimKatalogu, baglamliDegerlendir } from './baglam.mjs';
+import { profilleriYukle, terimKatalogu, baglamliDegerlendir, normalize } from './baglam.mjs';
+import { profilleriUret, profilleriBirlestir } from './profil-uret.mjs';
 import { localityCikar } from './locality.mjs';
 
 const arg = process.argv.slice(2);
@@ -35,7 +36,8 @@ const mods = {
 const { openDatabase } = await import(mods.db);
 const db = openDatabase(join(veriDir, 'osint.sqlite'));
 
-const profiller = profilleriYukle();
+const elleProfiller = profilleriYukle();
+const profiller = profilleriBirlestir(await profilleriUret(db, elleProfiller), elleProfiller);
 const katalog = terimKatalogu(
   JSON.parse(fs.readFileSync(new URL('./topic-terms.json', import.meta.url), 'utf8')).konular);
 
@@ -60,6 +62,7 @@ for (const r of satirlar) {
 const kurumSayac = new Map();
 const sebepSayac = new Map();
 const cikti = [];
+const gorulenBaslik = new Set();
 let adayOlay = 0, adayRota = 0, incelenen = 0;
 
 for (const e of olaylar.values()) {
@@ -75,6 +78,9 @@ for (const e of olaylar.values()) {
   adayOlay++;
   for (const r of k.routes) {
     if (kurumFiltre && r.institution !== kurumFiltre) continue;
+    const anahtar = `${r.institution}|${r.topic}|${normalize(e.title || '')}`;
+    if (gorulenBaslik.has(anahtar)) continue;
+    gorulenBaslik.add(anahtar);
     adayRota++;
     kurumSayac.set(r.institution, (kurumSayac.get(r.institution) || 0) + 1);
     const kayit = { id: e.id, institution: r.institution, topic: r.topic, confidence: r.confidence,
