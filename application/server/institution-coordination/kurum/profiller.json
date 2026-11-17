@@ -80,7 +80,11 @@
       "toplanti",
       "bulusma",
       "kentsel donusum",
-      "bulustu"
+      "bulustu",
+      "okul kantin",
+      "kantin denetim",
+      "siki denetim",
+      "denetim yapildi"
     ],
     "olay_sinyalleri": [
       "kaza",
@@ -113,7 +117,6 @@
       "tutukla",
       "tehdit",
       "taciz",
-      "denetim",
       "sikayet",
       "kirlilik",
       "cop birik",
