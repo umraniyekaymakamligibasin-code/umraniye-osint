@@ -762,22 +762,29 @@ async function passwordAction(request,env,user,url){
    await auditStatement(env,user,'Yönetim oturumu kilitlendi','Yönetici paneli').run();
    return json({ok:true},200,{'Set-Cookie':clearAdminCookie});
  }
- const guardId='login-'+await sha(request.headers.get('CF-Connecting-IP')||'anonymous');
- const now=Math.floor(Date.now()/1000),guard=await env.DB.prepare('SELECT failures,reset_at FROM login_guard WHERE user_id=?').bind(guardId).first();
- if(guard&&guard.reset_at>now&&guard.failures>=5)return json({error:'Çok fazla hatalı giriş. 15 dakikalık bekleme süresi dolunca yeniden deneyin.'},429,{'Retry-After':String(guard.reset_at-now)});
  if(Number(request.headers.get('Content-Length')||0)>4096)return json({error:'İstek çok büyük'},413);
+ const rawIp=request.headers.get('CF-Connecting-IP')||'anonymous';
+ const now=Math.floor(Date.now()/1000);
  const raw=await request.text();if(raw.length>4096)return json({error:'İstek çok büyük'},413);
  let body;try{body=JSON.parse(raw)}catch{return json({error:'Geçersiz istek'},400)}
  const name=typeof body.username==='string'?body.username.normalize('NFC'):'';
  const pass=typeof body.password==='string'?body.password:'';
+ // Kilit anahtari (IP + kullanici adi): yalniz IP'ye kilitlenirse tek bir
+ // saldirgan ya da paylasimli ofis IP'si tek yoneticiyi disarida tutar.
+ const guardId='login-'+await sha(rawIp+'|'+name),ipKey='login-ip-'+await sha(rawIp);
+ const [guard,ipGuard]=await Promise.all([env.DB.prepare('SELECT failures,reset_at FROM login_guard WHERE user_id=?').bind(guardId).first(),env.DB.prepare('SELECT failures,reset_at FROM login_guard WHERE user_id=?').bind(ipKey).first()]);
+ if(guard&&guard.reset_at>now&&guard.failures>=5)return json({error:'Çok fazla hatalı giriş. 15 dakikalık bekleme süresi dolunca yeniden deneyin.'},429,{'Retry-After':String(guard.reset_at-now)});
+ if(ipGuard&&ipGuard.reset_at>now&&ipGuard.failures>=20)return json({error:'Çok fazla hatalı giriş. 15 dakikalık bekleme süresi dolunca yeniden deneyin.'},429,{'Retry-After':String(ipGuard.reset_at-now)});
  const validName=await equalSecret(name,env.OSINT_ADMIN_USERNAME.normalize('NFC')),validPass=await equalSecret(pass,env.OSINT_ADMIN_PASSWORD);
  if(!validName||!validPass){
    const current=guard&&guard.reset_at>now?guard:{failures:0,reset_at:now+900};
-   await env.DB.batch([env.DB.prepare('INSERT INTO login_guard(user_id,failures,reset_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET failures=CASE WHEN login_guard.reset_at<excluded.reset_at THEN 1 ELSE login_guard.failures+1 END,reset_at=excluded.reset_at').bind(guardId,current.failures+1,current.reset_at),auditStatement(env,user,'Hatalı yönetici girişi','Yönetici paneli')]);
+   const ipCurrent=ipGuard&&ipGuard.reset_at>now?ipGuard:{failures:0,reset_at:now+900};
+   const guardUpsert='INSERT INTO login_guard(user_id,failures,reset_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET failures=CASE WHEN login_guard.reset_at<excluded.reset_at THEN 1 ELSE login_guard.failures+1 END,reset_at=excluded.reset_at';
+   await env.DB.batch([env.DB.prepare(guardUpsert).bind(guardId,current.failures+1,current.reset_at),env.DB.prepare(guardUpsert).bind(ipKey,ipCurrent.failures+1,ipCurrent.reset_at),auditStatement(env,user,'Hatalı yönetici girişi','Yönetici paneli')]);
    return json({error:'Kullanıcı adı veya şifre hatalı.'},401);
  }
  const token=crypto.randomUUID().replaceAll('-','')+crypto.randomUUID().replaceAll('-','');
- await env.DB.batch([env.DB.prepare('DELETE FROM admin_sessions WHERE user_id=? OR expires_at<=?').bind(user.id,now),env.DB.prepare('INSERT INTO admin_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').bind(await adminTokenDigest(token,env),user.id,now+1800),env.DB.prepare('DELETE FROM login_guard WHERE user_id=?').bind(guardId),auditStatement(env,user,'Yönetim oturumu açıldı','Yönetici paneli')]);
+ await env.DB.batch([env.DB.prepare('DELETE FROM admin_sessions WHERE user_id=? OR expires_at<=?').bind(user.id,now),env.DB.prepare('INSERT INTO admin_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').bind(await adminTokenDigest(token,env),user.id,now+1800),env.DB.prepare('DELETE FROM login_guard WHERE user_id IN (?,?)').bind(guardId,ipKey),auditStatement(env,user,'Yönetim oturumu açıldı','Yönetici paneli')]);
  return json({ok:true},200,{'Set-Cookie':'__Host-osint_admin='+token+'; Path=/; HttpOnly; Secure; SameSite=Strict'});
 }
 export function activeData(data,classifyRecords=true){
@@ -1095,7 +1102,8 @@ async function accountAPI(request,env,user,url){
 }
 
 export function retentionCutoff(now=Date.now()){
- const [year,month,date]=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Istanbul'}).format(new Date(now)).split('-').map(Number),target=new Date(Date.UTC(year,month-3,1));
+ const months=Math.max(1,Math.min(24,Number(process.env.OSINT_RETENTION_MONTHS||2)||2));
+ const [year,month,date]=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Istanbul'}).format(new Date(now)).split('-').map(Number),target=new Date(Date.UTC(year,month-1-months,1));
  const last=new Date(Date.UTC(target.getUTCFullYear(),target.getUTCMonth()+1,0)).getUTCDate();target.setUTCDate(Math.min(date,last));return target.toISOString().slice(0,10);
 }
 export function retainedEvent(event,cutoff=retentionCutoff()){
