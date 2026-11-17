@@ -184,11 +184,11 @@
     ],
     "parks_public_space": [
       "oyun alani",
-      "yesil alan",
       "park bakim",
       "park aydinlatma",
       "park yenileme",
-      "park alani"
+      "park zemini",
+      "parkta kirik"
     ],
     "district_emergency_coordination": [
       "afad",
