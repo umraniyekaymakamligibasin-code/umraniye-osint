@@ -159,6 +159,7 @@ export function createInstitutionCoordination(adapters) {
         const params = [tenant.institution_id];
         if (cursor) { clauses.push('AND (c.first_seen_at < ? OR (c.first_seen_at = ? AND c.id < ?))'); params.push(cursor.t, cursor.t, cursor.id); }
         if (STATUS.has(status)) { clauses.push('AND c.status = ?'); params.push(status); }
+        else { clauses.push("AND c.status <> 'dismissed'"); }
         if (q) {
           const escaped = q.replace(/[!%_]/g, '!$&');
           clauses.push("AND (c.title LIKE ? ESCAPE '!' OR c.summary_redacted LIKE ? ESCAPE '!')");
