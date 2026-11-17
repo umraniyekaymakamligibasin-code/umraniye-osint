@@ -30,7 +30,7 @@ export function normalize(value) {
 const EKLER = [
   'ları', 'leri', 'larin', 'lerin', 'daki', 'deki', 'taki', 'teki',
   'ndan', 'nden', 'ndan', 'nda', 'nde', 'dan', 'den', 'tan', 'ten',
-  'lar', 'ler', 'nin', 'nun', 'yla', 'yle', 'sına', 'sine',
+  'lar', 'ler', 'nin', 'nun', 'yla', 'yle', 'la', 'le', 'sına', 'sine',
   'sı', 'si', 'su', 'sü', 'ya', 'ye', 'da', 'de', 'ta', 'te',
   'in', 'ın', 'un', 'ün', 'ı', 'i', 'u', 'ü', 'a', 'e',
 ];

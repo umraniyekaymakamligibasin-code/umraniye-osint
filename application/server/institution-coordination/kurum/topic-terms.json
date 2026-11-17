@@ -83,10 +83,11 @@
     "fire_rescue": [
       "yangin",
       "itfaiye",
-      "alev",
       "duman",
       "yanan",
-      "kundakla"
+      "kundakla",
+      "alev aldi",
+      "alevler"
     ],
     "hazardous_material_response": [
       "kimyasal sizinti",
@@ -112,11 +113,11 @@
     ],
     "traffic_safety": [
       "trafik kazasi",
-      "kaza",
       "carpisti",
-      "devrildi",
-      "yarali",
-      "zincirleme"
+      "zincirleme",
+      "arac kazasi",
+      "motosiklet kaza",
+      "trafik kaza"
     ],
     "public_safety": [
       "silahli",
@@ -154,10 +155,11 @@
       "asi"
     ],
     "health_service_access": [
-      "randevu",
       "muayene",
       "saglik hizmet",
-      "saglik personel"
+      "saglik personel",
+      "randevu al",
+      "hastane randevu"
     ],
     "waste_container": [
       "cop konteyner",
@@ -279,7 +281,8 @@
       "sgk",
       "sosyal guvenlik",
       "emekli",
-      "prim"
+      "prim borcu",
+      "prim gunu"
     ],
     "employment_service_access": [
       "iskur",

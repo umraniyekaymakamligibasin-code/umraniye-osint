@@ -66,9 +66,12 @@ export function localityCikar(event) {
   const incelemeGerekli = e.locationStatus === 'review_required'
     || e.locationStatus === 'local_indicated';
 
-  // 4) Metinden ilce ipucu (mahalle yoksa ilce duzeyi icin).
-  const metin = normalize([e.title, e.description, e.fullText, e.text].filter(Boolean).join(' '));
-  const metindeIlce = ILCE.test(metin);
+  // 4) Metinden ilce ipucu. Yalnizca BASLIK + OZET + ilk 400 karakter
+  //    dikkate alinir: uzun İstanbul/ Türkiye haberlerinde Ümraniye'nin
+  //    tesadufen gecmesi olayi yerel yapmaz (Nazilli/Üsküdar sizmasi).
+  const metinBas = normalize([e.title, e.summary,
+    String(e.description || e.fullText || e.text || '').slice(0, 400)].filter(Boolean).join(' '));
+  const metindeIlce = ILCE.test(metinBas);
 
   // 5) Belirsizse dogrulanmamis kabul et.
   let verified = acikDogrulama && !incelemeGerekli;

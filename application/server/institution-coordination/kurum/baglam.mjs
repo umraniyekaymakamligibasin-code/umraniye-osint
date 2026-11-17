@@ -36,6 +36,18 @@ export const GENEL_ALAN_KONULARI = Object.freeze(new Set([
   'waste_container', 'municipal_roadside_asset', 'neighborhood_service_observation'
 ]));
 
+/** Bu konularda basligin kendisi konuyu soylemiyorsa rota acilmaz:
+ *  tesis/hizmet erisimi gibi genel konular uzun haber metninde tesadufen gecmemeli. */
+export const BASLIK_GEREKEN_KONULAR = Object.freeze(new Set([
+  'public_health_facility', 'health_service_access', 'school_facility',
+  'education_service_access', 'civil_registry_service_access',
+  'land_registry_service_access', 'social_security_service_access',
+  'social_service_access', 'social_assistance_service_access',
+  'employment_service_access', 'public_service_access', 'municipal_service_access',
+  'metropolitan_service_access', 'neighborhood_service_observation',
+  'fire_rescue', 'traffic_safety'
+]));
+
 const KISISEL = [
   /\b(?:tc|t\.c\.|kimlik|pasaport)\s*(?:no|numarası|numarasi)?\s*[:#-]?\s*\d{5,}/iu,
   /\b\+?\d[\d ()-]{8,}\d\b/u,
@@ -160,15 +172,17 @@ export function baglamliDegerlendir(event, { katalog, profiller, izinler }) {
       if (asayis && GENEL_ALAN_KONULARI.has(b.konu) && !guvenlikKurumu) continue;
       const baglam = profil.baglam?.[b.konu];
       if (Array.isArray(baglam) && baglam.length && !baglam.some(t => terimGecti(norm, t))) continue;
-      uygun.push(b);
+      const baslikta = (b.terimler || []).some(t => terimGecti(normalize(event.title || ''), t));
+      if (BASLIK_GEREKEN_KONULAR.has(b.konu) && !baslikta) continue;
+      uygun.push({ ...b, baslikta });
     }
     if (!uygun.length) continue;
     const oncelik = new Map((profil.oncelik || []).map((k, i) => [k, i]));
     uygun.sort((a, b) => (b.hits - a.hits) || ((oncelik.get(a.konu) ?? 99) - (oncelik.get(b.konu) ?? 99)));
     const sec = uygun[0];
-    const baslikta = (sec.terimler || []).some(t => terimGecti(normalize(event.title || ''), t));
-    const conf = Math.min(0.97, 0.86 + 0.04 * Math.min(sec.hits, 2)
-      + (loc.precision === 'neighborhood' ? 0.04 : 0) + (baslikta ? 0.03 : 0));
+    const baslikta = sec.baslikta === true;
+    const conf = Math.min(0.97, 0.64 + 0.07 * Math.min(sec.hits, 3)
+      + (loc.precision === 'neighborhood' ? 0.06 : 0) + (baslikta ? 0.18 : 0));
     if (conf < minGuven) continue;
     adaylar.push({ institution: kurum, topic: sec.konu, confidence: Number(conf.toFixed(2)),
       hits: sec.hits, terms: sec.terimler.slice(0, 5), titleHit: baslikta, alternatifler: uygun.slice(1).map(x => x.konu) });
