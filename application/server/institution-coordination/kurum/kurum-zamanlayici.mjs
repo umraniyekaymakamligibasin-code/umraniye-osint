@@ -328,7 +328,7 @@ async function izinleriOku(db) {
  * veri denetiminden gecirir. Yazma `projeksiyon.mjs` uzerinden yapilir ve
  * (kurum, olay, konu) benzersizligi sayesinde tur tekrar edilebilir.
  */
-async function baglamTuru(db, mods, kural, a) {
+async function baglamTuru(db, mods, bul, kural, a) {
   const limit = Math.max(1, Math.min(200, a.limit | 0 || 25));
   const tumOlaylar = (await olaylariOku(db))
     .map(e => olayCevir(e, kural, mods.locality, e._snapshotAt));
@@ -388,13 +388,15 @@ async function baglamTuru(db, mods, kural, a) {
       }
     }
   }
-  if (a.gonder) s.gonderim = 'baglam_modunda_kapali';
+  if (a.gonder) {
+    s.gonderim = await gonderimAdimi(db, mods, bul, a, Math.max(1, Math.min(10, a.limit | 0 || 10)));
+  }
   return s;
 }
 
 /** Tek tur. */
 async function tur(db, mods, bul, kural, a) {
-  if (baglamModu()) return baglamTuru(db, mods, kural, a);
+  if (baglamModu()) return baglamTuru(db, mods, bul, kural, a);
   const limit = Math.max(1, Math.min(200, a.limit | 0 || 25));
   // Kuru deneme yalnizca orneklem alir. Gercek turde TUM olaylar taranir:
   // kuyruk enqueue idempotent oldugu icin (job_key = kural+payload) daha once

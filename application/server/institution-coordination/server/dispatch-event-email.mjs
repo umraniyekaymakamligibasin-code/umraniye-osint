@@ -7,9 +7,9 @@ const safeResult = (sent = 0, retried = 0, held = 0, dead = 0) => ({ sent, retri
 const ELIGIBILITY = `SELECT o.id,o.coord_case_id,o.institution_id,o.recipient_id,o.attempts,o.provider_idempotency_key,
   r.address_ciphertext,r.key_version,r.address_fingerprint
   FROM coord_mail_outbox o
-  JOIN coord_cases c ON c.id=o.coord_case_id AND c.institution_id=o.institution_id AND c.sensitivity='ordinary'
+  JOIN coord_cases c ON c.id=o.coord_case_id AND c.institution_id=o.institution_id AND c.sensitivity<>'restricted'
   JOIN coord_institutions i ON i.id=o.institution_id AND i.enabled=1 AND i.approval_status='approved' AND i.email_enabled=1
-  JOIN coord_topics t ON t.id=c.topic_id AND t.enabled=1 AND t.approval_status='approved' AND t.sensitivity='ordinary'
+  JOIN coord_topics t ON t.id=c.topic_id AND t.enabled=1 AND t.approval_status='approved' AND t.sensitivity<>'restricted'
   JOIN coord_institution_topic_grants g ON g.institution_id=i.id AND g.topic_id=t.id AND g.granted=1 AND g.approval_reference IS NOT NULL
   JOIN coord_mail_recipients r ON r.id=o.recipient_id AND r.institution_id=i.id AND r.active=1
     AND r.verified_at IS NOT NULL AND r.verified_by IS NOT NULL AND r.address_fingerprint=o.recipient_hash
