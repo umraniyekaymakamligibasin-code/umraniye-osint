@@ -135,7 +135,10 @@
       "motosiklet kaza",
       "trafik kaza",
       "motosiklet carp",
-      "motosiklet"
+      "motosiklet",
+      "makas atan",
+      "makas atti",
+      "drift"
     ],
     "public_safety": [
       "silahli",
@@ -157,7 +160,8 @@
       "kundaklama",
       "kursunlama",
       "cephane",
-      "mermi"
+      "mermi",
+      "yumruklad"
     ],
     "school_facility": [
       "okul binasi",
