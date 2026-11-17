@@ -377,7 +377,8 @@ async function baglamTuru(db, mods, kural, a) {
       });
       s.islenen++;
       if (p.decision === 'projected') {
-        yazilan++; s.yazilan++; s.kuyruga++;
+        yazilan++; s.yazilan++;
+        if (p.emailQueued) s.kuyruga++;
         s.kurumlar[r.institution] = (s.kurumlar[r.institution] || 0) + 1;
       } else if (p.decision === 'duplicate') {
         s.mukerrer++;
