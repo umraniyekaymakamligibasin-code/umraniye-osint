@@ -32,6 +32,8 @@ const EKLER = [
   'ndan', 'nden', 'ndan', 'nda', 'nde', 'dan', 'den', 'tan', 'ten',
   'lar', 'ler', 'nin', 'nun', 'yla', 'yle', 'la', 'le', 'sına', 'sine',
   'sı', 'si', 'su', 'sü', 'ya', 'ye', 'da', 'de', 'ta', 'te',
+  'di', 'dı', 'du', 'dü', 'ti', 'tı', 'tu', 'tü',
+  'na', 'ne', 'ni', 'nu', 'nü',
   'in', 'ın', 'un', 'ün', 'ı', 'i', 'u', 'ü', 'a', 'e',
 ];
 
@@ -51,10 +53,13 @@ export function terimRegex(terim) {
   const ek = EKLER.map(kacis).join('|');
   const ara = '\\s+(?:\\w+\\s+){0,2}';
   const govde = parcalar
-    .map((p, i) => (i === 0 ? kacis(p) : ara + kacis(p)))
+    .map((p, i) => {
+      const kelime = kacis(p) + `(?:${ek})?`;
+      return i === 0 ? kelime : ara + kelime;
+    })
     .join('');
   try {
-    return new RegExp(`\\b${govde}(?:${ek})?\\b`, 'u');
+    return new RegExp(`\\b${govde}\\b`, 'u');
   } catch {
     return null;
   }

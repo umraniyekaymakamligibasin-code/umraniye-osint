@@ -124,7 +124,8 @@
       "cam kirildi",
       "agac devril",
       "cati uctu",
-      "dolu yagdi"
+      "dolu yagdi",
+      "yildirim dustu"
     ],
     "traffic_safety": [
       "trafik kazasi",
@@ -133,7 +134,8 @@
       "arac kazasi",
       "motosiklet kaza",
       "trafik kaza",
-      "motosiklet carp"
+      "motosiklet carp",
+      "motosiklet"
     ],
     "public_safety": [
       "silahli",
