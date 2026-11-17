@@ -75,7 +75,11 @@
       "hapis cezasi",
       "rekor ceza",
       "ceza verildi",
-      "ceza kesti"
+      "ceza kesti",
+      "tahliye talebi",
+      "toplanti",
+      "bulusma",
+      "kentsel donusum"
     ],
     "olay_sinyalleri": [
       "kaza",
@@ -121,8 +125,7 @@
       "uyari",
       "risk",
       "tehlike",
-      "hasar",
-      "tahliye"
+      "hasar"
     ]
   },
   "kurumlar": {

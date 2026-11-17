@@ -96,7 +96,10 @@
       "balkon cok",
       "enkaz",
       "mahsur",
-      "kurtarma"
+      "kurtarma",
+      "vinc devrildi",
+      "balkon coktu",
+      "balkon cokmesi"
     ],
     "hazardous_material_response": [
       "kimyasal sizinti",
@@ -129,7 +132,8 @@
       "zincirleme",
       "arac kazasi",
       "motosiklet kaza",
-      "trafik kaza"
+      "trafik kaza",
+      "motosiklet carp"
     ],
     "public_safety": [
       "silahli",
