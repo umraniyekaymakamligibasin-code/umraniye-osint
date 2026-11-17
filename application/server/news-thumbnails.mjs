@@ -41,10 +41,10 @@ function encode(python,script,data){return new Promise((resolve,reject)=>{
  child.stdout.on('data',chunk=>{bytes+=chunk.length;if(bytes>LIMIT){child.kill();reject(Error('thumbnail_too_large'));}else chunks.push(chunk);});
  child.on('error',reject);child.on('close',code=>{clearTimeout(timer);if(code!==0||!bytes)return reject(Error('thumbnail_decode_failed'));resolve(Buffer.concat(chunks));});child.stdin.on('error',()=>{});child.stdin.end(data);
  });}
-export function createNewsThumbnails({directory,python,script,responseWaitMs=1500}){
+export function createNewsThumbnails({directory,python,script,responseWaitMs=3000}){
  const tasks=new Map(),queue=[],robotsCache=new Map();let active=0,writes=0;
  async function permitted(page){const u=target(page),old=robotsCache.get(u.origin);if(old&&old.expires>Date.now())return old.allowed(u.pathname+u.search);try{const r=await download(u.origin+'/robots.txt',131072,4000);if(![200,404,410].includes(r.status))return false;const text=r.data.toString('utf8'),allowed=p=>r.status!==200||!/<html|<!doctype/i.test(text)&&robotsAllows(text,p);robotsCache.set(u.origin,{expires:Date.now()+3600000,allowed});return allowed(u.pathname+u.search);}catch{return false;}}
- async function prune(){const files=await readdir(directory),list=[];for(const name of files){if(!/^[a-f\d]{40}\.(?:webp|json)$/.test(name))continue;const s=await stat(join(directory,name));list.push({name,bytes:s.size,at:s.mtimeMs});}let size=list.reduce((n,f)=>n+f.bytes,0);for(const f of list.sort((a,b)=>a.at-b.at)){if(size<=20*1024*1024&&Date.now()-f.at<30*86400000)break;await unlink(join(directory,f.name));size-=f.bytes;}}
+ async function prune(){const files=await readdir(directory),list=[];for(const name of files){if(!/^[a-f\d]{40}\.(?:webp|json)$/.test(name))continue;const s=await stat(join(directory,name));list.push({name,bytes:s.size,at:s.mtimeMs});}let size=list.reduce((n,f)=>n+f.bytes,0);for(const f of list.sort((a,b)=>a.at-b.at)){if(size<=200*1024*1024&&Date.now()-f.at<90*86400000)break;await unlink(join(directory,f.name));size-=f.bytes;}}
  async function generate(pageURL,imageURL,key){
   await mkdir(directory,{recursive:true,mode:0o700});
   try{
@@ -56,13 +56,13 @@ export function createNewsThumbnails({directory,python,script,responseWaitMs=150
    await writeFile(join(directory,key+'.json'),JSON.stringify({status:'ready',createdAt:Date.now(),bytes:thumbnail.length,originalBytes:raw.data.length}),{mode:0o600});if(++writes%20===0)await prune().catch(()=>{});return thumbnail;
   }catch{await writeFile(join(directory,key+'.json'),JSON.stringify({status:'missing',createdAt:Date.now()}),{mode:0o600});return null;}
  }
- function pump(){while(active<2&&queue.length){const task=queue.shift();active++;generate(...task.args).then(task.resolve,task.reject).finally(()=>{active--;tasks.delete(task.key);pump();});}}
+ function pump(){while(active<4&&queue.length){const task=queue.shift();active++;generate(...task.args).then(task.resolve,task.reject).finally(()=>{active--;tasks.delete(task.key);pump();});}}
  async function get(pageURL,imageURL=null){
   const u=target(pageURL),key=createHash('sha256').update(u.href).digest('hex').slice(0,40);
   try{const image=await readFile(join(directory,key+'.webp'));if(image.length<=LIMIT)return image;}catch{}
   try{const meta=JSON.parse(await readFile(join(directory,key+'.json'),'utf8'));if(meta.status==='missing'&&Date.now()-meta.createdAt<21600000)return null;}catch{}
-  const wait=async promise=>{let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(Error('thumbnail_pending'),{code:'thumbnail_pending'})),Math.max(10,Math.min(2000,responseWaitMs)));})]);}finally{clearTimeout(timer);}};
-  if(tasks.has(key))return wait(tasks.get(key));if(queue.length>=6)throw Object.assign(Error('thumbnail_pending'),{code:'thumbnail_pending'});
+  const wait=async promise=>{let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(Error('thumbnail_pending'),{code:'thumbnail_pending'})),Math.max(10,Math.min(4000,responseWaitMs)));})]);}finally{clearTimeout(timer);}};
+  if(tasks.has(key))return wait(tasks.get(key));if(queue.length>=12)throw Object.assign(Error('thumbnail_pending'),{code:'thumbnail_pending'});
   let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});tasks.set(key,promise);queue.push({args:[u.href,imageURL,key],key,resolve,reject});pump();
   return wait(promise);
  }

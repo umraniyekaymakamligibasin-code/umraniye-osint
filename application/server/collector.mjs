@@ -8,7 +8,7 @@ export function createCollector(worker,env,origin,{log=console.log,onBatch=async
   const config=await response.json();if(!Number.isInteger(config.totalBatches)||config.totalBatches<0||config.totalBatches>100)throw Error('Geçersiz kaynak grubu sayısı.');let successful=0,failed=0;
   log(JSON.stringify({event:'collection_started',batches:config.totalBatches,at:new Date().toISOString()}));
   for(let batch=0;batch<config.totalBatches&&!stopped;batch++){
-   try{const r=await worker.fetch(new Request(origin+'/api/automation/refresh?batch='+batch,{method:'POST',headers:{'X-OSINT-Service-Key':secret}}),env);if(!r.ok)throw Error();const d=await r.json();if(!d.busy)await onBatch(d);if(d.busy){failed++;continue}if(d.results?.some(s=>['healthy','no_match','empty'].includes(s.status)))successful++;else failed++}catch{failed++}
+   try{const r=await worker.fetch(new Request(origin+'/api/automation/refresh?batch='+batch,{method:'POST',headers:{'X-OSINT-Service-Key':secret}}),env);if(!r.ok)throw Error();const d=await r.json();if(!d.busy)await onBatch(d);if(d.busy){failed++;continue}if(d.results?.some(s=>['healthy','no_match','empty'].includes(s.status)))successful++;else failed++}catch{failed++}await new Promise(r=>setTimeout(r,100))
   }
   const result={event:'collection_completed',successful,failed,stopped,at:new Date().toISOString()};log(JSON.stringify(result));return result;
  }
