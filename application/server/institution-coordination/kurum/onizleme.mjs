@@ -72,7 +72,7 @@ for (const e of olaylar.values()) {
   incelenen++;
   if (k.decision !== 'candidates') {
     sebepSayac.set(k.reason, (sebepSayac.get(k.reason) || 0) + 1);
-    if (jsonCikti) cikti.push({ id: e.id, decision: 'held', reason: k.reason, title: String(e.title).slice(0, 120) });
+    if (jsonCikti) cikti.push({ id: e.id, decision: 'held', reason: k.reason, topics: k.topics ?? [], title: String(e.title).slice(0, 120) });
     continue;
   }
   adayOlay++;
