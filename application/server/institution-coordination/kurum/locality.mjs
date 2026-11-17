@@ -58,7 +58,7 @@ export function localityCikar(event) {
   }
 
   // 2) Olay uzerinde dogrudan verilmis mahalle alanlari.
-  const mahalle = temiz(e.neighborhood) || temiz(e.neighborhoodName)
+  let mahalle = temiz(e.neighborhood) || temiz(e.neighborhoodName)
     || temiz(e.locationName) || temiz(e.mahalle);
 
   // 3) Dogrulama durumu — yalnizca ACIK true kabul edilir.
@@ -89,8 +89,21 @@ export function localityCikar(event) {
   // Dogrulanmis olmak icin acik isaret sart; istisna yok.
   if (!acikDogrulama || incelemeGerekli) verified = false;
 
+  // 6) Kapsam temelli ILCE dogrulamasi (opt-in, varsayilan KAPALI).
+  //    Bazi akislarda konum mahalle alanina yazilmaz; yalnizca olayin ilce
+  //    kapsaminda oldugu bilinir (scope='local'). Bu modda olay ILCE
+  //    duzeyinde dogrulanmis sayilir; MAHALLE bilgisi tasinmaz, boylece
+  //    yanlis mahalle iddiasi kuruma gitmez.
+  if (!verified && String(process.env.OSINT_ROUTING_LOCAL_SCOPE || '') === '1'
+      && String(e.scope || '').toLowerCase() === 'local') {
+    verified = true;
+    precision = 'district';
+    mahalle = null;
+    kaynak = 'kapsam-yerel';
+  }
+
   return {
-    district: metindeIlce || mahalle ? 'Ümraniye' : null,
+    district: (metindeIlce || mahalle || kaynak === 'kapsam-yerel') ? 'Ümraniye' : null,
     neighborhood: mahalle,
     verified,
     precision,
