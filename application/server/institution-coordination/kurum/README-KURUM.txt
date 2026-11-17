@@ -33,3 +33,17 @@ GUVENLIK NOTLARI
   atlanir ve YENI ANAHTAR URETILMEZ (aksi halde eski sifreler acilamaz).
 - Belirsiz gonderim sonucu tekrar denenmez (delivery_outcome_unknown).
 - DB silme/toplu temizleme/migration yapilmaz; eski kayitlar korunur.
+
+== ESKI KAYIT TEMIZLIGI (2026-11-17) ==
+Panel varsayilan listesi artik status='dismissed' kayitlari gizler; "Kapsam disi"
+secimi ile gorulebilir. Silme yapilmadi: 140 legacy kayit status=dismissed yapildi
+ve her biri icin coord_audit action='legacy_projection_dismissed' yazildi.
+Gizleme gerekceleri: haric_konu 29, kural_disi 41, sablon baslik 68, sosyal cop 2.
+Korunan: 17 gecerli + 20 gercek yerel olay + 52 normal kaynak-eslesmeyen = 89.
+Onceki durumlar: /root/legacy-onceki-durum.json
+Gerekce listesi: /root/legacy-gizle-listesi.json
+DB yedegi: /root/osint-yedek-legacy-gizleme-20261117-150659.sqlite
+Panel yedegi: /root/panel-yedek-20261117-150432/institution.html
+Geri alma (deneme): python3 /root/legacy-gizleme-geri-al.py --dene
+Geri alma (uygula): python3 /root/legacy-gizleme-geri-al.py --evet
+24s gozlem: /root/kurum-gozlem-rapor.sh (15:09'da bir kez, 24s sonra tekrar)
