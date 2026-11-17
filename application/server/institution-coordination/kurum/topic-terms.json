@@ -44,7 +44,8 @@
       "devrilen direk",
       "elektrik direk",
       "kopan tel",
-      "trafo patla"
+      "trafo patla",
+      "trafo patlamasi"
     ],
     "electrical_hazard": [
       "elektrik kacagi",
@@ -87,7 +88,15 @@
       "yanan",
       "kundakla",
       "alev aldi",
-      "alevler"
+      "alevler",
+      "yandi",
+      "yaniyor",
+      "alev alev",
+      "vinc devril",
+      "balkon cok",
+      "enkaz",
+      "mahsur",
+      "kurtarma"
     ],
     "hazardous_material_response": [
       "kimyasal sizinti",
@@ -101,7 +110,10 @@
       "sel",
       "su altinda",
       "dere tasma",
-      "sokak su altinda"
+      "sokak su altinda",
+      "yol coktu",
+      "saganak",
+      "suda mahsur"
     ],
     "storm_damage": [
       "firtina",
@@ -128,7 +140,14 @@
       "hirsizlik",
       "soygun",
       "gozalti",
-      "tutukla"
+      "tutukla",
+      "saldiran",
+      "saldirgan",
+      "darbet",
+      "tokat",
+      "kursunla",
+      "kursunlandi",
+      "atese ver"
     ],
     "school_facility": [
       "okul binasi",
