@@ -115,7 +115,9 @@ export async function profilleriUret(db, elle = {}, sec = {}) {
       .sort((a, b) => (sira.get(a) ?? 999) - (sira.get(b) ?? 999));
     const elleKurum = elle.kurumlar?.[k.code] ?? {};
     const haric = new Set(elleKurum.haric ?? []);
-    const guvenlik = verilen.some(x => GUVENLIK_KONULARI.has(x));
+    // Haric tutulan konu kurumu "guvenlik kurumu" YAPMAZ (ornek: belediyede
+    // public_safety grant'i var ama gorev alani degil).
+    const guvenlik = verilen.some(x => GUVENLIK_KONULARI.has(x) && !haric.has(x));
     if (guvenlik) guvenlikKurumlari.push(k.code);
 
     // Otomatik taban: grant'li her konu, haricler cikarilip, oncelikli olanlar one.
