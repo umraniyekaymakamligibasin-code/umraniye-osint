@@ -1,0 +1,342 @@
+{
+  "_aciklama": "Kurum konusu -> Turkce anahtar kelime eslemesi. Kucuk harfle, aksansiz yazilir; eslesme kok tabanlidir (yangin -> yanginda/yangini de yakalar). Bir kelime birden fazla konuda GECMEMELI; cakisma 'ambiguous_authority' ile bloklanir.",
+  "surum": 1,
+  "konular": {
+    "water_leak": [
+      "su kacagi",
+      "su borusu",
+      "boru patla",
+      "su sizinti",
+      "iski",
+      "ana boru"
+    ],
+    "water_outage": [
+      "su kesinti",
+      "sular kesil",
+      "susuz",
+      "su verilemi",
+      "su kesilmesi"
+    ],
+    "sewer_overflow": [
+      "atik su",
+      "kanalizasyon",
+      "lagim",
+      "foseptik",
+      "kanal tasma",
+      "rifuz"
+    ],
+    "water_infrastructure": [
+      "su deposu",
+      "su sayac",
+      "hidrant",
+      "su vanasi",
+      "artezyen"
+    ],
+    "power_outage": [
+      "elektrik kesinti",
+      "elektrikler kesil",
+      "enerji kesinti",
+      "ayedas",
+      "elektrik yok"
+    ],
+    "fallen_power_equipment": [
+      "kopan kablo",
+      "devrilen direk",
+      "elektrik direk",
+      "kopan tel",
+      "trafo patla"
+    ],
+    "electrical_hazard": [
+      "elektrik kacagi",
+      "yuksek gerilim",
+      "elektrik carpa",
+      "acik kablo",
+      "elektrik tehlik"
+    ],
+    "gas_outage": [
+      "dogal gaz kesinti",
+      "gaz kesinti",
+      "igdas",
+      "gaz verilemi"
+    ],
+    "gas_leak_public_hazard": [
+      "gaz kacagi",
+      "gaz sizinti",
+      "gaz kokusu",
+      "gaz patla",
+      "lpg"
+    ],
+    "telecom_outage": [
+      "internet kesinti",
+      "telefon kesinti",
+      "hat kesinti",
+      "turk telekom",
+      "fiber kesinti"
+    ],
+    "telecom_infrastructure": [
+      "baz istasyon",
+      "saha dolab",
+      "telekom direk",
+      "kablo kesinti",
+      "gsm"
+    ],
+    "fire_rescue": [
+      "yangin",
+      "itfaiye",
+      "alev",
+      "duman",
+      "yanan",
+      "kundakla"
+    ],
+    "hazardous_material_response": [
+      "kimyasal sizinti",
+      "asit",
+      "tanker devril",
+      "zehirli gaz",
+      "patlayici madde"
+    ],
+    "flooding": [
+      "su baskin",
+      "sel",
+      "su altinda",
+      "dere tasma",
+      "sokak su altinda"
+    ],
+    "storm_damage": [
+      "firtina",
+      "hortum",
+      "cam kirildi",
+      "agac devril",
+      "cati uctu",
+      "dolu yagdi"
+    ],
+    "traffic_safety": [
+      "trafik kazasi",
+      "kaza",
+      "carpisti",
+      "devrildi",
+      "yarali",
+      "zincirleme"
+    ],
+    "public_safety": [
+      "silahli",
+      "saldiri",
+      "bicak",
+      "kavga",
+      "darp",
+      "hirsizlik",
+      "soygun",
+      "gozalti",
+      "tutukla"
+    ],
+    "school_facility": [
+      "okul",
+      "sinif",
+      "ogretmen",
+      "mudur",
+      "derslik",
+      "egitim ogretim"
+    ],
+    "school_perimeter_safety": [
+      "okul cevre",
+      "okul onu",
+      "servis araci",
+      "okul yolu",
+      "okul giris"
+    ],
+    "public_health_facility": [
+      "saglik ocagi",
+      "hastane",
+      "poliklinik",
+      "acil servis",
+      "asi"
+    ],
+    "health_service_access": [
+      "randevu",
+      "muayene",
+      "saglik hizmet",
+      "saglik personel"
+    ],
+    "waste_container": [
+      "konteyner",
+      "cop konteyner",
+      "cop kutusu",
+      "atik konteyner"
+    ],
+    "street_cleanliness": [
+      "temizlik",
+      "cop birik",
+      "sokak kirl",
+      "supurge",
+      "atik toplama"
+    ],
+    "municipal_roadside_asset": [
+      "kaldirim",
+      "bordur",
+      "yol bakim",
+      "asfalt",
+      "cukur",
+      "yaya gecidi"
+    ],
+    "parks_public_space": [
+      "park",
+      "yesil alan",
+      "oyun alani",
+      "bank",
+      "meydan",
+      "agac dikim"
+    ],
+    "district_emergency_coordination": [
+      "afad",
+      "acil durum",
+      "kriz masasi",
+      "tahliye",
+      "afet"
+    ],
+    "multi_agency_incident": [
+      "cok kurum",
+      "koordinasyon",
+      "ortak mudahale"
+    ],
+    "bus_service_disruption": [
+      "iett",
+      "otobus sefer",
+      "hat iptal",
+      "sefer aksa",
+      "otobus gelmi"
+    ],
+    "bus_stop_infrastructure": [
+      "durak",
+      "otobus duragi",
+      "duraklar",
+      "akbil",
+      "durak tabela"
+    ],
+    "public_transport_safety": [
+      "metrobus",
+      "toplu tasima kaza",
+      "otobus kaza",
+      "durakta saldiri"
+    ],
+    "metro_service_disruption": [
+      "metro sefer",
+      "metro ariza",
+      "metro iptal",
+      "marmaray",
+      "metro gelmi"
+    ],
+    "metro_station_infrastructure": [
+      "metro istasyon",
+      "metro asansor",
+      "yuruyen merdiven",
+      "turnike",
+      "metro giris"
+    ],
+    "metropolitan_waste_collection": [
+      "ibb atik",
+      "buyuksehir cop",
+      "atik toplama araci"
+    ],
+    "illegal_dumping_public_space": [
+      "kacak dokum",
+      "moloz dok",
+      "atik birak",
+      "hafriyat"
+    ],
+    "ibb_road_maintenance": [
+      "buyuksehir yol",
+      "bulvar bakim",
+      "sahil yolu",
+      "tEM bakim"
+    ],
+    "drainage_public_space": [
+      "yagmur suyu",
+      "mazgal",
+      "drenaj",
+      "kanal izgara"
+    ],
+    "metropolitan_service_access": [
+      "buyuksehir hizmet",
+      "ibb basvuru",
+      "153"
+    ],
+    "civil_registry_service_access": [
+      "nufus mudurlugu",
+      "nufus kayit",
+      "ikametgah",
+      "kimlik karti"
+    ],
+    "land_registry_service_access": [
+      "tapu",
+      "kadastro",
+      "tapu mudurlugu"
+    ],
+    "social_security_service_access": [
+      "sgk",
+      "sosyal guvenlik",
+      "emekli",
+      "prim"
+    ],
+    "employment_service_access": [
+      "iskur",
+      "is basvuru",
+      "issizlik",
+      "kurs kayit"
+    ],
+    "animal_health_public_agriculture": [
+      "hayvan saglik",
+      "tarim",
+      "veteriner",
+      "kus gribi",
+      "ziraat"
+    ],
+    "urban_animal_welfare": [
+      "sokak hayvan",
+      "kopek saldiri",
+      "kedi",
+      "hayvan barinak",
+      "mama"
+    ],
+    "social_assistance_service_access": [
+      "sosyal yardim",
+      "sydv",
+      "yardim basvuru",
+      "ayni yardim"
+    ],
+    "social_service_access": [
+      "sosyal hizmet",
+      "shm",
+      "kadin destek",
+      "cocuk koruma"
+    ],
+    "public_service_access": [
+      "e-devlet",
+      "kamu hizmet",
+      "randevu sistem",
+      "basvuru"
+    ],
+    "district_coordination": [
+      "kaymakamlik",
+      "kaymakam",
+      "ilce yonetim"
+    ],
+    "municipal_service_access": [
+      "belediye basvuru",
+      "beyaz masa",
+      "belediye hatt"
+    ],
+    "neighborhood_service_observation": [
+      "muhtar",
+      "muhtarlik",
+      "mahalle sakin"
+    ],
+    "education_service_access": [
+      "egitim hizmet",
+      "okul kayit",
+      "ogrenci kayit",
+      "nakil basvuru",
+      "ders program",
+      "meb basvuru"
+    ]
+  }
+}
