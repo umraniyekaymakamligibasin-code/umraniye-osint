@@ -1102,7 +1102,8 @@ async function accountAPI(request,env,user,url){
 }
 
 export function retentionCutoff(now=Date.now()){
- const [year,month,date]=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Istanbul'}).format(new Date(now)).split('-').map(Number),target=new Date(Date.UTC(year,month-3,1));
+ const months=Math.max(1,Math.min(24,Number(process.env.OSINT_RETENTION_MONTHS||2)||2));
+ const [year,month,date]=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Istanbul'}).format(new Date(now)).split('-').map(Number),target=new Date(Date.UTC(year,month-1-months,1));
  const last=new Date(Date.UTC(target.getUTCFullYear(),target.getUTCMonth()+1,0)).getUTCDate();target.setUTCDate(Math.min(date,last));return target.toISOString().slice(0,10);
 }
 export function retainedEvent(event,cutoff=retentionCutoff()){
