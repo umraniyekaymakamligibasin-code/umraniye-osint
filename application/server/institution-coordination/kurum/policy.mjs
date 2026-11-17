@@ -94,7 +94,7 @@ const ONAYLI_KURULUS = new Set(['belediye', 'il-cevre-mudurlugu', 'islak']);
  */
 export async function kurallariUret(db, secenekler = {}) {
   const terimler = terimleriGetir(secenekler.terimDosyasi);
-  const surum = String(secenekler.version || 'kurum-politikasi-v4');
+  const surum = String(secenekler.version || 'kurum-politikasi-v5');
   const minGuven = Number(secenekler.minimumGuven ?? 0.75);
   const guvenliMahal = normalKume(secenekler.guvenliMahal);
   const guvenliIlce = normalKume(secenekler.guvenliIlce);

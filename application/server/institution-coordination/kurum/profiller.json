@@ -1,0 +1,382 @@
+{
+  "_aciklama": "Kurum bazli baglam profilleri. 'konular' yalnizca DB grant'lariyla kesisimde kullanilir; burada grant URETILMEZ. 'haric' konular grant olsa bile o kuruma GONDERILMEZ. 'baglam' bos degilse konu terimine EK olarak en az bir baglam terimi aranir (park gibi genel konularda).",
+  "surum": 1,
+  "genel": {
+    "minimumGuven": 0.88,
+    "duyuru_kelimeleri": [
+      "hizmete acildi",
+      "hizmete aciliyor",
+      "acilis",
+      "acilisi",
+      "acildi",
+      "kutlandi",
+      "kutlama",
+      "ziyaret",
+      "ziyaret etti",
+      "odul",
+      "odullendir",
+      "odul toreni",
+      "destek",
+      "destek programi",
+      "program",
+      "basvuru",
+      "duyuru",
+      "etkinlik",
+      "konser",
+      "festival",
+      "sergi",
+      "turnuva",
+      "secim",
+      "aday",
+      "adaylar",
+      "tebrik",
+      "kazandi",
+      "kazandigi",
+      "yenildi",
+      "skor",
+      "mac sonucu",
+      "tanitim",
+      "protokol",
+      "imza toreni",
+      "temel atma",
+      "kurs kayit",
+      "burs",
+      "yardim kampanyasi",
+      "bilgilendirme",
+      "farkindalik",
+      "seminer",
+      "panel",
+      "soylesi",
+      "roportaj",
+      "anma"
+    ],
+    "olay_sinyalleri": [
+      "kaza",
+      "carpis",
+      "devril",
+      "yarali",
+      "olu",
+      "yangin",
+      "alev",
+      "duman",
+      "kacak",
+      "patla",
+      "kesinti",
+      "ariza",
+      "tasma",
+      "baskin",
+      "coktu",
+      "cokme",
+      "mahsur",
+      "kurtar",
+      "saldiri",
+      "kavga",
+      "darp",
+      "silah",
+      "bicak",
+      "hirsiz",
+      "soygun",
+      "gasp",
+      "gozalti",
+      "tutukla",
+      "tehdit",
+      "taciz",
+      "denetim",
+      "ceza",
+      "sikayet",
+      "kirlilik",
+      "cop birik",
+      "moloz",
+      "isgal",
+      "izinsiz",
+      "ruhsat",
+      "kapatildi",
+      "yasak",
+      "uyari",
+      "risk",
+      "tehlike",
+      "hasar",
+      "tahliye"
+    ]
+  },
+  "kurumlar": {
+    "UMR_EMNIYET": {
+      "rol": "kamu duzeni, guvenlik, trafik",
+      "oncelik": [
+        "public_safety",
+        "school_perimeter_safety",
+        "public_transport_safety",
+        "traffic_safety",
+        "fire_rescue",
+        "hazardous_material_response",
+        "gas_leak_public_hazard",
+        "electrical_hazard",
+        "fallen_power_equipment",
+        "district_emergency_coordination",
+        "parks_public_space"
+      ],
+      "haric": [
+        "animal_health_public_agriculture",
+        "illegal_dumping_public_space",
+        "ibb_road_maintenance"
+      ],
+      "baglam": {
+        "parks_public_space": [
+          "kavga",
+          "saldiri",
+          "hirsiz",
+          "silah",
+          "darp",
+          "gozalti",
+          "tehdit",
+          "olay",
+          "guvenlik"
+        ],
+        "illegal_dumping_public_space": [
+          "isgal",
+          "guvenlik"
+        ]
+      }
+    },
+    "ISTANBUL_ITFAIYE": {
+      "rol": "yangin, kurtarma, tehlikeli madde",
+      "oncelik": [
+        "fire_rescue",
+        "hazardous_material_response",
+        "gas_leak_public_hazard",
+        "flooding"
+      ],
+      "haric": []
+    },
+    "UMR_AFET": {
+      "rol": "afet ve acil durum koordinasyonu",
+      "oncelik": [
+        "district_emergency_coordination",
+        "flooding",
+        "storm_damage"
+      ],
+      "haric": []
+    },
+    "UMR_BELEDIYE": {
+      "rol": "belediye hizmetleri, bakim, temizlik, park",
+      "oncelik": [
+        "waste_container",
+        "street_cleanliness",
+        "municipal_roadside_asset",
+        "parks_public_space",
+        "sewer_overflow",
+        "drainage_public_space",
+        "water_outage",
+        "water_leak",
+        "water_infrastructure",
+        "flooding",
+        "storm_damage",
+        "illegal_dumping_public_space",
+        "urban_animal_welfare",
+        "animal_health_public_agriculture",
+        "bus_stop_infrastructure",
+        "bus_service_disruption",
+        "metropolitan_waste_collection",
+        "electrical_hazard",
+        "fallen_power_equipment",
+        "municipal_service_access",
+        "public_service_access",
+        "neighborhood_service_observation",
+        "district_coordination",
+        "employment_service_access",
+        "social_assistance_service_access"
+      ],
+      "haric": [
+        "public_safety",
+        "district_emergency_coordination",
+        "ibb_road_maintenance",
+        "metropolitan_service_access",
+        "hazardous_material_response"
+      ],
+      "baglam": {
+        "parks_public_space": [
+          "park bakim",
+          "park aydinlatma",
+          "park yenileme",
+          "oyun alani",
+          "park zemini",
+          "parkta kirik",
+          "cop",
+          "kirik",
+          "bakim",
+          "onarim",
+          "temizlik"
+        ],
+        "animal_health_public_agriculture": [
+          "hayvan",
+          "veteriner",
+          "tarim",
+          "kus gribi"
+        ]
+      }
+    },
+    "ISKI_UMR": {
+      "rol": "su ve atik su altyapisi",
+      "oncelik": [
+        "water_leak",
+        "water_outage",
+        "sewer_overflow",
+        "water_infrastructure",
+        "drainage_public_space"
+      ],
+      "haric": []
+    },
+    "AYEDAS_UMR": {
+      "rol": "elektrik dagitim",
+      "oncelik": [
+        "power_outage",
+        "fallen_power_equipment",
+        "electrical_hazard",
+        "storm_damage"
+      ],
+      "haric": []
+    },
+    "IGDAS_UMR": {
+      "rol": "dogal gaz",
+      "oncelik": [
+        "gas_outage",
+        "gas_leak_public_hazard"
+      ],
+      "haric": []
+    },
+    "IBB_ALTYAPI": {
+      "rol": "buyuksehir yol ve drenaj",
+      "oncelik": [
+        "ibb_road_maintenance",
+        "drainage_public_space",
+        "metropolitan_service_access"
+      ],
+      "haric": []
+    },
+    "IBB_ATIK": {
+      "rol": "buyuksehir atik yonetimi",
+      "oncelik": [
+        "metropolitan_waste_collection",
+        "illegal_dumping_public_space"
+      ],
+      "haric": []
+    },
+    "IETT": {
+      "rol": "otobus isletmesi",
+      "oncelik": [
+        "bus_service_disruption",
+        "bus_stop_infrastructure",
+        "public_transport_safety"
+      ],
+      "haric": []
+    },
+    "METRO_ISTANBUL": {
+      "rol": "metro isletmesi",
+      "oncelik": [
+        "metro_service_disruption",
+        "metro_station_infrastructure",
+        "public_transport_safety"
+      ],
+      "haric": []
+    },
+    "TURK_TELEKOM_UMR": {
+      "rol": "telekom altyapisi",
+      "oncelik": [
+        "telecom_outage",
+        "telecom_infrastructure"
+      ],
+      "haric": []
+    },
+    "TELEKOM_OPERATOR_UMR": {
+      "rol": "telekom altyapisi",
+      "oncelik": [
+        "telecom_outage",
+        "telecom_infrastructure"
+      ],
+      "haric": []
+    },
+    "UMR_ILCE_MEM": {
+      "rol": "egitim tesisleri",
+      "oncelik": [
+        "school_facility",
+        "school_perimeter_safety",
+        "education_service_access"
+      ],
+      "haric": []
+    },
+    "UMR_ILCE_SAGLIK": {
+      "rol": "saglik hizmetleri",
+      "oncelik": [
+        "public_health_facility",
+        "health_service_access"
+      ],
+      "haric": []
+    },
+    "UMR_ILCE_TARIM": {
+      "rol": "tarim ve hayvan sagligi",
+      "oncelik": [
+        "animal_health_public_agriculture",
+        "urban_animal_welfare"
+      ],
+      "haric": []
+    },
+    "UMR_KAYMAKAMLIK": {
+      "rol": "ilce yonetimi ve koordinasyon",
+      "oncelik": [
+        "district_coordination",
+        "public_service_access",
+        "multi_agency_incident"
+      ],
+      "haric": []
+    },
+    "UMR_MUHTARLIK": {
+      "rol": "mahalle hizmet gozlemi",
+      "oncelik": [
+        "neighborhood_service_observation"
+      ],
+      "haric": []
+    },
+    "UMR_SGK": {
+      "rol": "sosyal guvenlik",
+      "oncelik": [
+        "social_security_service_access"
+      ],
+      "haric": []
+    },
+    "UMR_SHM": {
+      "rol": "sosyal hizmet",
+      "oncelik": [
+        "social_service_access"
+      ],
+      "haric": []
+    },
+    "UMR_SYDV": {
+      "rol": "sosyal yardim",
+      "oncelik": [
+        "social_assistance_service_access"
+      ],
+      "haric": []
+    },
+    "UMR_TAPU": {
+      "rol": "tapu",
+      "oncelik": [
+        "land_registry_service_access"
+      ],
+      "haric": []
+    },
+    "UMR_ILCE_NUFUS": {
+      "rol": "nufus",
+      "oncelik": [
+        "civil_registry_service_access"
+      ],
+      "haric": []
+    },
+    "UMR_ISKUR": {
+      "rol": "istihdam",
+      "oncelik": [
+        "employment_service_access"
+      ],
+      "haric": []
+    }
+  }
+}

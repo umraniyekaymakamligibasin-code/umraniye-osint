@@ -36,6 +36,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const KOK = dirname(fileURLToPath(import.meta.url));
 
+/** Baglam motoru acik mi? (systemd drop-in ile 1 yapilir; varsayilan kapali) */
+const baglamModu = () => String(process.env.OSINT_ROUTING_CONTEXT || '') === '1';
+/** Mail kuyrugu yalnizca acikca istenirse yazilir. */
+const mailKuyrugu = () => String(process.env.OSINT_ROUTING_OUTBOX || '') === '1';
+
 const YARDIM = `Kurum yonlendirme zamanlayicisi
 
   --rapor              durum raporu (kurum/konu/case/kuyruk sayilari)
@@ -49,6 +54,10 @@ const YARDIM = `Kurum yonlendirme zamanlayicisi
   --veritabani <yol>   SQLite dosyasini dogrudan ver (OSINT_DB_PATH yerine gecer)
   --sunucu <yol>       panel kok klasoru
   --kontrol            route-event.mjs guvenli baslik listesini denetle
+
+Ortam:
+  OSINT_ROUTING_CONTEXT=1   baglam motorunu ac (tum kurumlar icin onerilen)
+  OSINT_ROUTING_OUTBOX=1    vaka ile birlikte mail kuyrugu da yaz (varsayilan kapali)
 `;
 
 /** Sunucudaki route-event.mjs'in gomulu guvenli baslik listesi (L11). */
@@ -210,16 +219,20 @@ async function sayilar(db) {
 async function moduller(bul) {
   const dosya = (p) => pathToFileURL(p).href;
   const ic = join(bul.uygulama, 'server', 'institution-coordination');
-  const [route, policy, locality, database, isler, dagitim] = await Promise.all([
+  const [route, policy, locality, database, isler, dagitim,
+         baglam, projeksiyon, profilUret] = await Promise.all([
     import(dosya(join(ic, 'server', 'route-event.mjs'))),
     import(dosya(join(KOK, 'policy.mjs'))),
     import(dosya(join(KOK, 'locality.mjs'))),
     import(dosya(join(bul.uygulama, 'server', 'database.mjs'))),
     import(dosya(join(ic, 'server', 'institution-event-jobs.mjs'))),
     import(dosya(join(ic, 'server', 'dispatch-event-email.mjs'))),
+    import(dosya(join(KOK, 'baglam.mjs'))),
+    import(dosya(join(KOK, 'projeksiyon.mjs'))),
+    import(dosya(join(KOK, 'profil-uret.mjs'))),
   ]);
   return {
-    route, policy, locality,
+    route, policy, locality, baglam, projeksiyon, profilUret,
     openDatabase: database.openDatabase,
     createInstitutionEventJobs: isler.createInstitutionEventJobs,
     dispatchDueInstitutionNotices: dagitim.dispatchDueInstitutionNotices,
@@ -288,8 +301,94 @@ async function gonderimAdimi(db, mods, bul, a, limit) {
   }
 }
 
+/** Elle yazilan ince ayarlar (haric konular, baglam sartlari, oncelik). */
+function elleProfiller() {
+  try {
+    return JSON.parse(readFileSync(join(KOK, 'profiller.json'), 'utf8'));
+  } catch {
+    return { kurumlar: {} };
+  }
+}
+
+async function izinleriOku(db) {
+  try {
+    const r = await db.prepare(`SELECT i.code institution, t.code topic
+      FROM coord_institution_topic_grants g
+      JOIN coord_institutions i ON i.id=g.institution_id AND i.enabled=1 AND i.approval_status='approved'
+      JOIN coord_topics t ON t.id=g.topic_id AND t.enabled=1 AND t.approval_status='approved'
+      WHERE g.granted=1`).all();
+    return Array.isArray(r) ? r : (r?.results ?? []);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * BAGLAM TURU: tum kurumlar icin gorev alani + olay/duyuru + konum + kisisel
+ * veri denetiminden gecirir. Yazma `projeksiyon.mjs` uzerinden yapilir ve
+ * (kurum, olay, konu) benzersizligi sayesinde tur tekrar edilebilir.
+ */
+async function baglamTuru(db, mods, kural, a) {
+  const limit = Math.max(1, Math.min(200, a.limit | 0 || 25));
+  const tumOlaylar = (await olaylariOku(db))
+    .map(e => olayCevir(e, kural, mods.locality, e._snapshotAt));
+  const olaylar = a.kuru ? tumOlaylar.slice(0, limit) : tumOlaylar;
+
+  const elle = elleProfiller();
+  const otomatik = await mods.profilUret.profilleriUret(db, elle);
+  const profiller = mods.profilUret.profilleriBirlestir(otomatik, elle);
+  const terimler = JSON.parse(readFileSync(join(KOK, 'topic-terms.json'), 'utf8'));
+  const katalog = mods.baglam.terimKatalogu(terimler.konular);
+  const izinler = await izinleriOku(db);
+
+  const s = {
+    baglam: true, profilSurum: profiller.surum, kuralSurum: kural.version,
+    olay: olaylar.length, denenen: 0, yonlendirilebilir: 0, tutuldu: 0,
+    sebepler: {}, kurumlar: {}, konular: {}, rotalar: [],
+    yazilan: 0, mukerrer: 0, yazmaHatasi: 0, kuyruga: 0, islenen: 0, basarisiz: 0,
+    ornekler: [],
+  };
+
+  let yazilan = 0;
+  for (const e of olaylar) {
+    s.denenen++;
+    const k = mods.baglam.baglamliDegerlendir(e, { katalog, profiller, izinler });
+    if (k.decision !== 'candidates') {
+      s.tutuldu++;
+      const sebep = k.reason || 'bilinmiyor';
+      s.sebepler[sebep] = (s.sebepler[sebep] || 0) + 1;
+      continue;
+    }
+    s.yonlendirilebilir++;
+    for (const r of k.routes) {
+      s.konular[r.topic] = (s.konular[r.topic] || 0) + 1;
+      if (s.rotalar.length < 15) {
+        s.rotalar.push({ olay: e.id, kurum: r.institution, konu: r.topic, guven: r.confidence });
+      }
+      if (a.kuru) continue;
+      if (yazilan >= limit) continue;              // kucuk paket: tur basina en fazla `limit` YENI vaka
+      const p = await mods.projeksiyon.projectContextEvent({
+        db, event: e, route: r, profiller, kuyrukla: mailKuyrugu(),
+      });
+      s.islenen++;
+      if (p.decision === 'projected') {
+        yazilan++; s.yazilan++; s.kuyruga++;
+        s.kurumlar[r.institution] = (s.kurumlar[r.institution] || 0) + 1;
+      } else if (p.decision === 'duplicate') {
+        s.mukerrer++;
+      } else {
+        s.yazmaHatasi++;
+        if (s.ornekler.length < 5) s.ornekler.push({ id: e.id, sebep: p.reason });
+      }
+    }
+  }
+  if (a.gonder) s.gonderim = 'baglam_modunda_kapali';
+  return s;
+}
+
 /** Tek tur. */
 async function tur(db, mods, bul, kural, a) {
+  if (baglamModu()) return baglamTuru(db, mods, kural, a);
   const limit = Math.max(1, Math.min(200, a.limit | 0 || 25));
   // Kuru deneme yalnizca orneklem alir. Gercek turde TUM olaylar taranir:
   // kuyruk enqueue idempotent oldugu icin (job_key = kural+payload) daha once
