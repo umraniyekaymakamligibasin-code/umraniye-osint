@@ -7,8 +7,8 @@
       "su borusu",
       "boru patla",
       "su sizinti",
-      "iski",
-      "ana boru"
+      "ana boru",
+      "iski ekip"
     ],
     "water_outage": [
       "su kesinti",
@@ -36,8 +36,8 @@
       "elektrik kesinti",
       "elektrikler kesil",
       "enerji kesinti",
-      "ayedas",
-      "elektrik yok"
+      "elektrik yok",
+      "elektriksiz kaldi"
     ],
     "fallen_power_equipment": [
       "kopan kablo",
@@ -130,12 +130,14 @@
       "tutukla"
     ],
     "school_facility": [
-      "okul",
-      "sinif",
-      "ogretmen",
-      "mudur",
+      "okul binasi",
+      "okul bahcesi",
+      "okul catisi",
+      "okul tadilat",
+      "okul onarim",
       "derslik",
-      "egitim ogretim"
+      "okul tuvalet",
+      "sinif tavan"
     ],
     "school_perimeter_safety": [
       "okul cevre",
@@ -158,33 +160,35 @@
       "saglik personel"
     ],
     "waste_container": [
-      "konteyner",
       "cop konteyner",
       "cop kutusu",
-      "atik konteyner"
+      "atik konteyner",
+      "konteyner devril",
+      "konteyner tasma"
     ],
     "street_cleanliness": [
-      "temizlik",
       "cop birik",
       "sokak kirl",
       "supurge",
-      "atik toplama"
+      "atik toplama",
+      "cop toplama"
     ],
     "municipal_roadside_asset": [
       "kaldirim",
       "bordur",
       "yol bakim",
       "asfalt",
-      "cukur",
-      "yaya gecidi"
+      "yol cukuru",
+      "yaya gecidi",
+      "kaldirim bozuk"
     ],
     "parks_public_space": [
-      "park",
-      "yesil alan",
       "oyun alani",
-      "bank",
-      "meydan",
-      "agac dikim"
+      "yesil alan",
+      "park bakim",
+      "park aydinlatma",
+      "park yenileme",
+      "park alani"
     ],
     "district_emergency_coordination": [
       "afad",
@@ -206,11 +210,11 @@
       "otobus gelmi"
     ],
     "bus_stop_infrastructure": [
-      "durak",
       "otobus duragi",
-      "duraklar",
-      "akbil",
-      "durak tabela"
+      "durak tabela",
+      "durak aydinlatma",
+      "durak cami",
+      "durak bekleme"
     ],
     "public_transport_safety": [
       "metrobus",
