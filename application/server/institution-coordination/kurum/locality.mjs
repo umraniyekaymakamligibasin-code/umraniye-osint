@@ -89,21 +89,25 @@ export function localityCikar(event) {
   // Dogrulanmis olmak icin acik isaret sart; istisna yok.
   if (!acikDogrulama || incelemeGerekli) verified = false;
 
-  // 6) Kapsam temelli ILCE dogrulamasi (opt-in, varsayilan KAPALI).
-  //    Bazi akislarda konum mahalle alanina yazilmaz; yalnizca olayin ilce
-  //    kapsaminda oldugu bilinir (scope='local'). Bu modda olay ILCE
-  //    duzeyinde dogrulanmis sayilir; MAHALLE bilgisi tasinmaz, boylece
-  //    yanlis mahalle iddiasi kuruma gitmez.
+  // 6) Kapsam + METIN temelli ILCE dogrulamasi (opt-in, varsayilan KAPALI).
+  //    Yalnizca olayin kendi metni ilceyi ACIKCA yaziyorsa (metindeIlce)
+  //    ilce duzeyinde dogrulanmis sayilir. `scope='local'` TEK BASINA
+  //    yeterli degildir: akista 'local' yalnizca "yerel haber" demek;
+  //    baska ilce/il haberi de bu kapsamda gelir (ornek: Nazilli, Esenler).
+  //    Mahalle alani da tek basina kanit sayilmaz; MAHALLE bilgisi kuruma
+  //    tasinmaz, yalnizca ilce duzeyi kullanilir.
   if (!verified && String(process.env.OSINT_ROUTING_LOCAL_SCOPE || '') === '1'
-      && String(e.scope || '').toLowerCase() === 'local') {
+      && String(e.scope || '').toLowerCase() === 'local' && metindeIlce) {
     verified = true;
     precision = 'district';
     mahalle = null;
-    kaynak = 'kapsam-yerel';
+    kaynak = 'kapsam-yerel-metin';
   }
 
   return {
-    district: (metindeIlce || mahalle || kaynak === 'kapsam-yerel') ? 'Ümraniye' : null,
+    // Ilce yalnizca metinde acikca geciyorsa veya konum acikca
+    // dogrulanmissa 'Ümraniye' kabul edilir. Mahalle adi tek basina yetmez.
+    district: metindeIlce || (verified && mahalle) ? 'Ümraniye' : null,
     neighborhood: mahalle,
     verified,
     precision,
