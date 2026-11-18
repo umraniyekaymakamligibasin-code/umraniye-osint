@@ -30,7 +30,7 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
  async function actor(request){const r=await base.fetch(new Request(origin+'/api/account',{headers:request.headers}),env,{});if(!r.ok)return null;return (await r.json()).actor;}
  // Hız: kullanıcı istekleri tam yeniden kurmayı beklemez; bayat veri hemen sunulur, tazeleme arka planda tekilleştirilir.
  let newsCache=null,socialCache=null,lastRebuildAt=0,lastPreloadAt=0,lastPersistAt=0,refreshTimer=null;
- const maxStale=live?300000:1800000,minRebuildGap=live?12000:0;
+ const maxStale=1800000,minRebuildGap=live?12000:0;
  async function snapshotsSignature(){try{const r=await env.DB.prepare('SELECT count(*) AS n,max(updated_at) AS u FROM snapshots').first();return r?String(r.n||0)+':'+String(r.u||''):null;}catch{return null;}}
  // Açılışta diskteki son başarılı sonuç yüklenir; kullanıcı soğuk kurmayı beklemez.
  const cacheFile=join(resolve(process.env.DATA_DIR||'./data'),'portal-cache.json');
@@ -193,5 +193,5 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
    return json({error:'Bulunamadı'},404);
   }catch(error){console.error(JSON.stringify({event:'portal_request_failed',kind:error.name}));return json({error:'Kayıtlar şu anda hazırlanamadı. Biraz sonra tekrar deneyin.'},503);}
  }
- return {fetch,actor,invalidate(immediate=false){generation++;if(cached)cached.expires=0;if(immediate){cached=null;newsCache=null;}},warm(headers){return (async()=>{await hydrate();if(cached&&cached.expires>Date.now())return cached;return queueRefresh(new Request(origin+'/api/config',{headers}));})().catch(()=>{});}};
+ return {fetch,actor,invalidate(immediate=false){generation++;if(cached)cached.expires=0;if(immediate)newsCache=null;},warm(headers){return (async()=>{await hydrate();if(cached&&cached.expires>Date.now())return cached;return queueRefresh(new Request(origin+'/api/config',{headers}));})().catch(()=>{});}};
 }
