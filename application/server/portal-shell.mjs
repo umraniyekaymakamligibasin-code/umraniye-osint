@@ -32,7 +32,7 @@ export function createPortalShell(base,env,{origin,socialItems}){
    if(r.headers.get('content-type')?.includes('text/html'))return new Response(styled(await r.text()),{status:r.status,headers:r.headers});return r;
   }
   const r=await base.fetch(request,...args);
-  if(request.method==='POST'&&r.ok&&u.pathname.startsWith('/api/admin/'))portal.invalidate();
+  if(request.method==='POST'&&r.ok&&u.pathname.startsWith('/api/admin/'))portal.invalidate(true);
   if(r.headers.get('content-type')?.includes('text/html'))return new Response(styled(await r.text()),{status:r.status,headers:r.headers});return r;
  }};
  const institutional=createInstitutionHost({base:worker,db:env.DB,origin,actor:portal.actor,

@@ -87,7 +87,7 @@ export function createContentModeration({base,env,origin,socialItems,actor,inval
     event_id=excluded.event_id,url=excluded.url,title=excluded.title,stream=excluded.stream,state=excluded.state,actor=excluded.actor,reason=excluded.reason,updated_at=excluded.updated_at`)
      .bind(key,id,url,e.title,e.stream,state,s(who,180),s(reason,500),now,now).run();
    if(state==='hidden')await db.prepare(`UPDATE lab_outbox SET status='expired',last_error='admin_hidden' WHERE status='pending' AND (event_id=? OR json_extract(data,'$.url')=?)`).bind(id,url).run();
-   await audit(who,state,key);hiddenCache.delete(db);invalidate();return key;
+   await audit(who,state,key);hiddenCache.delete(db);invalidate(true);return key;
  }
  async function handle(request){
    const a=await actor(request);if(!a)return Response.json({error:'Giriş gerekli'},{status:401});
@@ -122,7 +122,7 @@ export function createContentModeration({base,env,origin,socialItems,actor,inval
         if(typeof item.key!=='string'||!/^[a-f0-9]{64}$/.test(item.key))return Response.json({error:'Geçersiz kayıt'},{status:400});
         const change=await db.prepare("UPDATE osint_content_moderation SET state='restored',actor=?,updated_at=? WHERE key=? AND state='hidden'").bind(s(who,180),new Date().toISOString(),item.key).run();
         if(!change.meta?.changes)return Response.json({error:'Kayıt bulunamadı'},{status:404});
-        await audit(who,'restore',item.key);hiddenCache.delete(db);invalidate();
+        await audit(who,'restore',item.key);hiddenCache.delete(db);invalidate(true);
       }else if(action==='suppress'){
         if(typeof item.queueId!=='string'||item.queueId.length>200)return Response.json({error:'Geçersiz kuyruk kaydı'},{status:400});
         const row=await db.prepare('SELECT data,status FROM lab_outbox WHERE id=?').bind(item.queueId).first();

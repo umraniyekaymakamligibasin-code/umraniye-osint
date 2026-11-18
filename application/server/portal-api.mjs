@@ -22,20 +22,52 @@ function location(e){return e.locationVerified===true?'Konum doğrulandı':e.loc
 export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
  const research=createBrowserResearch(env.DB);let cached=null,pending=null,generation=0,caseCache=null,caseCacheAt=0;
  const thumbnails=createNewsThumbnails({directory:join(resolve(process.env.DATA_DIR||'./data'),'news-thumbnails'),python:new URL('../image-tools/bin/python',import.meta.url).pathname,script:new URL('./thumbnail.py',import.meta.url).pathname});
- const preloadThumbnails=result=>{setTimeout(()=>{for(const e of result.news.slice(0,24)){const source=safeURL(e.url||e.sources?.[0]?.url);if(!source)continue;try{const page=new URL(source);if(page.protocol==='http:')page.protocol='https:';thumbnails.get(page.href,image(e)).catch(()=>{});}catch{}}},0);};
+ const preloadThumbnails=result=>{setTimeout(()=>{for(const e of result.news.slice(0,16)){const source=safeURL(e.url||e.sources?.[0]?.url);if(!source)continue;try{const page=new URL(source);if(page.protocol==='http:')page.protocol='https:';thumbnails.get(page.href,image(e)).catch(()=>{});}catch{}}},0);};
  async function actor(request){const r=await base.fetch(new Request(origin+'/api/account',{headers:request.headers}),env,{});if(!r.ok)return null;return (await r.json()).actor;}
+ // Hız: kullanıcı istekleri tam yeniden kurmayı beklemez; bayat veri hemen sunulur, tazeleme arka planda tekilleştirilir.
+ let newsCache=null,socialCache=null,lastRebuildAt=0,lastPreloadAt=0,refreshTimer=null;
+ const maxStale=live?300000:1800000,minRebuildGap=live?12000:0;
+ async function snapshotsSignature(){try{const r=await env.DB.prepare('SELECT count(*) AS n,max(updated_at) AS u FROM snapshots').first();return r?String(r.n||0)+':'+String(r.u||''):null;}catch{return null;}}
+ async function loadNews(request){
+  const sig=await snapshotsSignature(),now=Date.now();
+  if(newsCache&&sig!==null&&newsCache.sig===sig&&now-newsCache.at<20000)return {news:newsCache.news,syncedAt:newsCache.syncedAt,reused:true};
+  const response=await base.fetch(new Request(origin+'/api/config',{headers:request.headers}),env,{});
+  if(!response.ok)throw Error('source_unavailable');
+  const config=await response.json();
+  const news=(config.initialData?.events||[]).filter(e=>!e.social&&!['x','instagram','facebook'].includes(e.platform)).map(e=>({...e,stream:'news'})).sort(compareRecordsNewest);
+  const syncedAt=config.initialData?.syncedAt||null;
+  newsCache={sig,at:now,news,syncedAt};return {news,syncedAt,reused:false};
+ }
+ async function loadSocial(settings){
+  const records=await (socialItems?socialItems():research.socialItems());
+  const sig=records.length+':'+(records[0]?.id||'')+':'+(records[0]?.publishedAt||'')+':'+(settings.groupSimilar?'1':'0')+':'+(settings.splitEventIds?.length||0);
+  if(socialCache&&socialCache.sig===sig&&Date.now()-socialCache.at<120000)return {social:socialCache.social,reused:true};
+  const social=await groupedSocialRecords(records,settings);
+  socialCache={sig,at:Date.now(),social};return {social,reused:false};
+ }
+ function rebuild(request){
+  const startedGeneration=generation,t0=Date.now();
+  return (async()=>{const {news,syncedAt,reused:newsReused}=await loadNews(request);const settingsRow=await env.DB.prepare('SELECT data FROM workspace_settings WHERE id=?').bind('main').first();let settings={};try{const saved=JSON.parse(settingsRow?.data||'{}');settings={groupSimilar:saved?.groupSimilar!==false,splitEventIds:Array.isArray(saved?.splitEventIds)?saved.splitEventIds.filter(id=>typeof id==='string'&&id.length<=180).slice(-200):[]};}catch{}const {social,reused:socialReused}=await loadSocial(settings);const all=[...news,...social].sort(compareRecordsNewest);const hidden=await moderationHiddenKeys(env.DB);const visibleNews=news.filter(e=>!isUmraniyesporContent(e)&&!moderationIsHiddenRecord(e,hidden));const visibleSocial=social.filter(e=>!isUmraniyesporContent(e)&&!moderationIsHiddenRecord(e,hidden));const visibleAll=[...visibleNews,...visibleSocial].sort(compareRecordsNewest);const builtAt=Date.now(),result={news:visibleNews,social:visibleSocial,all:visibleAll,syncedAt,builtAt,generation:startedGeneration,expires:builtAt+(live?30000:300000)};console.log(JSON.stringify({event:'snapshot_built',ms:builtAt-t0,news:news.length,social:social.length,newsReused,socialReused}));return result;})();
+ }
+ function queueRefresh(request){
+  if(pending)return pending.promise;
+  lastRebuildAt=Date.now();
+  const promise=rebuild(request).then(result=>{cached=result;if(live&&Date.now()-lastPreloadAt>60000){lastPreloadAt=Date.now();preloadThumbnails(result);}return result;}).finally(()=>{if(pending?.promise===promise)pending=null;});
+  pending={promise,generation};promise.catch(()=>{});
+  return promise;
+ }
  async function snapshot(request){
   const now=Date.now();
-  if(cached&&cached.expires>now)return cached;
-  const staleAllowed=live&&cached&&now-cached.expires<=120000;
-  // Concurrent requests share one preparation. A preparation started before invalidate() is not reused or cached.
-  if(pending&&pending.generation===generation)return staleAllowed?cached:pending.promise;
-  const startedGeneration=generation;
-  const refresh=(async()=>{const response=await base.fetch(new Request(origin+'/api/config',{headers:request.headers}),env,{});if(!response.ok)throw Error('source_unavailable');const config=await response.json();const news=(config.initialData?.events||[]).filter(e=>!e.social&&!['x','instagram','facebook'].includes(e.platform)).map(e=>({...e,stream:'news'})).sort(compareRecordsNewest);const settingsRow=await env.DB.prepare('SELECT data FROM workspace_settings WHERE id=?').bind('main').first();let settings={};try{const saved=JSON.parse(settingsRow?.data||'{}');settings={groupSimilar:saved?.groupSimilar!==false,splitEventIds:Array.isArray(saved?.splitEventIds)?saved.splitEventIds.filter(id=>typeof id==='string'&&id.length<=180).slice(-200):[]};}catch{}const social=await groupedSocialRecords(await (socialItems?socialItems():research.socialItems()),settings);const all=[...news,...social].sort(compareRecordsNewest);const hidden=await moderationHiddenKeys(env.DB);const visibleNews=news.filter(e=>!isUmraniyesporContent(e)&&!moderationIsHiddenRecord(e,hidden));const visibleSocial=social.filter(e=>!isUmraniyesporContent(e)&&!moderationIsHiddenRecord(e,hidden));const visibleAll=[...visibleNews,...visibleSocial].sort(compareRecordsNewest);const result={news:visibleNews,social:visibleSocial,all:visibleAll,syncedAt:config.initialData?.syncedAt||null,expires:Date.now()+(live?30000:300000)};if(startedGeneration===generation){cached=result;if(live)preloadThumbnails(result);}return result;})();
-  pending={promise:refresh,generation:startedGeneration};refresh.finally(()=>{if(pending?.promise===refresh)pending=null;}).catch(()=>{});
-  return staleAllowed?cached:refresh;
+  if(cached&&cached.generation===generation&&cached.expires>now)return cached;
+  if(cached&&now-cached.builtAt<=maxStale){
+   if(!pending){const wait=lastRebuildAt+minRebuildGap-now;if(wait<=0)queueRefresh(request).catch(()=>{});else if(!refreshTimer)refreshTimer=setTimeout(()=>{refreshTimer=null;if(!pending)queueRefresh(request).catch(()=>{});},wait);}
+   return cached;
+  }
+  // İlk açılışta veya bayat sınırı aşıldığında taze veri beklenir; eşzamanlı istekler tek kurmayı paylaşır.
+  if(pending&&pending.generation===generation)return pending.promise;
+  return queueRefresh(request);
  }
- async function cases(){if(caseCache&&Date.now()-caseCacheAt<5000)return caseCache;const rows=(await env.DB.prepare('SELECT id,event_id,status,revision,updated_at,assignee FROM case_records ORDER BY updated_at DESC,revision DESC,id').all()).results;caseCache=new Map();for(const row of rows)if(!caseCache.has(row.event_id))caseCache.set(row.event_id,row);caseCacheAt=Date.now();return caseCache;}
+ async function cases(){if(caseCache&&Date.now()-caseCacheAt<15000)return caseCache;const rows=(await env.DB.prepare('SELECT id,event_id,status,revision,updated_at,assignee FROM case_records ORDER BY updated_at DESC,revision DESC,id').all()).results;caseCache=new Map();for(const row of rows)if(!caseCache.has(row.event_id))caseCache.set(row.event_id,row);caseCacheAt=Date.now();return caseCache;}
  function caseFor(e,rows){for(const id of [e.id,...(e.relatedIds||[])]){const found=rows.get(id);if(found)return found;}return null;}
  function card(e,rows){const c=caseFor(e,rows),scopeAssessment=localScopeAssessment(e),scopeReview=!e.nationalCritical&&!scopeAssessment.local;return {id:e.id,stream:e.stream,platform:platform(e),platforms:recordPlatforms(e),title:e.title||'Başlık belirtilmemiş',description:String(e.fullText||e.description||e.text||'').slice(0,600),sourceName:e.sourceName||e.publisherNames?.join(', ')||e.sources?.[0]?.sourceName||'Kaynak belirtilmemiş',sourceId:e.sourceId||null,accountName:e.accountName||e.account||e.sourceName||null,publishedAt:published(e),firstSeenAt:firstSeen(e),lastSeenAt:e.lastSeenAt||null,datePrecision:e.datePrecision||null,url:safeURL(e.url||e.sources?.[0]?.url),imageUrl:e.stream==='news'&&safeURL(e.url||e.sources?.[0]?.url)?'/api/portal/thumbnail?id='+encodeURIComponent(e.id):image(e),priority:scopeReview?'normal':rank(e),priorityLevel:scopeReview?'P3':e.priorityLevel||null,scopeAssessment,priorityExplanation:e.priorityExplanation||null,location:e.neighborhood||e.locationName||e.nationalLocation||null,locationLabel:scopeReview?'İnceleme Gerekli':location(e),locationVerified:!scopeReview&&e.locationVerified===true,needsReview:scopeReview||e.locationStatus==='review_required'||!c||c.status==='new',nationalCritical:!!e.nationalCritical,topic:e.topic||e.nationalCategory||null,sourceCount:e.sources?.length||1,reviewStatus:c?.status||'new',reviewLabel:reviewLabels[c?.status||'new'],caseId:c?.id||null,caseRevision:c?.revision||0};}
  function filtered(all,params,rows){
@@ -122,5 +154,5 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
    return json({error:'Bulunamadı'},404);
   }catch(error){console.error(JSON.stringify({event:'portal_request_failed',kind:error.name}));return json({error:'Kayıtlar şu anda hazırlanamadı. Biraz sonra tekrar deneyin.'},503);}
  }
- return {fetch,actor,invalidate(){generation++;cached=null;}};
+ return {fetch,actor,invalidate(immediate=false){generation++;if(cached)cached.expires=0;if(immediate){cached=null;newsCache=null;}}};
 }
