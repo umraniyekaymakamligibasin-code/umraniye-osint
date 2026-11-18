@@ -5,7 +5,7 @@ function stem(w){for(const root of ['ceza','katil','sampiyon','madalya','olimpiy
 function tokens(value){return [...new Set(fold(value).split(' ').filter(w=>w.length>3&&!stop.has(w)&&!/^\d+$/.test(w)).map(stem))];}
 const title=e=>String(e.viewTitle||e.title||'');
 const body=e=>String(e.fullText||e.viewText||e.description||'');
-export function eventTerms(e){return tokens(title(e));}
+export function eventTerms(e){return eventEvidence(e).titleTokens;}
 function people(e){const ignored=new Set([...stop,'agirlastirilmis','muebbet','yargitay','karari','kaymakamligi','anadolu','turkiye','ulusal','yerel','mahallesi','caddesi','mudurlugu']);return [...title(e).matchAll(/(?=(?:^|[^\p{L}])([A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,})\s+([A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,}))/gu)].filter(m=>!ignored.has(fold(m[1]))&&!ignored.has(fold(m[2]))).map(m=>fold(m[1]+' '+m[2]));}
 function phase(e){const t=fold(title(e));if(/cenaze|topraga|defned|son yolculuk/.test(t))return 'funeral';if(/anma|anildi|yil donumu/.test(t))return 'memorial';if(/yargitay|ceza.{0,30}onan|muebbet.{0,20}onan|ceza.{0,25}kesinles/.test(t))return 'appeal';if(/iddianame/.test(t))return 'indictment';if(/tutuklan|tutuklandi/.test(t))return 'arrest';if(/gozalti/.test(t))return 'detention';if(/mahkeme|dava|muebbet|ceza.{0,20}(carptir|veril)/.test(t))return 'trial';return 'event';}
 
@@ -70,8 +70,10 @@ const aliases=new Map([['afyon','afyonkarahisar'],['urfa','sanliurfa'],['antep',
 const evidenceCache=new WeakMap();
 function canonicalPlace(value){return String(value||'').split(' ').map(w=>aliases.get(w)||w).join(' ');}
 function incidentText(e){return fold(title(e)+' '+body(e).split(/[iİIı]lg[iİIı]l[iİIı] haberler|benzer haberler|d[iİIı][gğ]er haberler|related news|son dak[iİIı]ka haberler/i)[0].slice(0,1800));}
+const kindCache=new WeakMap();
 export function eventKind(e){
- const headline=fold(title(e)),text=incidentText(e);
+ const headline=title(e),article=body(e),old=kindCache.get(e);if(old&&old.headline===headline&&old.article===article)return old.value;
+ const text=incidentText(e);
  function classify(t){
   if(/\byangin\w*\b|\balev\w*\b/.test(t))return 'fire';
   if(/\bkaza(?:si|sinda|ya)?\b|carpis|carpti|devrildi/.test(t))return 'traffic';
@@ -81,8 +83,10 @@ export function eventKind(e){
   if(/madalya|sampiyon|olimpiyat/.test(t))return 'sport';
   return 'general';
  }
- if(phase(e)!=='event'&&/yargitay|muebbet|mahkeme|iddianame|katil|cinayet|ceza|dava/.test(headline))return 'judicial';
- const direct=classify(headline);return direct==='general'?classify(text):direct;
+ const folded=fold(headline);let value;
+ if(phase(e)!=='event'&&/yargitay|muebbet|mahkeme|iddianame|katil|cinayet|ceza|dava/.test(folded))value='judicial';
+ else{const direct=classify(folded);value=direct==='general'?classify(text):direct;}
+ kindCache.set(e,{headline,article,value});return value;
 }
 export function eventEvidence(e){
  const headline=title(e),article=body(e),location=e.nationalLocation||'',old=evidenceCache.get(e);if(old&&old.headline===headline&&old.article===article&&old.location===location)return old.value;
