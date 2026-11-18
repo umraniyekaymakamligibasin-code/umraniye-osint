@@ -38,11 +38,11 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
    const saved=JSON.parse(await readFile(cacheFile,'utf8'));
    if(!Array.isArray(saved?.news)||!Array.isArray(saved?.social))return;
    const age=Date.now()-Number(saved.at||0);
-   const sig=await snapshotsSignature();if(!sig||saved.sig!==sig)return;
-   // Yas ne olursa olsun yuklenir; hemen bayat sayilip arka planda tazelenir (kullanici beklemez).
+   const sig=await snapshotsSignature();
+   // Yas/imza ne olursa olsun yuklenir; hemen bayat sayilip arka planda tazelenir (kullanici beklemez).
    const builtAt=Date.now();
    cached={news:saved.news,social:saved.social,all:[...saved.news,...saved.social].sort(compareRecordsNewest),syncedAt:saved.syncedAt||null,builtAt,generation,expires:builtAt};
-   newsCache={sig,at:builtAt,news:saved.news,syncedAt:saved.syncedAt||null};
+   if(sig&&saved.sig===sig)newsCache={sig,at:builtAt,news:saved.news,syncedAt:saved.syncedAt||null};
    if(saved.socialSig)socialCache={sig:saved.socialSig,at:builtAt,social:saved.social};
    console.log(JSON.stringify({event:'portal_cache_loaded',news:saved.news.length,social:saved.social.length,ageMs:age}));
   }catch{}})();
