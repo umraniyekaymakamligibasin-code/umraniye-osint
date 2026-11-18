@@ -28,6 +28,8 @@ await loadInstitutionalTargets(DB);
 const env={DB,OSINT_ADMIN_USERNAME:process.env.OSINT_ADMIN_USERNAME,OSINT_ADMIN_PASSWORD:password,OSINT_ADMIN_EMAIL:process.env.OSINT_ADMIN_EMAIL||'',OSINT_ADMIN_SESSION_VERSION:process.env.OSINT_ADMIN_SESSION_VERSION||'1',OSINT_AUTO_UPDATE_ENABLED:String(enabled)};
 const port=Number(process.env.PORT||3000);if(!Number.isInteger(port)||port<1024||port>65535)throw Error('PORT 1024–65535 arasında olmalı.');
 const serviceKey=randomBytes(32).toString('hex');
+// Denetim: worker servis anahtarini OSINT_AUTOMATION_KEY_SHA256 uzerinden dogruluyor (ham deger).
+env.OSINT_AUTOMATION_KEY_SHA256=serviceKey;
 const accountStore=process.env.OSINT_LAB_ENABLED==='true'?createAccountStore(DB,await accountKey(join(dir,'accounts.key'))):null;
 const browserKey=accountStore&&process.env.OSINT_BROWSER_ENABLED==='true'?(await accountKey(join(dir,'browser-service.key'))).toString('hex'):'';
 const loginManager=browserKey?createBrowserLogin({dataDir:dir}):null;

@@ -37,13 +37,14 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
   hydratePromise=(async()=>{try{
    const saved=JSON.parse(await readFile(cacheFile,'utf8'));
    if(!Array.isArray(saved?.news)||!Array.isArray(saved?.social))return;
-   if(Date.now()-Number(saved.at||0)>900000)return;
+   const age=Date.now()-Number(saved.at||0);
    const sig=await snapshotsSignature();if(!sig||saved.sig!==sig)return;
+   // Yas ne olursa olsun yuklenir; hemen bayat sayilip arka planda tazelenir (kullanici beklemez).
    const builtAt=Date.now();
-   cached={news:saved.news,social:saved.social,all:[...saved.news,...saved.social].sort(compareRecordsNewest),syncedAt:saved.syncedAt||null,builtAt,generation,expires:builtAt+(live?30000:300000)};
+   cached={news:saved.news,social:saved.social,all:[...saved.news,...saved.social].sort(compareRecordsNewest),syncedAt:saved.syncedAt||null,builtAt,generation,expires:builtAt};
    newsCache={sig,at:builtAt,news:saved.news,syncedAt:saved.syncedAt||null};
    if(saved.socialSig)socialCache={sig:saved.socialSig,at:builtAt,social:saved.social};
-   console.log(JSON.stringify({event:'portal_cache_loaded',news:saved.news.length,social:saved.social.length,ageMs:builtAt-Number(saved.at||0)}));
+   console.log(JSON.stringify({event:'portal_cache_loaded',news:saved.news.length,social:saved.social.length,ageMs:age}));
   }catch{}})();
   return hydratePromise;
  }
