@@ -41,5 +41,5 @@ export function createPortalShell(base,env,{origin,socialItems}){
  // These fixed routes retain their existing constant-time secret validation inside lab.worker.
  return ['GET','POST'].includes(request.method)&&['/api/admin/integrations/browser-facebook','/api/admin/integrations/browser-worker'].includes(p);
  }});
- return {worker:institutional,invalidate:portal.invalidate};
+ return {worker:institutional,invalidate:portal.invalidate,warm:portal.warm};
 }
