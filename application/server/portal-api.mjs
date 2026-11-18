@@ -26,7 +26,7 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
  const preloadThumbnails=result=>{setTimeout(()=>{for(const e of result.news.slice(0,16)){const source=safeURL(e.url||e.sources?.[0]?.url);if(!source)continue;try{const page=new URL(source);if(page.protocol==='http:')page.protocol='https:';thumbnails.get(page.href,image(e)).catch(()=>{});}catch{}}},0);};
  async function actor(request){const r=await base.fetch(new Request(origin+'/api/account',{headers:request.headers}),env,{});if(!r.ok)return null;return (await r.json()).actor;}
  // Hız: kullanıcı istekleri tam yeniden kurmayı beklemez; bayat veri hemen sunulur, tazeleme arka planda tekilleştirilir.
- let newsCache=null,socialCache=null,lastRebuildAt=0,lastPreloadAt=0,refreshTimer=null;
+ let newsCache=null,socialCache=null,lastRebuildAt=0,lastPreloadAt=0,lastPersistAt=0,refreshTimer=null;
  const maxStale=live?300000:1800000,minRebuildGap=live?12000:0;
  async function snapshotsSignature(){try{const r=await env.DB.prepare('SELECT count(*) AS n,max(updated_at) AS u FROM snapshots').first();return r?String(r.n||0)+':'+String(r.u||''):null;}catch{return null;}}
  // Açılışta diskteki son başarılı sonuç yüklenir; kullanıcı soğuk kurmayı beklemez.
@@ -49,8 +49,12 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
   return hydratePromise;
  }
  async function persist(result){
+  const now=Date.now();
+  // 9-10 MB yazim maliyetli; en fazla dakikada bir diske yazilir.
+  if(now-lastPersistAt<60000)return;
+  lastPersistAt=now;
   try{
-   const payload={at:Date.now(),sig:newsCache?.sig||null,socialSig:socialCache?.sig||null,syncedAt:result.syncedAt||null,news:result.news,social:result.social};
+   const payload={at:now,sig:newsCache?.sig||null,socialSig:socialCache?.sig||null,syncedAt:result.syncedAt||null,news:result.news,social:result.social};
    const temp=cacheFile+'.'+process.pid+'.tmp';
    await writeFile(temp,JSON.stringify(payload),{mode:0o600});
    await rename(temp,cacheFile);
@@ -186,5 +190,5 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
    return json({error:'Bulunamadı'},404);
   }catch(error){console.error(JSON.stringify({event:'portal_request_failed',kind:error.name}));return json({error:'Kayıtlar şu anda hazırlanamadı. Biraz sonra tekrar deneyin.'},503);}
  }
- return {fetch,actor,invalidate(immediate=false){generation++;if(cached)cached.expires=0;if(immediate){cached=null;newsCache=null;}},warm(headers){return (async()=>{await hydrate();if(cached&&Date.now()-cached.builtAt<60000)return cached;return queueRefresh(new Request(origin+'/api/config',{headers}));})().catch(()=>{});}};
+ return {fetch,actor,invalidate(immediate=false){generation++;if(cached)cached.expires=0;if(immediate){cached=null;newsCache=null;}},warm(headers){return (async()=>{await hydrate();if(cached&&cached.expires>Date.now())return cached;return queueRefresh(new Request(origin+'/api/config',{headers}));})().catch(()=>{});}};
 }

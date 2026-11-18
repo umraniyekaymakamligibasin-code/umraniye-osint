@@ -11,7 +11,7 @@ import {createHttpServer} from './http.mjs';
 import {createCollector} from './collector.mjs';
 import {validateOwner} from './owner-policy.mjs';
 import {createIntegrations} from './integrations.mjs';
-import {randomBytes} from 'node:crypto';
+import {randomBytes,createHash} from 'node:crypto';
 import {accountKey,createAccountStore} from './accounts.mjs';
 import {createBrowserLogin} from './browser-login.mjs';
 import {createBrowserProxy} from './browser-proxy.mjs';
@@ -28,8 +28,8 @@ await loadInstitutionalTargets(DB);
 const env={DB,OSINT_ADMIN_USERNAME:process.env.OSINT_ADMIN_USERNAME,OSINT_ADMIN_PASSWORD:password,OSINT_ADMIN_EMAIL:process.env.OSINT_ADMIN_EMAIL||'',OSINT_ADMIN_SESSION_VERSION:process.env.OSINT_ADMIN_SESSION_VERSION||'1',OSINT_AUTO_UPDATE_ENABLED:String(enabled)};
 const port=Number(process.env.PORT||3000);if(!Number.isInteger(port)||port<1024||port>65535)throw Error('PORT 1024–65535 arasında olmalı.');
 const serviceKey=randomBytes(32).toString('hex');
-// Denetim: worker servis anahtarini OSINT_AUTOMATION_KEY_SHA256 uzerinden dogruluyor (ham deger).
-env.OSINT_AUTOMATION_KEY_SHA256=serviceKey;
+// Denetim: worker servis anahtarini OSINT_AUTOMATION_KEY_SHA256 (token'in SHA-256 ozeti) uzerinden dogruluyor.
+env.OSINT_AUTOMATION_KEY_SHA256=createHash('sha256').update(serviceKey).digest('hex');
 const accountStore=process.env.OSINT_LAB_ENABLED==='true'?createAccountStore(DB,await accountKey(join(dir,'accounts.key'))):null;
 const browserKey=accountStore&&process.env.OSINT_BROWSER_ENABLED==='true'?(await accountKey(join(dir,'browser-service.key'))).toString('hex'):'';
 const loginManager=browserKey?createBrowserLogin({dataDir:dir}):null;
