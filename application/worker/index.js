@@ -919,14 +919,22 @@ function incidentKind(text){const t=norm(text);if(/balkon\w* cok|balkon\w* cokk|
 export const sameIncident=sameEvent;
 export function groupRelatedEvents(events,settings=DEFAULT_SETTINGS){return groupEventRecords(events,settings)}
 function urgentEvent(event,now=Date.now()){const geo=analyzeGeoText(event.title+' '+(event.fullText||event.description||''));if(geo.matches.length&&!geo.localContextEstablished)return false;const date=event.publishedAt;if(!date||/^\d{4}-\d{2}-\d{2}$/.test(date))return false;const age=now-Date.parse(date),t=norm(event.title);return age>=-300000&&age<=6*3600000&&(event.nationalCritical?event.nationalUrgent!==false:!!incidentKind(t))&&!/tatbikat|egitim|anma|belgesel|film|gecmis olsun/.test(t)}
+const classifyMemo=new Map(),signalMemo=new Map();
+function contentKey(e,text){let h=5381;for(let i=0;i<text.length;i+=1)h=((h*33)^text.charCodeAt(i))>>>0;const u=String(e.url||'');let uh=5381;for(let i=0;i<u.length;i+=1)uh=((uh*33)^u.charCodeAt(i))>>>0;return e.id+'|'+(e.sourceId||'')+'|'+(e.scope||'')+'|'+(e.nationalCritical?'1':'0')+'|'+text.length+'|'+h+'|'+u.length+'|'+uh;}
+function memoClassify(e,text){const key=contentKey(e,text);let v=classifyMemo.get(key);if(!v){v=classify(e.title,text);if(classifyMemo.size>4000)classifyMemo.clear();classifyMemo.set(key,v);}return v;}
+function memoSignals(e,text){const key=contentKey(e,text);let v=signalMemo.get(key);if(!v){v=sourceSignals(SOURCES.find(s=>s.id===e.sourceId)||{national:e.scope==='national'||e.nationalCritical===true},e.title,text,e.url);if(signalMemo.size>4000)signalMemo.clear();signalMemo.set(key,v);}return v;}
 async function publicBundle(data,settings){
+ const t0=Date.now();
  const rows=[],records=newsRecords(publicationRecords(data.events)),excluded=settings.excludedTerms||[];
  for(let i=0;i<records.length;i++){
-  const e=records[i],item={...e,...classify(e.title,e.fullText||e.description),...sourceSignals(SOURCES.find(s=>s.id===e.sourceId)||{national:e.scope==='national'||e.nationalCritical===true},e.title,e.fullText||e.description,e.url)};
+  const e=records[i],text=e.fullText||e.description,item={...e,...memoClassify(e,text),...memoSignals(e,text)};
   if(item.relevant!==false&&!excluded.some(t=>phraseMatches(searchText(item.title+' '+item.description),t))&&(item.scope!=='national'||item.publishedAt&&item.nationalCritical))rows.push(item);
   if(i%8===7)await new Promise(resolve=>setImmediate(resolve));
  }
- return {...data,events:(await groupEventRecordsAsync(rows,settings)).sort(publicationOrder).slice(0,500)};
+ const loopMs=Date.now()-t0;
+ const grouped=(await groupEventRecordsAsync(rows,settings)).sort(publicationOrder).slice(0,500);
+ const total=Date.now()-t0;if(total>1000)console.log(JSON.stringify({event:'public_bundle_slow',ms:total,loopMs,groupMs:total-loopMs,records:records.length,kept:rows.length}));
+ return {...data,events:grouped};
 }
 async function readBody(request,limit=16000){const tooLarge=()=>Object.assign(new Error('İstek çok büyük'),{status:413});if(Number(request.headers.get('Content-Length')||0)>limit)throw tooLarge();const text=await request.text();if(text.length>limit)throw tooLarge();try{return JSON.parse(text)}catch{throw Object.assign(new Error('Geçersiz istek'),{status:400})}}
 async function adminWorkspaceAPI(request,env,user,url){
