@@ -923,6 +923,8 @@ const classifyMemo=new Map(),signalMemo=new Map();
 function contentKey(e,text){let h=5381;for(let i=0;i<text.length;i+=1)h=((h*33)^text.charCodeAt(i))>>>0;const u=String(e.url||'');let uh=5381;for(let i=0;i<u.length;i+=1)uh=((uh*33)^u.charCodeAt(i))>>>0;return e.id+'|'+(e.sourceId||'')+'|'+(e.scope||'')+'|'+(e.nationalCritical?'1':'0')+'|'+text.length+'|'+h+'|'+u.length+'|'+uh;}
 function memoClassify(e,text){const key=contentKey(e,text);let v=classifyMemo.get(key);if(!v){v=classify(e.title,text);if(classifyMemo.size>4000)classifyMemo.clear();classifyMemo.set(key,v);}return v;}
 function memoSignals(e,text){const key=contentKey(e,text);let v=signalMemo.get(key);if(!v){v=sourceSignals(SOURCES.find(s=>s.id===e.sourceId)||{national:e.scope==='national'||e.nationalCritical===true},e.title,text,e.url);if(signalMemo.size>4000)signalMemo.clear();signalMemo.set(key,v);}return v;}
+const groupCache=new Map();
+function rowsSignature(rows,settings){let h=5381;for(const r of rows){const s=(r.id||'')+'|'+(r.title||'')+'|'+String(r.description||r.fullText||'')+'|'+(r.locationStatus||'')+'|'+(r.scope||'')+'|'+(r.nationalCritical?'1':'0')+'|'+(r.publishedAt||'');for(let i=0;i<s.length;i+=5)h=((h*33)^s.charCodeAt(i))>>>0;}return h+':'+rows.length+':'+(settings?.groupSimilar?'1':'0')+':'+((settings?.splitEventIds||[]).join(','));}
 async function publicBundle(data,settings){
  const t0=Date.now();
  const rows=[],records=newsRecords(publicationRecords(data.events)),excluded=settings.excludedTerms||[];
@@ -932,8 +934,12 @@ async function publicBundle(data,settings){
   if(i%8===7)await new Promise(resolve=>setImmediate(resolve));
  }
  const loopMs=Date.now()-t0;
- const grouped=(await groupEventRecordsAsync(rows,settings)).sort(publicationOrder).slice(0,500);
- const total=Date.now()-t0;if(total>1000)console.log(JSON.stringify({event:'public_bundle_slow',ms:total,loopMs,groupMs:total-loopMs,records:records.length,kept:rows.length}));
+ // Gruplama deterministik: ayni kayit kumesi + ayarlar icin sonuc yeniden kullanilir (maliyetli O(n^2)).
+ const gkey=rowsSignature(rows,settings);
+ let base=groupCache.get(gkey),groupReused=false;
+ if(base){groupReused=true;}else{base=await groupEventRecordsAsync(rows,settings);if(groupCache.size>=4)groupCache.clear();groupCache.set(gkey,base);}
+ const grouped=base.slice().sort(publicationOrder).slice(0,500).map(e=>({...e}));
+ const total=Date.now()-t0;if(total>1000)console.log(JSON.stringify({event:'public_bundle_slow',ms:total,loopMs,groupMs:total-loopMs,records:records.length,kept:rows.length,groupReused}));
  return {...data,events:grouped};
 }
 async function readBody(request,limit=16000){const tooLarge=()=>Object.assign(new Error('İstek çok büyük'),{status:413});if(Number(request.headers.get('Content-Length')||0)>limit)throw tooLarge();const text=await request.text();if(text.length>limit)throw tooLarge();try{return JSON.parse(text)}catch{throw Object.assign(new Error('Geçersiz istek'),{status:400})}}
