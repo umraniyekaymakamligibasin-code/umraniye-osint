@@ -64,8 +64,17 @@ export function publicationRecords(events){
 function stablePublicationId(value){let h=2166136261;for(const c of value){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return (h>>>0).toString(36)}
 export function publicationOrder(a,b){const at=Date.parse(a.publishedAt),bt=Date.parse(b.publishedAt);return (Number.isFinite(bt)?bt:-Infinity)-(Number.isFinite(at)?at:-Infinity)||String(a.id||a.url).localeCompare(String(b.id||b.url))}
 function publisherKey(s){if(s.sourceId&&s.sourceId!=='browser-research')return s.sourceId;const name=groupWords(String(s.sourceName||'').split('·')[0]);if(name)return name;try{return new URL(s.url).hostname.replace(/^www\./,'')}catch{return ''}}
+const featureMemo=new Map();
+function featureKey(e){const d=String(e.description||'');let h=5381;for(let i=0;i<d.length;i+=3)h=((h*33)^d.charCodeAt(i))>>>0;const src=(e.sources||[]).map(s=>s.url||'').join(',');let sh=5381;for(let i=0;i<src.length;i+=3)sh=((sh*33)^src.charCodeAt(i))>>>0;return [e.id,e.title||'',e.publishedAt||'',e.scope||'',e.nationalCritical?'1':'0',d.length,h,src.length,sh].join('|');}
 function eventFeatures(e,cache){
- const old=cache?.get(e);if(old)return old;const time=Date.parse(e.publishedAt),body=groupBody(e),kind=groupKind(e),value={time,day:Number.isFinite(time)?groupDay(time):null,body,kind,scope:e.scope||(e.nationalCritical?'national':'local'),phase:groupPhase(e),tokens:groupTokens(e.title),bodyTokens:groupTokens(body),people:knownPeople(groupWords(e.title)),bodyPeople:knownPeople(body),quotes:quotes(e),numbers:(String(e.title).match(/\b\d+\b/g)||[]).join(','),urls:new Set(publications(e).filter(p=>p.url).map(publicationKey)),incident:['balcony','fire','traffic','shooting','collapse','explosion','aviation'].includes(kind)};
+ const old=cache?.get(e);if(old)return old;
+ const key=featureKey(e);let value=featureMemo.get(key);
+ if(!value){
+  const time=Date.parse(e.publishedAt),body=groupBody(e),kind=groupKind(e);value={time,day:Number.isFinite(time)?groupDay(time):null,body,kind,scope:e.scope||(e.nationalCritical?'national':'local'),phase:groupPhase(e),tokens:groupTokens(e.title),bodyTokens:groupTokens(body),people:knownPeople(groupWords(e.title)),bodyPeople:knownPeople(body),quotes:quotes(e),numbers:(String(e.title).match(/\b\d+\b/g)||[]).join(','),urls:new Set(publications(e).filter(p=>p.url).map(publicationKey)),incident:['balcony','fire','traffic','shooting','collapse','explosion','aviation'].includes(kind)};
+  // Ozellik cikarimi deterministik; icerik ayni kaldikca yeniden hesaplanmaz (maliyetli regex taramalari).
+  if(featureMemo.size>6000)featureMemo.clear();
+  featureMemo.set(key,value);
+ }
  cache?.set(e,value);return value;
 }
 function candidateKeys(e,f,query=false){
