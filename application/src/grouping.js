@@ -72,7 +72,7 @@ function eventFeatures(e,cache){
  if(!value){
   const time=Date.parse(e.publishedAt),body=groupBody(e),kind=groupKind(e);value={time,day:Number.isFinite(time)?groupDay(time):null,body,kind,scope:e.scope||(e.nationalCritical?'national':'local'),phase:groupPhase(e),tokens:groupTokens(e.title),bodyTokens:groupTokens(body),people:knownPeople(groupWords(e.title)),bodyPeople:knownPeople(body),quotes:quotes(e),numbers:(String(e.title).match(/\b\d+\b/g)||[]).join(','),urls:new Set(publications(e).filter(p=>p.url).map(publicationKey)),incident:['balcony','fire','traffic','shooting','collapse','explosion','aviation'].includes(kind)};
   // Ozellik cikarimi deterministik; icerik ayni kaldikca yeniden hesaplanmaz (maliyetli regex taramalari).
-  if(featureMemo.size>6000)featureMemo.clear();
+  if(featureMemo.size>3000)featureMemo.clear();
   featureMemo.set(key,value);
  }
  cache?.set(e,value);return value;
