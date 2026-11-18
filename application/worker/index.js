@@ -804,14 +804,20 @@ async function publishedData(env,fresh=false){
  return entry.promise;
 }
 async function uncachedPublishedData(env){
- await maintainRetention(env);
+ const t0=Date.now(),stage={};
+ await maintainRetention(env);stage.retention=Date.now()-t0;
  if(!env?.DB)return publicBundle(activeData({...INITIAL_DATA,events:retainedEvents(INITIAL_DATA?.events)},false),DEFAULT_SETTINGS);
  const rows=await env.DB.prepare('SELECT data FROM snapshots').all();
  const events=new Map((INITIAL_DATA?.events||[]).map(e=>[e.id,e])),health=new Map((INITIAL_DATA?.results||[]).map(h=>[h.id,h]));let syncedAt=INITIAL_DATA?.syncedAt;
  for(const row of rows.results||[]){const d=JSON.parse(row.data);for(const e of d.events||[])events.set(e.id,e);for(const h of d.results||[])if(!health.has(h.id)||h.checkedAt>health.get(h.id).checkedAt)health.set(h.id,h);if(!syncedAt||d.syncedAt>syncedAt)syncedAt=d.syncedAt;}
+ stage.read=Date.now()-t0-stage.retention;
  const bundle=activeData({events:retainedEvents([...events.values()]),results:[...health.values()],syncedAt},false);
+ stage.active=Date.now()-t0-stage.retention-stage.read;
  if(typeof env.OSINT_LAB_EVENTS==='function')bundle.events.push(...retainedEvents(await env.OSINT_LAB_EVENTS()));
- return publicBundle(bundle,await workspaceSettings(env));
+ stage.lab=Date.now()-t0-stage.retention-stage.read-stage.active;
+ const out=await publicBundle(bundle,await workspaceSettings(env));stage.bundle=Date.now()-t0-stage.retention-stage.read-stage.active-stage.lab;
+ const total=Date.now()-t0;if(total>1000)console.log(JSON.stringify({event:'config_build_slow',ms:total,events:out.events?.length,stage}));
+ return out;
 }
 async function publishBatch(env,data){invalidatePublishedNews(env.DB);data={...data,events:retainedEvents(data.events)};if(!env?.DB)throw Error('Ortak veritabanı bağlı değil');const row=await env.DB.prepare('SELECT data FROM snapshots WHERE id=?').bind('batch-'+data.batch).first();if(row){const previous=JSON.parse(row.data);const map=new Map((previous.events||[]).map(e=>[e.id,e]));for(const e of data.events)map.set(e.id,e);data={...data,events:publicationRecords(retainedEvents([...map.values()])).sort(publicationOrder).slice(0,500)}}await env.DB.prepare('INSERT INTO snapshots (id,data,updated_at) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at').bind('batch-'+data.batch,JSON.stringify(data),data.syncedAt).run();invalidatePublishedNews(env.DB);}
 function auditStatement(env,user,action,target){return env.DB.prepare('INSERT INTO audit (id,actor,action,target,created_at) VALUES (?,?,?,?,?)').bind(crypto.randomUUID(),user.id,action,target,new Date().toISOString());}

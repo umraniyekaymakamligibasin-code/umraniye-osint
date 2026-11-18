@@ -280,7 +280,7 @@ async function editorialApprove(request,actor){
  function run(){if(closed)return Promise.resolve();if(running)return running;running=cycle().finally(()=>{running=null});return running;}
  let prioritizedNewsCache=null,prioritizedNewsPending=null,prioritizedNewsGeneration=0;
  function invalidatePrioritizedNews(){prioritizedNewsCache=null;prioritizedNewsPending=null;prioritizedNewsGeneration++;}
- async function analyzeNews(events){const analyzed=[];for(const e of newsRecords(events)){analyzed.push(applyLocalScopeSafety({...e,...prioritize(e,now())}));if(analyzed.length%8===0)await new Promise(resolve=>setImmediate(resolve));}return analyzed;}
+ async function analyzeNews(events){const t0=Date.now(),analyzed=[];for(const e of newsRecords(events)){analyzed.push(applyLocalScopeSafety({...e,...prioritize(e,now())}));if(analyzed.length%8===0)await new Promise(resolve=>setImmediate(resolve));}const ms=Date.now()-t0;if(ms>500)console.log(JSON.stringify({event:'analyze_news_slow',ms,n:analyzed.length}));return analyzed;}
  let keywordReviewTask=null,keywordReviewPending=false,keywordReviewState={status:'idle'};
  function scheduleKeywordReview(){
   keywordReviewPending=true;keywordReviewState={status:'queued',revision:centralRevision(),notificationReplay:false};

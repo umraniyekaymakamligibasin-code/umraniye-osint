@@ -39,10 +39,13 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
   newsCache={sig,at:now,news,syncedAt};return {news,syncedAt,reused:false};
  }
  async function loadSocial(settings){
+  const t0=Date.now();
   const records=await (socialItems?socialItems():research.socialItems());
+  const fetchMs=Date.now()-t0;
   const sig=records.length+':'+(records[0]?.id||'')+':'+(records[0]?.publishedAt||'')+':'+(settings.groupSimilar?'1':'0')+':'+(settings.splitEventIds?.length||0);
   if(socialCache&&socialCache.sig===sig&&Date.now()-socialCache.at<120000)return {social:socialCache.social,reused:true};
   const social=await groupedSocialRecords(records,settings);
+  const ms=Date.now()-t0;if(ms>500)console.log(JSON.stringify({event:'social_build_slow',ms,fetchMs,groupMs:ms-fetchMs,n:records.length}));
   socialCache={sig,at:Date.now(),social};return {social,reused:false};
  }
  function rebuild(request){
