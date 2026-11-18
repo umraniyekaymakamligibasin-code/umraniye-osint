@@ -8,6 +8,7 @@ import {createBrowserResearch} from './browser-research.mjs';
 import {analyzeGeoText} from './geo-dictionary.mjs';
 import {createNewsThumbnails} from './news-thumbnails.mjs';
 import {join,resolve} from 'node:path';
+import {readFile,writeFile,rename} from 'node:fs/promises';
 const json=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
 const fold=value=>String(value||'').toLocaleLowerCase('tr-TR').replace(/ı/g,'i').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 const day=value=>{if(!value)return null;if(/^\d{4}-\d{2}-\d{2}$/.test(value))return value;const date=new Date(value);return Number.isFinite(+date)?new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Istanbul'}).format(date):null;};
@@ -28,6 +29,32 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
  let newsCache=null,socialCache=null,lastRebuildAt=0,lastPreloadAt=0,refreshTimer=null;
  const maxStale=live?300000:1800000,minRebuildGap=live?12000:0;
  async function snapshotsSignature(){try{const r=await env.DB.prepare('SELECT count(*) AS n,max(updated_at) AS u FROM snapshots').first();return r?String(r.n||0)+':'+String(r.u||''):null;}catch{return null;}}
+ // Açılışta diskteki son başarılı sonuç yüklenir; kullanıcı soğuk kurmayı beklemez.
+ const cacheFile=join(resolve(process.env.DATA_DIR||'./data'),'portal-cache.json');
+ let hydratePromise=null;
+ async function hydrate(){
+  if(hydratePromise)return hydratePromise;
+  hydratePromise=(async()=>{try{
+   const saved=JSON.parse(await readFile(cacheFile,'utf8'));
+   if(!Array.isArray(saved?.news)||!Array.isArray(saved?.social))return;
+   if(Date.now()-Number(saved.at||0)>900000)return;
+   const sig=await snapshotsSignature();if(!sig||saved.sig!==sig)return;
+   const builtAt=Date.now();
+   cached={news:saved.news,social:saved.social,all:[...saved.news,...saved.social].sort(compareRecordsNewest),syncedAt:saved.syncedAt||null,builtAt,generation,expires:builtAt+(live?30000:300000)};
+   newsCache={sig,at:builtAt,news:saved.news,syncedAt:saved.syncedAt||null};
+   if(saved.socialSig)socialCache={sig:saved.socialSig,at:builtAt,social:saved.social};
+   console.log(JSON.stringify({event:'portal_cache_loaded',news:saved.news.length,social:saved.social.length,ageMs:builtAt-Number(saved.at||0)}));
+  }catch{}})();
+  return hydratePromise;
+ }
+ async function persist(result){
+  try{
+   const payload={at:Date.now(),sig:newsCache?.sig||null,socialSig:socialCache?.sig||null,syncedAt:result.syncedAt||null,news:result.news,social:result.social};
+   const temp=cacheFile+'.'+process.pid+'.tmp';
+   await writeFile(temp,JSON.stringify(payload),{mode:0o600});
+   await rename(temp,cacheFile);
+  }catch{}
+ }
  async function loadNews(request){
   const sig=await snapshotsSignature(),now=Date.now();
   if(newsCache&&sig!==null&&newsCache.sig===sig&&now-newsCache.at<20000)return {news:newsCache.news,syncedAt:newsCache.syncedAt,reused:true};
@@ -55,12 +82,13 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
  function queueRefresh(request){
   if(pending)return pending.promise;
   lastRebuildAt=Date.now();
-  const promise=rebuild(request).then(result=>{cached=result;if(live&&Date.now()-lastPreloadAt>60000){lastPreloadAt=Date.now();preloadThumbnails(result);}return result;}).finally(()=>{if(pending?.promise===promise)pending=null;});
+  const promise=rebuild(request).then(result=>{cached=result;if(live&&Date.now()-lastPreloadAt>60000){lastPreloadAt=Date.now();preloadThumbnails(result);}void persist(result);return result;}).finally(()=>{if(pending?.promise===promise)pending=null;});
   pending={promise,generation};promise.catch(()=>{});
   return promise;
  }
  async function snapshot(request){
   const now=Date.now();
+  await hydrate();
   if(cached&&cached.generation===generation&&cached.expires>now)return cached;
   if(cached&&now-cached.builtAt<=maxStale){
    if(!pending){const wait=lastRebuildAt+minRebuildGap-now;if(wait<=0)queueRefresh(request).catch(()=>{});else if(!refreshTimer)refreshTimer=setTimeout(()=>{refreshTimer=null;if(!pending)queueRefresh(request).catch(()=>{});},wait);}
@@ -157,5 +185,5 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
    return json({error:'Bulunamadı'},404);
   }catch(error){console.error(JSON.stringify({event:'portal_request_failed',kind:error.name}));return json({error:'Kayıtlar şu anda hazırlanamadı. Biraz sonra tekrar deneyin.'},503);}
  }
- return {fetch,actor,invalidate(immediate=false){generation++;if(cached)cached.expires=0;if(immediate){cached=null;newsCache=null;}},warm(headers){return queueRefresh(new Request(origin+'/api/config',{headers})).catch(()=>{});}};
+ return {fetch,actor,invalidate(immediate=false){generation++;if(cached)cached.expires=0;if(immediate){cached=null;newsCache=null;}},warm(headers){return (async()=>{await hydrate();if(cached&&Date.now()-cached.builtAt<60000)return cached;return queueRefresh(new Request(origin+'/api/config',{headers}));})().catch(()=>{});}};
 }
