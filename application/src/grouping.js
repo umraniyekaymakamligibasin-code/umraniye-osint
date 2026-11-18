@@ -116,18 +116,23 @@ function newest(a,b){const av=Date.parse(a.publishedAt),bv=Date.parse(b.publishe
 function* groupingSteps(events,{groupSimilar=true,splitEventIds=[]}={}){
  const groups=[],blocked=new Set(splitEventIds),cache=new WeakMap(),index=new Map();
  const root=g=>g.mergedInto?root(g.mergedInto):g;
+ const relMemo=new Map(),stats={events:0,checks:0,cands:0,maxCand:0};
+ const rel=(a,b)=>{const key=String(a.id)<String(b.id)?a.id+'|'+b.id:b.id+'|'+a.id;if(relMemo.has(key))return relMemo.get(key);stats.checks++;const value=eventRelation(a,b);if(relMemo.size>200000)relMemo.clear();relMemo.set(key,value);return value;};
  for(const event of [...events].sort(order)){
+  stats.events++;
   const aliases=[...new Set([event.id,...(event.relatedIds||[])])],locked=aliases.some(id=>blocked.has(id)),feature=eventFeatures(event,cache),candidates=new Set();
   if(groupSimilar&&!locked)for(const key of candidateKeys(event,feature,true))for(const g of index.get(key)||[])candidates.add(root(g));
-  const compatible=g=>!g.locked&&g.members.every(member=>eventRelation(member,event)!==false)&&g.members.some(member=>sameEvent(member,event,cache));
+  stats.cands+=candidates.size;if(candidates.size>stats.maxCand)stats.maxCand=candidates.size;
+  const compatible=g=>!g.locked&&g.members.every(member=>rel(member,event)!==false)&&g.members.some(member=>sameEvent(member,event,cache));
   const matches=[...candidates].sort((a,b)=>a.position-b.position).filter(compatible);
   let target=matches[0];
-  if(target)for(const other of matches.slice(1))if(target.members.every(a=>other.members.every(b=>eventRelation(a,b)!==false))){target.members.push(...other.members);target.aliases.push(...other.aliases);other.mergedInto=target;}
+  if(target)for(const other of matches.slice(1))if(target.members.every(a=>other.members.every(b=>rel(a,b)!==false))){target.members.push(...other.members);target.aliases.push(...other.aliases);other.mergedInto=target;}
   if(target)target.members.sort(order);
   if(target){target.members.push(event);target.aliases.push(...aliases)}else{target={members:[event],aliases,locked,position:groups.length};groups.push(target)}
   if(groupSimilar&&!locked)for(const key of candidateKeys(event,feature)){if(!index.has(key))index.set(key,new Set());index.get(key).add(target)}
   yield;
  }
+ if(stats.events>300)console.log(JSON.stringify({event:'grouping_stats',...stats}));
  return groups.filter(g=>!g.mergedInto).map(g=>{
   const first=g.members[0],lead=[...g.members].sort((a,b)=>titleQuality(b)-titleQuality(a)||order(a,b))[0],sources=new Map();
   for(const member of g.members)for(const p of publications(member)){const key=publicationKey(p),old=sources.get(key);if(!old||(p.description||'').length>(old.description||'').length)sources.set(key,p)}
