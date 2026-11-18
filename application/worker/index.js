@@ -932,8 +932,10 @@ async function publicBundle(data,settings){
   if(i%8===7)await new Promise(resolve=>setImmediate(resolve));
  }
  const loopMs=Date.now()-t0;
- const grouped=(await groupEventRecordsAsync(rows,settings)).sort(publicationOrder).slice(0,500);
- const total=Date.now()-t0;if(total>1000)console.log(JSON.stringify({event:'public_bundle_slow',ms:total,loopMs,groupMs:total-loopMs,records:records.length,kept:rows.length}));
+ // Yalnız en yeni kayıtlar gösterime girebildiği için gruplamaya girmeden önce kırpılır (çıktı sınırı 500).
+ const capped=rows.length>700?rows.slice().sort(publicationOrder).slice(0,700):rows;
+ const grouped=(await groupEventRecordsAsync(capped,settings)).sort(publicationOrder).slice(0,500);
+ const total=Date.now()-t0;if(total>1000)console.log(JSON.stringify({event:'public_bundle_slow',ms:total,loopMs,groupMs:total-loopMs,records:records.length,kept:rows.length,capped:capped.length}));
  return {...data,events:grouped};
 }
 async function readBody(request,limit=16000){const tooLarge=()=>Object.assign(new Error('İstek çok büyük'),{status:413});if(Number(request.headers.get('Content-Length')||0)>limit)throw tooLarge();const text=await request.text();if(text.length>limit)throw tooLarge();try{return JSON.parse(text)}catch{throw Object.assign(new Error('Geçersiz istek'),{status:400})}}
