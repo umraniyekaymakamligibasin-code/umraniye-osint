@@ -22,6 +22,9 @@ function platform(e){const p=fold(e.platform);if(['facebook','x','instagram'].in
 function location(e){return e.locationVerified===true?'Konum doğrulandı':e.locationStatus==='local_indicated'?'Yerel konum belirtilmiş (teyitsiz)':'İnceleme Gerekli';}
 export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
  const research=createBrowserResearch(env.DB);let cached=null,pending=null,generation=0,caseCache=null,caseCacheAt=0;
+ // Kapsam degerlendirmesi pahali; ayni kayit nesnesi icin bir kez hesaplanir (kart/liste/ozet ayni nesneleri paylasir).
+ const scopeMemo=new WeakMap();
+ const scopeOf=e=>{let v=scopeMemo.get(e);if(!v){v=localScopeAssessment(e);scopeMemo.set(e,v);}return v;};
  const thumbnails=createNewsThumbnails({directory:join(resolve(process.env.DATA_DIR||'./data'),'news-thumbnails'),python:new URL('../image-tools/bin/python',import.meta.url).pathname,script:new URL('./thumbnail.py',import.meta.url).pathname});
  const preloadThumbnails=result=>{setTimeout(()=>{for(const e of result.news.slice(0,16)){const source=safeURL(e.url||e.sources?.[0]?.url);if(!source)continue;try{const page=new URL(source);if(page.protocol==='http:')page.protocol='https:';thumbnails.get(page.href,image(e)).catch(()=>{});}catch{}}},0);};
  async function actor(request){const r=await base.fetch(new Request(origin+'/api/account',{headers:request.headers}),env,{});if(!r.ok)return null;return (await r.json()).actor;}
@@ -105,7 +108,7 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
  }
  async function cases(){if(caseCache&&Date.now()-caseCacheAt<15000)return caseCache;const rows=(await env.DB.prepare('SELECT id,event_id,status,revision,updated_at,assignee FROM case_records ORDER BY updated_at DESC,revision DESC,id').all()).results;caseCache=new Map();for(const row of rows)if(!caseCache.has(row.event_id))caseCache.set(row.event_id,row);caseCacheAt=Date.now();return caseCache;}
  function caseFor(e,rows){for(const id of [e.id,...(e.relatedIds||[])]){const found=rows.get(id);if(found)return found;}return null;}
- function card(e,rows){const c=caseFor(e,rows),scopeAssessment=localScopeAssessment(e),scopeReview=!e.nationalCritical&&!scopeAssessment.local;return {id:e.id,stream:e.stream,platform:platform(e),platforms:recordPlatforms(e),title:e.title||'Başlık belirtilmemiş',description:String(e.fullText||e.description||e.text||'').slice(0,600),sourceName:e.sourceName||e.publisherNames?.join(', ')||e.sources?.[0]?.sourceName||'Kaynak belirtilmemiş',sourceId:e.sourceId||null,accountName:e.accountName||e.account||e.sourceName||null,publishedAt:published(e),firstSeenAt:firstSeen(e),lastSeenAt:e.lastSeenAt||null,datePrecision:e.datePrecision||null,url:safeURL(e.url||e.sources?.[0]?.url),imageUrl:e.stream==='news'&&safeURL(e.url||e.sources?.[0]?.url)?'/api/portal/thumbnail?id='+encodeURIComponent(e.id):image(e),priority:scopeReview?'normal':rank(e),priorityLevel:scopeReview?'P3':e.priorityLevel||null,scopeAssessment,priorityExplanation:e.priorityExplanation||null,location:e.neighborhood||e.locationName||e.nationalLocation||null,locationLabel:scopeReview?'İnceleme Gerekli':location(e),locationVerified:!scopeReview&&e.locationVerified===true,needsReview:scopeReview||e.locationStatus==='review_required'||!c||c.status==='new',nationalCritical:!!e.nationalCritical,topic:e.topic||e.nationalCategory||null,sourceCount:e.sources?.length||1,reviewStatus:c?.status||'new',reviewLabel:reviewLabels[c?.status||'new'],caseId:c?.id||null,caseRevision:c?.revision||0};}
+ function card(e,rows){const c=caseFor(e,rows),scopeAssessment=scopeOf(e),scopeReview=!e.nationalCritical&&!scopeAssessment.local;return {id:e.id,stream:e.stream,platform:platform(e),platforms:recordPlatforms(e),title:e.title||'Başlık belirtilmemiş',description:String(e.fullText||e.description||e.text||'').slice(0,600),sourceName:e.sourceName||e.publisherNames?.join(', ')||e.sources?.[0]?.sourceName||'Kaynak belirtilmemiş',sourceId:e.sourceId||null,accountName:e.accountName||e.account||e.sourceName||null,publishedAt:published(e),firstSeenAt:firstSeen(e),lastSeenAt:e.lastSeenAt||null,datePrecision:e.datePrecision||null,url:safeURL(e.url||e.sources?.[0]?.url),imageUrl:e.stream==='news'&&safeURL(e.url||e.sources?.[0]?.url)?'/api/portal/thumbnail?id='+encodeURIComponent(e.id):image(e),priority:scopeReview?'normal':rank(e),priorityLevel:scopeReview?'P3':e.priorityLevel||null,scopeAssessment,priorityExplanation:e.priorityExplanation||null,location:e.neighborhood||e.locationName||e.nationalLocation||null,locationLabel:scopeReview?'İnceleme Gerekli':location(e),locationVerified:!scopeReview&&e.locationVerified===true,needsReview:scopeReview||e.locationStatus==='review_required'||!c||c.status==='new',nationalCritical:!!e.nationalCritical,topic:e.topic||e.nationalCategory||null,sourceCount:e.sources?.length||1,reviewStatus:c?.status||'new',reviewLabel:reviewLabels[c?.status||'new'],caseId:c?.id||null,caseRevision:c?.revision||0};}
  function filtered(all,params,rows){
   const isDay=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'')?v:null;
   const q=fold(params.get('q')).slice(0,300),source=params.get('source'),priority=params.get('priority'),start=isDay(params.get('start')),end=isDay(params.get('end')),period=params.get('period'),tab=params.get('tab'),type=params.get('type'),today=day(new Date().toISOString());
@@ -119,7 +122,7 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
    if((period==='24h'||tab==='24h')&&(!published(e)||/^\d{4}-\d{2}-\d{2}$/.test(published(e))||Date.parse(published(e))<Date.now()-86400000||Date.parse(published(e))>Date.now()+300000))return false;
    if(period==='today'&&date!==today)return false;
    if(tab==='priority'&&rank(e)==='normal')return false;
-   if(tab==='local'&&!localScopeAssessment(e).local)return false;
+   if(tab==='local'&&!scopeOf(e).local)return false;
    if(tab==='national'&&!e.nationalCritical)return false;
    const review=caseFor(e,rows);
    if(tab==='review'&&review&&review.status!=='new'&&e.locationStatus!=='review_required')return false;
@@ -143,13 +146,13 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
     return bytes?new Response(bytes,{headers:{'Content-Type':'image/webp','Content-Length':String(bytes.length),'Cache-Control':'private,max-age=604800','X-Content-Type-Options':'nosniff','Vary':'Cookie'}}):new Response(null,{status:404,headers:{'Cache-Control':'private,max-age=1800'}});
    }
    if(route==='summary'){
-    const localNews=data.news.filter(e=>localScopeAssessment(e).local),localSocial=data.social.filter(e=>localScopeAssessment(e).local),localAll=[...localNews,...localSocial];
+    const localNews=data.news.filter(e=>scopeOf(e).local),localSocial=data.social.filter(e=>scopeOf(e).local),localAll=[...localNews,...localSocial];
     return json({actor:{id:a.id,name:a.name,admin:a.admin},snapshot:!live,syncedAt:data.syncedAt,counters:{todayNews:localNews.filter(e=>day(published(e))===today).length,social:localSocial.length,priority:localAll.filter(e=>rank(e)!=='normal').length,review:localAll.filter(e=>e.locationStatus==='review_required').length},headlines:localNews.slice(0,4).map(e=>card(e,rows)),latest:localNews.slice(4,14).map(e=>card(e,rows)),priority:localAll.filter(e=>rank(e)!=='normal').sort(compareRecordsNewest).slice(0,5).map(e=>card(e,rows)),social:localSocial.slice(0,5).map(e=>card(e,rows)),allCounts:{news:data.news.length,social:data.social.length},sources:[...new Set(data.all.flatMap(e=>[e.sourceName,...(e.sources||[]).map(s=>s.sourceName)]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'tr'))});
    }
    if(route==='list'||route==='export'){
     let all=u.searchParams.get('stream')==='news'?data.news:u.searchParams.get('stream')==='social'?data.social:data.all;
-    if(u.searchParams.get('section')==='alerts')all=all.filter(e=>!e.nationalCritical&&localScopeAssessment(e).state!=='outside'&&(rank(e)!=='normal'||e.locationStatus==='review_required'||!localScopeAssessment(e).local));
-    if(u.searchParams.get('section')==='home')all=all.filter(e=>localScopeAssessment(e).local);
+    if(u.searchParams.get('section')==='alerts')all=all.filter(e=>!e.nationalCritical&&scopeOf(e).state!=='outside'&&(rank(e)!=='normal'||e.locationStatus==='review_required'||!scopeOf(e).local));
+    if(u.searchParams.get('section')==='home')all=all.filter(e=>scopeOf(e).local);
     all=filtered(all,u.searchParams,rows).sort(compareRecordsNewest);
     if(route==='export'){
      if(!a.admin)return json({error:'CSV dışa aktarımı yönetici yetkisi gerektirir'},403);
