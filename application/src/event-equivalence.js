@@ -67,7 +67,8 @@ export function eventRelation(a,b){
 
 const eventCities=["adana", "adiyaman", "afyonkarahisar", "agri", "amasya", "ankara", "antalya", "artvin", "aydin", "balikesir", "bilecik", "bingol", "bitlis", "bolu", "burdur", "bursa", "canakkale", "cankiri", "corum", "denizli", "diyarbakir", "edirne", "elazig", "erzincan", "erzurum", "eskisehir", "gaziantep", "giresun", "gumushane", "hakkari", "hatay", "isparta", "mersin", "istanbul", "izmir", "kars", "kastamonu", "kayseri", "kirklareli", "kirsehir", "kocaeli", "konya", "kutahya", "malatya", "manisa", "kahramanmaras", "mardin", "mugla", "mus", "nevsehir", "nigde", "ordu", "rize", "sakarya", "samsun", "siirt", "sinop", "sivas", "tekirdag", "tokat", "trabzon", "tunceli", "sanliurfa", "usak", "van", "yozgat", "zonguldak", "aksaray", "bayburt", "karaman", "kirikkale", "batman", "sirnak", "bartin", "ardahan", "igdir", "yalova", "karabuk", "kilis", "osmaniye", "duzce"];
 const aliases=new Map([['afyon','afyonkarahisar'],['urfa','sanliurfa'],['antep','gaziantep'],['maras','kahramanmaras']]);
-const evidenceCache=new WeakMap();
+const evidenceCache=new WeakMap(),evidenceMemo=new Map();
+function evidenceKey(headline,article,location){let h=5381;for(let i=0;i<article.length;i+=3)h=((h*33)^article.charCodeAt(i))>>>0;let t=5381;for(let i=0;i<headline.length;i+=1)t=((t*33)^headline.charCodeAt(i))>>>0;return headline.length+'|'+t+'|'+article.length+'|'+h+'|'+location;}
 function canonicalPlace(value){return String(value||'').split(' ').map(w=>aliases.get(w)||w).join(' ');}
 function incidentText(e){return fold(title(e)+' '+body(e).split(/[iİIı]lg[iİIı]l[iİIı] haberler|benzer haberler|d[iİIı][gğ]er haberler|related news|son dak[iİIı]ka haberler/i)[0].slice(0,1800));}
 const kindCache=new WeakMap();
@@ -90,13 +91,17 @@ export function eventKind(e){
 }
 export function eventEvidence(e){
  const headline=title(e),article=body(e),location=e.nationalLocation||'',old=evidenceCache.get(e);if(old&&old.headline===headline&&old.article===article&&old.location===location)return old.value;
+ const ekey=evidenceKey(headline,article,location),memo=evidenceMemo.get(ekey);if(memo){evidenceCache.set(e,{headline,article,location,value:memo});return memo;}
  const text=canonicalPlace(incidentText(e)),locations=sites(e),cities=new Set();
  for(const city of eventCities)if(new RegExp('(?:^| )'+city+'(?:da|de|dan|den|nin|nun)?(?: |$)').test(text+' '+canonicalPlace(fold(e.nationalLocation))))cities.add(city);
  const counties=new Set(locations.get('county')||[]),villages=new Set(locations.get('village')||[]);
  const multiple=/\b(?:iki|uc|dort|bes|[2-9])\s+(?:ayri|farkli)\s+(?:nokta|yer|koy|bolge)|pes pese|birden fazla (?:nokta|koy|yer)/.test(text);
  const fatalities=/\bolu\b|olum|hayatini kaybet|yasamini yitir|cansiz beden|ceset|oldurul|katliam/.test(text);
  const value={text,cities,counties,villages,multiple,fatalities,locations,phase:phase(e),people:people(e),dates:dateAnchors(e),times:incidentTimes(e),plates:plate(e),kind:eventKind(e),bodyTokens:tokens(article),titleTokens:tokens(headline)};
- evidenceCache.set(e,{headline,article,location,value});return value;
+ evidenceCache.set(e,{headline,article,location,value});
+ if(evidenceMemo.size>3000)evidenceMemo.clear();
+ evidenceMemo.set(ekey,value);
+ return value;
 }
 export function eventCandidateTerms(e){
  const f=eventEvidence(e),out=new Set(eventTerms(e));
