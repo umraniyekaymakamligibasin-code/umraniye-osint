@@ -227,9 +227,31 @@ export function guvenliBaslik(topic, profiller) {
   return profiller?.basliklar?.[topic] ?? displayTitles[topic] ?? null;
 }
 
+/** ISO tarihi TR yerel saatle okunur metne cevirir (panel ozeti icin). */
+function tarihTR(iso) {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return null;
+  return new Intl.DateTimeFormat('tr-TR', { timeZone: 'Europe/Istanbul',
+    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    .format(new Date(t));
+}
+
 export function guvenliOzet(event, route, profiller) {
   const baslik = guvenliBaslik(route.topic, profiller);
   if (!baslik) return null;
   const nb = event?.locality?.neighborhood;
-  return `${nb ? nb + ' Mahallesi, ' : ''}Ümraniye'de ${baslik.toLocaleLowerCase('tr-TR')} kaydı oluşturuldu.`;
+  let ozet = `${nb ? nb + ' Mahallesi, ' : ''}Ümraniye'de ${baslik.toLocaleLowerCase('tr-TR')} kaydı oluşturuldu.`;
+  // Guvenli kaynak metaverisi: yayinci adi + platform + ilk yayin tarihi.
+  // Kaynak metni ve baslik KOPYALANMAZ (kisisel veri politikasi degismez).
+  const kaynaklar = Array.isArray(event?.kaynaklar)
+    ? event.kaynaklar.filter(k => k && typeof k.url === 'string') : [];
+  if (kaynaklar.length) {
+    const adlar = [...new Set(kaynaklar.map(k => String(k?.name || '').trim()).filter(Boolean))].slice(0, 4);
+    if (adlar.length) ozet += ` Kaynak${kaynaklar.length > 1 ? `lar (${kaynaklar.length})` : ''}: ${adlar.join(', ')}.`;
+    const platformlar = [...new Set(kaynaklar.map(k => String(k?.platform || '').trim()).filter(Boolean))];
+    if (platformlar.length === 1) ozet += ` Platform: ${platformlar[0]}.`;
+  }
+  const ilk = tarihTR(event?.publishedAt);
+  if (ilk) ozet += ` İlk yayın: ${ilk}.`;
+  return ozet.length > 900 ? ozet.slice(0, 897) + '...' : ozet;
 }

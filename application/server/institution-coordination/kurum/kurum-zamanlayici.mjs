@@ -146,6 +146,32 @@ const METIN_SINIRI = 8000;
  * Buna ek olarak `policyVersion` konur; `enqueue` bunu ZORUNLU tutar ve
  * kod tabaninda bu alani hicbir uretici yazmiyordu (gizli kusur).
  */
+/** Olayin yayinci/kaynak metaverisi (KURUMSAL bilgi; kisiye ozel degil).
+ *  Baslik/metin KOPYALANMAZ politikasi bozulmadan panelde kaynak gosterimi
+ *  icin gereken url + yayinci adi + platform + tarih listesini uretir. */
+function kaynaklariTopla(e) {
+  const cikti = [];
+  const gorulen = new Set();
+  const ekle = (url, name, platform, publishedAt) => {
+    const u = typeof url === 'string' ? url.trim() : '';
+    if (!/^https?:\/\//i.test(u) || u.length > 500) return;
+    if (gorulen.has(u)) return;
+    gorulen.add(u);
+    cikti.push({
+      url: u,
+      name: String(name || 'Yayıncı belirtilmemiş').slice(0, 120),
+      platform: String(platform || 'news').slice(0, 20),
+      publishedAt: gecerliTarih(publishedAt) || null,
+    });
+  };
+  for (const s of Array.isArray(e?.sources) ? e.sources.slice(0, 20) : []) {
+    if (!s || typeof s !== 'object') continue;
+    ekle(s.url, s.sourceName ?? s.source, s.platform, s.publishedAt);
+  }
+  ekle(e?.url, e?.sourceName ?? e?.accountName, e?.platform, e?.publishedAt);
+  return cikti.slice(0, 20);
+}
+
 function olayCevir(e, kural, yerelLocality, snapshotAt) {
   const metin = [e.description, e.text, e.fullText].filter(Boolean).join('\n').slice(0, METIN_SINIRI);
   const publishedAt = gecerliTarih(e.publishedAt) || null;
@@ -161,6 +187,7 @@ function olayCevir(e, kural, yerelLocality, snapshotAt) {
     firstSeenAt,
     historical: e.historical === true,
     locality: yerelLocality.localityCikar({ ...e, description: metin }),
+    kaynaklar: kaynaklariTopla(e),
     riskCategory: String(e.riskCategory ?? e.category ?? ''),
     sensitivity: String(e.sensitivity ?? 'ordinary'),
     sensitivityFlags: e.sensitivityFlags && typeof e.sensitivityFlags === 'object'

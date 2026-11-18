@@ -95,7 +95,28 @@ export async function projectContextEvent({ db, event, route, profiller, kuyrukl
   // Mail kapaliyken yalnizca vaka + audit yazilir. Outbox'a satir ancak acikca
   // istenirse ve alici dogrulanmissa girer.
   const ifadeler = [insertCase, auditInsert];
+
+  // Kaynak satirlari (coord_case_sources): panelin "Kaynaklar" bolumu icin.
+  // Kurumsal metaveri (url, yayinci adi, platform, tarih) tasinir; metin KOPYALANMAZ.
+  // coord_case_id, ayni batch icindeki INSERT/ON CONFLICT sonrasi gercek vaka
+  // satirindan cozulur -> mukerrer turlarda mevcut vakanin kaynaklari da tamamlanir.
+  const kaynaklar = Array.isArray(event?.kaynaklar) ? event.kaynaklar : [];
+  for (const k of kaynaklar.slice(0, 20)) {
+    if (!k || typeof k.url !== 'string' || !/^https?:\/\//i.test(k.url) || k.url.length > 500) continue;
+    ifadeler.push(db.prepare(`INSERT INTO coord_case_sources(
+        id,coord_case_id,source_url,source_name,platform,published_at,added_at)
+      SELECT ?, c.id, ?, ?, ?, ?, ?
+      FROM coord_cases c
+      WHERE c.institution_id=? AND c.source_event_id=? AND c.topic_id=?
+      ON CONFLICT(coord_case_id,source_url) DO NOTHING`)
+      .bind(randomUUID(), k.url.slice(0, 500),
+        String(k.name || 'Yayıncı belirtilmemiş').slice(0, 120),
+        String(k.platform || 'news').slice(0, 20), k.publishedAt ?? null, createdAt,
+        onayli.institution_id, event.id, onayli.topic_id));
+  }
+
   let outboxInsert = null;
+  let outboxIndex = -1;
   if (kuyrukla) {
     const taze = ilkYayin && Date.parse(ilkYayin) >= Date.now() - 3_600_000
       && Date.parse(ilkYayin) <= Date.now() + 300_000;
@@ -113,6 +134,7 @@ export async function projectContextEvent({ db, event, route, profiller, kuyrukl
       ON CONFLICT(dedupe_key) DO NOTHING`)
       .bind(randomUUID(), createdAt, createdAt, caseId, taze ? 1 : 0);
     ifadeler.push(outboxInsert);
+    outboxIndex = ifadeler.length - 1;
   }
 
   let sonuc;
@@ -128,8 +150,8 @@ export async function projectContextEvent({ db, event, route, profiller, kuyrukl
     return { decision: 'duplicate', reason: 'duplicate_or_not_inserted',
       institution: route.institution, topic: route.topic };
   }
-  const mailKuyruga = outboxInsert
-    ? Number(sonuc?.[2]?.meta?.changes ?? sonuc?.[2]?.changes ?? 0) > 0
+  const mailKuyruga = outboxInsert && outboxIndex >= 0
+    ? Number(sonuc?.[outboxIndex]?.meta?.changes ?? sonuc?.[outboxIndex]?.changes ?? 0) > 0
     : false;
   return {
     decision: 'projected', institution: route.institution, topic: route.topic,
