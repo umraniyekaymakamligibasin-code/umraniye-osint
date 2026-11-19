@@ -6,7 +6,8 @@ def deliver(d,smtp_factory=smtplib.SMTP):
     address=d.get('to','')
     if any(c in address for c in '\r\n') or '@' not in address: return {'ok':False,'definitelyNotSent':True,'code':'recipient_invalid'}
     message=EmailMessage();message['From']=sender;message['To']=address
-    message['Subject']='Ümraniye OSINT kurum panelinde yeni kayıt'
+    subject=d.get('subject') or 'Ümraniye OSINT kurum panelinde yeni kayıt'
+    message['Subject']=str(subject).replace('\r',' ').replace('\n',' ')[:200]
     message['Message-ID']='<'+hashlib.sha256(d['idempotencyKey'].encode()).hexdigest()+'@osint.umraniyeosint.com>'
     message.set_content(d['text'])
     data_started=False

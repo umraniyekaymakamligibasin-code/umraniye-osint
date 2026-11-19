@@ -16,7 +16,7 @@ export function createGmailSender({directory,python='python3',transport}){
   const key=await readFile(join(directory,'smtp.key')),b=Buffer.from(c.sealed,'base64');
   const d=createDecipheriv('aes-256-gcm',key,b.subarray(0,12));d.setAAD(Buffer.from(c.sender));d.setAuthTag(b.subarray(12,28));
   const password=Buffer.concat([d.update(b.subarray(28)),d.final()]).toString('utf8');
-  const payload={to:input.to,text:input.text,idempotencyKey:input.idempotencyKey,password};
+  const payload={to:input.to,text:input.text,idempotencyKey:input.idempotencyKey,password,...(input.subject?{subject:String(input.subject).slice(0,200)}:{})};
   const r=transport?await transport(payload):await new Promise((resolve,reject)=>{
    const child=spawn(python,[new URL('./gmail-smtp.py',import.meta.url).pathname],{stdio:['pipe','pipe','ignore'],windowsHide:true,env:childEnv()});let output='';
    const timer=setTimeout(()=>{child.kill();reject(Error('smtp_transport_timeout'))},90000);
