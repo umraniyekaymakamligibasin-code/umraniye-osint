@@ -57,8 +57,11 @@ const KISISEL = [
 ];
 
 export const PAYLASIM = Object.freeze({
+  // ORTAK GOREV: bir konu birden fazla kurumun gorev alanina giriyorsa
+  // olay TUM listelenen kurumlara gider (profil+grant kapisi yine zorunlu).
+  // Listedeki kurumlardan hangisi o olay icin aday olduysa ona gider;
+  // aday olmayan kurum etkilenmez.
   flooding: ['UMR_AFET', 'UMR_BELEDIYE', 'ISKI_UMR', 'ISTANBUL_ITFAIYE'],
-  drainage_public_space: ['UMR_BELEDIYE', 'ISKI_UMR'],
   storm_damage: ['AYEDAS_UMR', 'UMR_AFET', 'UMR_BELEDIYE'],
   public_transport_safety: ['IETT', 'METRO_ISTANBUL', 'UMR_EMNIYET'],
   fire_rescue: ['ISTANBUL_ITFAIYE', 'UMR_EMNIYET'],
@@ -66,7 +69,31 @@ export const PAYLASIM = Object.freeze({
   gas_leak_public_hazard: ['IGDAS_UMR', 'ISTANBUL_ITFAIYE', 'UMR_EMNIYET'],
   electrical_hazard: ['AYEDAS_UMR', 'UMR_BELEDIYE', 'UMR_EMNIYET'],
   fallen_power_equipment: ['AYEDAS_UMR', 'UMR_BELEDIYE', 'UMR_EMNIYET'],
-  district_emergency_coordination: ['UMR_AFET', 'UMR_EMNIYET']
+  district_emergency_coordination: ['UMR_AFET', 'UMR_EMNIYET'],
+  drainage_public_space: ['IBB_ALTYAPI', 'UMR_BELEDIYE', 'ISKI_UMR'],
+  district_coordination: ['UMR_KAYMAKAMLIK', 'UMR_BELEDIYE'],
+  public_service_access: ['UMR_KAYMAKAMLIK', 'UMR_BELEDIYE'],
+  // Nöbetçi muhtarlık sistemi okul binalarını/bahçelerini de kapsar:
+  // okul tesisi olayı hem İlçe MEM'e hem muhtarlığa gider.
+  school_facility: ['UMR_ILCE_MEM', 'UMR_MUHTARLIK'],
+  school_perimeter_safety: ['UMR_EMNIYET', 'UMR_ILCE_MEM'],
+  // Parkta asayiş sinyali varsa Emniyet de aday olur; ikisi de alır.
+  parks_public_space: ['UMR_BELEDIYE', 'UMR_EMNIYET'],
+  bus_service_disruption: ['IETT', 'UMR_BELEDIYE'],
+  bus_stop_infrastructure: ['IETT', 'UMR_BELEDIYE'],
+  water_leak: ['ISKI_UMR', 'UMR_BELEDIYE'],
+  water_outage: ['ISKI_UMR', 'UMR_BELEDIYE'],
+  water_infrastructure: ['ISKI_UMR', 'UMR_BELEDIYE'],
+  sewer_overflow: ['ISKI_UMR', 'UMR_BELEDIYE'],
+  telecom_outage: ['TURK_TELEKOM_UMR', 'TELEKOM_OPERATOR_UMR'],
+  telecom_infrastructure: ['TURK_TELEKOM_UMR', 'TELEKOM_OPERATOR_UMR'],
+  employment_service_access: ['UMR_ISKUR', 'UMR_BELEDIYE'],
+  animal_health_public_agriculture: ['UMR_ILCE_TARIM', 'UMR_BELEDIYE'],
+  urban_animal_welfare: ['UMR_ILCE_TARIM', 'UMR_BELEDIYE'],
+  metropolitan_waste_collection: ['IBB_ATIK', 'UMR_BELEDIYE'],
+  illegal_dumping_public_space: ['IBB_ATIK', 'UMR_BELEDIYE'],
+  social_assistance_service_access: ['UMR_SYDV', 'UMR_BELEDIYE'],
+  neighborhood_service_observation: ['UMR_MUHTARLIK', 'UMR_BELEDIYE']
 });
 
 export function normalize(value) {
@@ -211,10 +238,18 @@ export function baglamliDegerlendir(event, { katalog, profiller, izinler }) {
   const routes = [];
   const reddedilen = [];
   for (const [topic, grup] of konuGruplari) {
-    const izinliOrtak = PAYLASIM[topic] || [];
-    const ortak = grup.filter(a => izinliOrtak.includes(a.institution));
     if (grup.length === 1) { routes.push(grup[0]); continue; }
-    if (ortak.length === grup.length) { routes.push(...grup); continue; }
+    const ortak = PAYLASIM[topic];
+    if (ortak) {
+      const secilen = grup.filter(a => ortak.includes(a.institution));
+      if (secilen.length) {
+        routes.push(...secilen);
+        for (const a of grup) {
+          if (!secilen.includes(a)) reddedilen.push({ institution: a.institution, topic, reason: 'not_shared_duty' });
+        }
+        continue;
+      }
+    }
     grup.sort((a, b) => b.confidence - a.confidence);
     routes.push(grup[0]);
     for (const a of grup.slice(1)) reddedilen.push({ institution: a.institution, topic, reason: 'not_shared_duty' });
