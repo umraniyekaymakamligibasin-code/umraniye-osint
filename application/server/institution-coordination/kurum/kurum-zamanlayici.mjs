@@ -174,6 +174,14 @@ function kaynaklariTopla(e) {
 
 function olayCevir(e, kural, yerelLocality, snapshotAt) {
   const metin = [e.description, e.text, e.fullText].filter(Boolean).join('\n').slice(0, METIN_SINIRI);
+  // Kurum paneli icin okunur tam metin: description cogu haberde fullText'in girisiyle ayni
+  // (sunucuda 1105 olayin 1104'u). Baska bir parcanin icinde zaten gecen parca atlanir ki
+  // giris paragrafi iki kez gorunmesin. Eslesme/konum icin `description` (metin) aynen kalir.
+  const parcalar = [...new Set([e.description, e.text, e.fullText]
+    .map(x => String(x ?? '').trim()).filter(Boolean))];
+  const tamMetin = parcalar
+    .filter((x, i) => !parcalar.some((y, j) => j !== i && y.length > x.length && y.includes(x.slice(0, 80))))
+    .join('\n\n').slice(0, METIN_SINIRI);
   const publishedAt = gecerliTarih(e.publishedAt) || null;
   const firstSeenAt = gecerliTarih(e.firstSeenAt) || publishedAt
     || gecerliTarih(snapshotAt) || new Date(0).toISOString();
@@ -183,6 +191,7 @@ function olayCevir(e, kural, yerelLocality, snapshotAt) {
     title: String(e.title ?? ''),
     summary: String(e.summary ?? ''),
     description: metin,
+    tamMetin,
     publishedAt,
     firstSeenAt,
     historical: e.historical === true,

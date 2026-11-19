@@ -75,7 +75,9 @@ function safeSource(row) {
   try {
     const u = new URL(row.source_url);
     if (u.protocol === 'https:' && !u.username && !u.password) {
-      u.search = '';
+      const keep=new URLSearchParams();
+      for(const k of ['id','story_fbid','fbid','v']){const val=u.searchParams.get(k);if(val)keep.set(k,val);}
+      u.search = keep.toString()?'?'+keep.toString():'';
       u.hash = '';
       sourceUrl = u.toString().slice(0, 1000);
     }
@@ -116,7 +118,7 @@ async function audit(db, actorId, institutionId, action, targetType, targetId, r
     VALUES(?,?,?,?,?,?,?,?,?)`, id(), actorId, actorKind, institutionId, action, targetType, targetId ?? null, requestId ?? null, now());
 }
 
-const CASE_SELECT = `SELECT c.id,c.title,c.summary_redacted,c.neighborhood,c.location_precision,
+const CASE_SELECT = `SELECT c.id,c.title,c.summary_redacted,c.event_title,c.full_text,c.image_url,c.neighborhood,c.location_precision,
   c.first_published_at,c.first_seen_at,c.confidence,c.status,c.priority,c.created_at,c.updated_at,
   t.code AS topic_code,t.display_name AS topic_name
   FROM coord_cases c JOIN coord_topics t ON t.id=c.topic_id
@@ -162,8 +164,8 @@ export function createInstitutionCoordination(adapters) {
         else { clauses.push("AND c.status <> 'dismissed'"); }
         if (q) {
           const escaped = q.replace(/[!%_]/g, '!$&');
-          clauses.push("AND (c.title LIKE ? ESCAPE '!' OR c.summary_redacted LIKE ? ESCAPE '!')");
-          params.push(`%${escaped}%`, `%${escaped}%`);
+          clauses.push("AND (c.title LIKE ? ESCAPE '!' OR c.summary_redacted LIKE ? ESCAPE '!' OR c.event_title LIKE ? ESCAPE '!' OR c.full_text LIKE ? ESCAPE '!')");
+          params.push(`%${escaped}%`, `%${escaped}%`, `%${escaped}%`, `%${escaped}%`);
         }
         clauses.push('ORDER BY c.first_seen_at DESC,c.id DESC LIMIT ?'); params.push(limit + 1);
         const rows = await all(db, clauses.join('\n'), ...params);
