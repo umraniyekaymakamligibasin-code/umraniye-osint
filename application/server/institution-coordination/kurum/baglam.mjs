@@ -57,7 +57,8 @@ const KISISEL = [
 ];
 
 export const PAYLASIM = Object.freeze({
-  flooding: ['UMR_AFET', 'UMR_BELEDIYE', 'ISKI_UMR'],
+  flooding: ['UMR_AFET', 'UMR_BELEDIYE', 'ISKI_UMR', 'ISTANBUL_ITFAIYE'],
+  drainage_public_space: ['UMR_BELEDIYE', 'ISKI_UMR'],
   storm_damage: ['AYEDAS_UMR', 'UMR_AFET', 'UMR_BELEDIYE'],
   public_transport_safety: ['IETT', 'METRO_ISTANBUL', 'UMR_EMNIYET'],
   fire_rescue: ['ISTANBUL_ITFAIYE', 'UMR_EMNIYET'],
