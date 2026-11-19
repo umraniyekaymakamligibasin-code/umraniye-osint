@@ -7,7 +7,7 @@ export function createGmailSender({directory,python='python3',transport}){
  async function configuration(){
   for(const name of ['smtp.key','smtp.json']){const s=await lstat(join(directory,name));if(!s.isFile()||s.isSymbolicLink()||(process.platform!=='win32'&&(s.mode&0o077)))throw Error('smtp_file_permissions_invalid')}
   const config=JSON.parse(await readFile(join(directory,'smtp.json'),'utf8'));
-  if(config.sender!=='umraniyekaymakamligibasin@gmail.com'||config.host!=='smtp.gmail.com'||config.port!==587||config.tls!=='STARTTLS')throw Error('smtp_configuration_invalid');
+  if(config.sender!=='umraniyeosint@gmail.com'||config.host!=='smtp.gmail.com'||config.port!==587||config.tls!=='STARTTLS')throw Error('smtp_configuration_invalid');
   return config;
  }
  async function status(){try{const c=await configuration();return {configured:true,enabled:c.enabled===true,sender:c.sender}}catch{return {configured:false,enabled:false}}}

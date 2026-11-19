@@ -2,7 +2,7 @@ import json,sys,smtplib,ssl,hashlib
 from email.message import EmailMessage
 
 def deliver(d,smtp_factory=smtplib.SMTP):
-    sender='umraniyekaymakamligibasin@gmail.com'
+    sender='umraniyeosint@gmail.com'
     address=d.get('to','')
     if any(c in address for c in '\r\n') or '@' not in address: return {'ok':False,'definitelyNotSent':True,'code':'recipient_invalid'}
     message=EmailMessage();message['From']=sender;message['To']=address
