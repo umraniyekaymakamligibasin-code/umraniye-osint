@@ -20,7 +20,7 @@ const STATUS_TRANSITIONS = {
 // Store/vault validation errors are expected input problems, not server faults.
 // Without this map every one of them became a generic 500 'request_failed'.
 const CLIENT_ERRORS = new Map([
-  ['valid_email_required', 400], ['recipient_confirmation_required', 400], ['password_16_to_128_required', 400],
+  ['valid_email_required', 400], ['invalid_active_required', 400], ['recipient_confirmation_required', 400], ['password_16_to_128_required', 400],
   ['institution_not_found', 404], ['account_not_found', 404], ['recipient_not_found', 404], ['password_changed_outside_vault', 409]
 ]);
 const id = () => randomUUID();
