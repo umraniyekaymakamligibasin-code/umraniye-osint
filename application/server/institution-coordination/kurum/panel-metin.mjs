@@ -119,8 +119,14 @@ export function panelBaslik(event, profiller, topic) {
 export function panelOzet(event, route, profiller) {
   const yedek = guvenliOzet(event, route, profiller);
   const raw = event?.description || event?.fullText || event?.summary || '';
-  const o = ozetCumleleri(raw);
+  let o = ozetCumleleri(raw);
   if (o.length < 40) return yedek;
+  // Bazi kaynaklarda ozet, basligin aynisiyla basliyor; tekrari at.
+  const b = basligiTemizle(event?.title);
+  if (b && normalize(o).startsWith(normalize(b))) {
+    const kalan = o.slice(b.length).replace(/^[\s:;,.\-–—]+/u, '');
+    if (kalan.length >= 40) o = kalan;
+  }
   return o;
 }
 
