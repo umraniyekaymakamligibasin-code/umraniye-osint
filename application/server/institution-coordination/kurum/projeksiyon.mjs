@@ -94,7 +94,16 @@ export async function projectContextEvent({ db, event, route, profiller, kuyrukl
 
   // Mail kapaliyken yalnizca vaka + audit yazilir. Outbox'a satir ancak acikca
   // istenirse ve alici dogrulanmissa girer.
-  const ifadeler = [insertCase, auditInsert];
+  // Haberler yayinlanmis oldugundan ilgili kuruma TAM icerik gosterilir (gercek baslik + tam metin).
+  // title/summary_redacted dokunulmaz (e-posta vb. geriye donuk uyumlu). Mevcut vakalar da bu UPDATE ile
+  // sonraki turda (institution+source_event+topic) doldurulur; caseId/insert semantigi degismez.
+  const olayBasligi = String(event.title || '').slice(0, 300) || null;
+  const tamMetin = String(event.tamMetin || event.description || '').slice(0, 8000) || null;
+  const contentUpdate = db.prepare(`UPDATE coord_cases SET event_title=?, full_text=?, image_url=NULL
+      WHERE institution_id=? AND source_event_id=? AND topic_id=?
+        AND (event_title IS NOT ? OR full_text IS NOT ?)`)
+    .bind(olayBasligi, tamMetin, onayli.institution_id, event.id, onayli.topic_id, olayBasligi, tamMetin);
+  const ifadeler = [insertCase, auditInsert, contentUpdate];
 
   // Kaynak satirlari (coord_case_sources): panelin "Kaynaklar" bolumu icin.
   // Kurumsal metaveri (url, yayinci adi, platform, tarih) tasinir; metin KOPYALANMAZ.
