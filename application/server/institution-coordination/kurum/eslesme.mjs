@@ -34,6 +34,7 @@ const EKLER = [
   'sı', 'si', 'su', 'sü', 'ya', 'ye', 'da', 'de', 'ta', 'te',
   'di', 'dı', 'du', 'dü', 'ti', 'tı', 'tu', 'tü',
   'na', 'ne', 'ni', 'nu', 'nü',
+  'lerce', 'larca', 'ca', 'ce',
   'in', 'ın', 'un', 'ün', 'ı', 'i', 'u', 'ü', 'a', 'e',
 ];
 

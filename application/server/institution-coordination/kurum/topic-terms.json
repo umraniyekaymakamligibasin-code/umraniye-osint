@@ -23,7 +23,8 @@
       "lagim",
       "foseptik",
       "kanal tasma",
-      "rifuz"
+      "rifuz",
+      "logar"
     ],
     "water_infrastructure": [
       "su deposu",
@@ -178,7 +179,13 @@
       "dehset",
       "aracina zarar",
       "maganda",
-      "vurgun"
+      "vurgun",
+      "kimligi belirsiz kisi",
+      "kimligi belirsiz kisilerce",
+      "kasten yak",
+      "sabotaj",
+      "sondurme",
+      "kovasi yak"
     ],
     "school_facility": [
       "okul binasi",
@@ -195,7 +202,9 @@
       "okul onu",
       "servis araci",
       "okul yolu",
-      "okul giris"
+      "okul giris",
+      "okul cikis saati",
+      "okul cikisinda"
     ],
     "public_health_facility": [
       "saglik ocagi",
@@ -219,7 +228,12 @@
       "cop kutusu",
       "atik konteyner",
       "konteyner devril",
-      "konteyner tasma"
+      "konteyner tasma",
+      "cop kovasi",
+      "cop kovalari",
+      "cop bidonu",
+      "atik kovasi",
+      "konteyner yak"
     ],
     "street_cleanliness": [
       "cop birik",
@@ -249,7 +263,15 @@
       "park aydinlatma",
       "park yenileme",
       "park zemini",
-      "parkta kirik"
+      "parkta kirik",
+      "bolge park",
+      "park alani",
+      "park icinde",
+      "parkta yangin",
+      "parkta kavga",
+      "parkta saldiri",
+      "park goleti",
+      "park yolu"
     ],
     "district_emergency_coordination": [
       "afad",
@@ -402,7 +424,22 @@
       "ogrenci kayit",
       "nakil basvuru",
       "ders program",
-      "meb basvuru"
+      "meb basvuru",
+      "lise",
+      "okul saati",
+      "okul saat",
+      "ders saati",
+      "erken cikis",
+      "antrenman",
+      "antrenmana",
+      "sporcu ogrenci",
+      "okul cikis",
+      "ogrenci izni",
+      "ders programi",
+      "futbol oyn",
+      "okulda oku",
+      "lise ogrenci",
+      "okul program"
     ]
   }
 }

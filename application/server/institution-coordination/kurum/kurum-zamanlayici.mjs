@@ -196,24 +196,42 @@ function olayCevir(e, kural, yerelLocality, snapshotAt) {
   };
 }
 
-/** snapshots tablosundaki tum olaylari tekillestirerek okur. */
+/** snapshots + lab_items (tarayici arastirmasi) havuzunu tekillestirerek okur. */
 async function olaylariOku(db) {
   const olaylar = new Map();
-  let sonuc;
-  try { sonuc = await db.prepare('SELECT data, updated_at FROM snapshots').all(); }
-  catch { return []; }
-  const satirlar = Array.isArray(sonuc) ? sonuc : (sonuc?.results ?? []);
-  for (const satir of satirlar) {
-    let veri;
-    try { veri = JSON.parse(satir.data); } catch { continue; }
-    for (const e of veri.events || []) {
-      if (!e || typeof e.id !== 'string' || !e.id) continue;
-      const eski = olaylar.get(e.id);
-      const uzunluk = (x) => String(x.fullText || x.description || x.text || '').length;
-      if (!eski || uzunluk(e) > uzunluk(eski)) {
-        olaylar.set(e.id, { ...e, _snapshotAt: satir.updated_at ?? null });
-      }
+  const uzunluk = (x) => String(x.fullText || x.description || x.text || '').length;
+  const birlestir = (a, b) => {
+    // Metni uzun olan kazanir; dogrulanmis locality her iki taraftan korunur.
+    const uzunKayit = uzunluk(b) > uzunluk(a) ? b : a;
+    const kisaKayit = uzunKayit === a ? b : a;
+    const birlesik = { ...kisaKayit, ...uzunKayit };
+    if (uzunKayit.locality?.verified !== true && kisaKayit.locality?.verified === true) {
+      birlesik.locality = kisaKayit.locality;
     }
+    return birlesik;
+  };
+  const ekle = (e, zaman) => {
+    if (!e || typeof e.id !== 'string' || !e.id) return;
+    const aday = { ...e, _snapshotAt: zaman ?? null };
+    const eski = olaylar.get(e.id);
+    olaylar.set(e.id, eski ? birlestir(eski, aday) : aday);
+  };
+  const satirlariOku = async (sql) => {
+    try {
+      const s = await db.prepare(sql).all();
+      return Array.isArray(s) ? s : (s?.results ?? []);
+    } catch { return []; }
+  };
+  for (const satir of await satirlariOku('SELECT data, updated_at FROM snapshots')) {
+    let veri; try { veri = JSON.parse(satir.data); } catch { continue; }
+    for (const e of veri.events || []) ekle(e, satir.updated_at);
+  }
+  // Tarayici arastirmasi (X/Instagram/Facebook) dogrudan lab_items'a yaziyor;
+  // bu havuz okunmazsa sosyal medya haberleri kurum panellerine hic ulasmiyor.
+  for (const satir of await satirlariOku('SELECT data, collected_at FROM lab_items')) {
+    let veri; try { veri = JSON.parse(satir.data); } catch { continue; }
+    if (veri && veri.relevant === false) continue;
+    ekle(veri, satir.collected_at);
   }
   return [...olaylar.values()];
 }

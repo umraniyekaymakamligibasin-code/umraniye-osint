@@ -155,6 +155,124 @@ export function hassasMi(event, text) {
 }
 
 /**
+ * HİÇBİR HABER DÜŞMESİN — genel yönlendirme.
+ *
+ * Konu eşleşmese veya hiçbir kurumun görev alanına girmese bile, olay sinyali
+ * taşıyan yerel haber kaybolmaz: ilçe koordinasyonu konusuyla Kaymakamlık ve
+ * Belediye'ye düşer. Duyuru/hassas/PII kapıları yukarıda zaten uygulanmıştır.
+ */
+function genelYonlendirme(event, { profiller, izinler, reason, d }) {
+  if (!d || d.olay !== true) return null;
+  const izinSet = new Set((izinler || []).map(x => x.institution + '|' + x.topic));
+  const routes = [];
+  for (const kurum of ['UMR_KAYMAKAMLIK', 'UMR_BELEDIYE']) {
+    const profil = profiller?.kurumlar?.[kurum];
+    if (!profil) continue;
+    const izinli = new Set([...(profil.oncelik || []), ...(profil.ek || [])]);
+    const haric = new Set(profil.haric || []);
+    if (!izinli.has('district_coordination') || haric.has('district_coordination')) continue;
+    if (!izinSet.has(kurum + '|district_coordination')) continue;
+    routes.push({
+      institution: kurum, topic: 'district_coordination', confidence: 0.66,
+      hits: 0, terms: [], titleHit: false, alternatifler: [], fallback: true,
+    });
+  }
+  if (!routes.length) return null;
+  return {
+    decision: 'candidates', reason: 'fallback_district_coordination',
+    routes, fallbackFrom: reason,
+  };
+}
+
+/**
+ * Vatandas basvurusu: olay metninde bir kurum acikca etiketlenmisse
+ * (@umraniyeilcemem gibi) veya institutionalReference.targets doluysa,
+ * basvuru o kuruma OTOMATIK gider. Insan yonlendirmesi gerekmez.
+ * Kisisel veri / hassas kapilari yine yukarida uygulanir.
+ */
+const HEDEF_ANAHTAR = [
+  ['UMR_ILCE_MEM', ['ilcemem', 'mem', 'milli egitim', 'milli egitim mudurlugu', 'meb', 'okul mudurlugu', 'ilce mem']],
+  ['UMR_KAYMAKAMLIK', ['kaymakam', 'tc umraniye', 'umraniye kaymakamligi', 'kaymakamlik']],
+  ['UMR_BELEDIYE', ['umraniye belediyesi', 'umbel', 'belediye baskani']],
+  ['UMR_EMNIYET', ['emniyet', 'ilce emniyet', 'polis merkezi', 'karakol']],
+  ['ISTANBUL_ITFAIYE', ['itfaiye']],
+  ['ISKI_UMR', ['iski']],
+  ['AYEDAS_UMR', ['ayedas']],
+  ['IGDAS_UMR', ['igdas']],
+  ['IETT', ['iett']],
+  ['METRO_ISTANBUL', ['metro istanbul']],
+  ['UMR_ILCE_NUFUS', ['nufus mudurlugu', 'ilce nufus']],
+  ['UMR_TAPU', ['tapu mudurlugu']],
+  ['UMR_ILCE_SAGLIK', ['ilce saglik', 'saglik mudurlugu']],
+  ['UMR_ISKUR', ['iskur']],
+  ['UMR_SGK', ['sgk']],
+  ['UMR_SHM', ['sosyal hizmet merkezi', 'shm']],
+  ['UMR_SYDV', ['sydv', 'sosyal yardimlasma']],
+  ['UMR_MUHTARLIK', ['muhtarlik', 'muhtar']],
+  ['UMR_ILCE_TARIM', ['ilce tarim', 'tarim mudurlugu']],
+  ['IBB_ATIK', ['ibb atik']],
+  ['IBB_ALTYAPI', ['ibb altyapi', 'altyapi']],
+  ['TURK_TELEKOM_UMR', ['turk telekom']],
+];
+
+function hedefKurumCoz(hedefler, metinNorm) {
+  const kumeler = new Set();
+  const kaynak = [...(hedefler || []).map(h => normalize(String(h))), metinNorm];
+  const bulunan = [];
+  for (const [kurum, anahtarlar] of HEDEF_ANAHTAR) {
+    const eslesti = anahtarlar.some(a => {
+      const n = normalize(a);
+      if (!n) return false;
+      // handle icinde bitisik gecis (umraniyeilcemem) veya kelime grubu
+      return kaynak.some(k => {
+        if (!k) return false;
+        if (n.includes(' ')) return k.includes(n);
+        if (k.split(' ').includes(n)) return true;
+        // bitisik: 'umraniyeilcemem' -> 'ilcemem' ile biter
+        return n.length >= 5 && k.split(/\s+/).some(t => t === n || t.endsWith(n));
+      });
+    });
+    if (eslesti) bulunan.push(kurum);
+  }
+  return bulunan;
+}
+
+function vatandasYonlendirme(event, { profiller, izinler, bulunan, norm }) {
+  const ref = event?.institutionalReference;
+  const hedefler = Array.isArray(ref?.targets) ? ref.targets : [];
+  const kurumlar = hedefKurumCoz(hedefler, norm);
+  if (!kurumlar.length) return null;
+  const izinSet = new Set((izinler || []).map(x => x.institution + '|' + x.topic));
+  const routes = [];
+  for (const kurum of kurumlar) {
+    const profil = profiller?.kurumlar?.[kurum];
+    if (!profil) continue;
+    const izinli = new Set([...(profil.oncelik || []), ...(profil.ek || [])]);
+    const haric = new Set(profil.haric || []);
+    // En iyi konu: eslesen konulardan bu kurumun yetkili oldugu ilki,
+    // yoksa kamu hizmeti / ilce koordinasyonu, yoksa oncelik sirasindaki ilk konu.
+    let topic = null;
+    for (const b of bulunan || []) {
+      if (izinli.has(b.konu) && !haric.has(b.konu) && izinSet.has(kurum + '|' + b.konu)) { topic = b.konu; break; }
+    }
+    for (const yedek of ['public_service_access', 'district_coordination', 'education_service_access', 'municipal_service_access']) {
+      if (topic) break;
+      if (izinli.has(yedek) && !haric.has(yedek) && izinSet.has(kurum + '|' + yedek)) topic = yedek;
+    }
+    if (!topic) {
+      topic = (profil.oncelik || []).find(k => !haric.has(k) && izinSet.has(kurum + '|' + k)) ?? null;
+    }
+    if (!topic) continue;
+    routes.push({
+      institution: kurum, topic, confidence: 0.9, hits: 0, terms: [],
+      titleHit: false, alternatifler: [], vatandasBasvurusu: true,
+    });
+  }
+  if (!routes.length) return null;
+  return { decision: 'candidates', reason: 'citizen_reference_target', routes };
+}
+
+/**
  * @param {object} event  locality alani doldurulmus olay
  * @param {object} secenekler { katalog, profiller, izinler:[{institution,topic}] }
  */
@@ -182,7 +300,16 @@ export function baglamliDegerlendir(event, { katalog, profiller, izinler }) {
   }
 
   const bulunan = konulariBul(norm, katalog);
-  if (!bulunan.length) return { decision: 'held', reason: 'no_topic_match', routes: [] };
+  // Vatandas basvurusu: acikca etiketlenen kuruma dogrudan gider.
+  const vatandas = vatandasYonlendirme(event, { profiller, izinler, bulunan, norm });
+  if (!bulunan.length) {
+    if (vatandas) return { ...vatandas, topics: [] };
+    // HIÇBİR HABER DÜŞMESİN: konu sözlüğü eşleşmese de, olay sinyali taşıyan
+    // yerel haber ilçe koordinasyonuna (Kaymakamlık + Belediye) düşer.
+    const fb = genelYonlendirme(event, { profiller, izinler, reason: 'no_topic_match', d });
+    if (fb) return fb;
+    return { decision: 'held', reason: 'no_topic_match', routes: [] };
+  }
 
   const izinSet = new Set((izinler || []).map(x => x.institution + '|' + x.topic));
   const asayis = ASAYIS_SINYALLERI.some(t => terimGecti(norm, t));
@@ -226,6 +353,8 @@ export function baglamliDegerlendir(event, { katalog, profiller, izinler }) {
       }
       return false;
     }) ? 'no_institution_scope_match' : 'topic_not_in_any_profile';
+    const fb = genelYonlendirme(event, { profiller, izinler, reason: sebep, d });
+    if (fb) { fb.topics = bulunan.map(b => b.konu); return fb; }
     return { decision: 'held', reason: sebep, routes: [], topics: bulunan.map(b => b.konu) };
   }
 
