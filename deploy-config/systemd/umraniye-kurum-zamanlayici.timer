@@ -1,0 +1,12 @@
+[Unit]
+Description=Umraniye OSINT kurum yonlendirme turunu periyodik calistir
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+RandomizedDelaySec=45
+AccuracySec=15s
+Unit=umraniye-kurum-zamanlayici.service
+
+[Install]
+WantedBy=timers.target

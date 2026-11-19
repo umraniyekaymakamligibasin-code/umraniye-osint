@@ -1,0 +1,8 @@
+[Unit]
+Description=Medya arsivi durumunu dakikada bir oku
+[Timer]
+OnBootSec=90s
+OnUnitInactiveSec=60s
+Unit=umraniye-medya-status.service
+[Install]
+WantedBy=timers.target

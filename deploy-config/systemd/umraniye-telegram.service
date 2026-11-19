@@ -1,0 +1,18 @@
+[Unit]
+Description=Umraniye OSINT Telegram Bildirim Servisi
+After=network-online.target umraniye-osint.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=umraniyeosint
+Group=umraniyeosint
+WorkingDirectory=/opt/umraniye-telegram
+EnvironmentFile=/etc/umraniye-telegram.env
+ExecStart=/opt/node-v24.22.1-linux-x64/bin/node /opt/umraniye-telegram/bot.mjs
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

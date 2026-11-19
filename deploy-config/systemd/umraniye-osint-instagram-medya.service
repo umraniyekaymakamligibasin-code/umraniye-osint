@@ -1,0 +1,19 @@
+[Unit]
+Description=Umraniye OSINT Instagram supplemental read-only media scanner
+After=network-online.target umraniye-osint-deneme.service
+Wants=network-online.target
+[Service]
+Type=oneshot
+User=osintdeneme
+Group=osintdeneme
+WorkingDirectory=/opt/umraniye-osint-igmedia
+ExecStart=/opt/umraniye-osint-igmedia/venv/bin/python /opt/umraniye-osint-igmedia/scanner.py scan
+TimeoutStartSec=210
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/umraniye-osint-deneme
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=512M
+CPUQuota=65%

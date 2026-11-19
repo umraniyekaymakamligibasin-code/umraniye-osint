@@ -1,0 +1,11 @@
+[Unit]
+Description=Umraniye OSINT DENEME - DHA Her 10 Dakika
+
+[Timer]
+OnCalendar=*:0/10
+Persistent=true
+RandomizedDelaySec=15
+Unit=umraniye-osint-dha-deneme.service
+
+[Install]
+WantedBy=timers.target

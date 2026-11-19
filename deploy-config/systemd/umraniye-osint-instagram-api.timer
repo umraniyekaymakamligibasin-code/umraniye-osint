@@ -1,0 +1,9 @@
+[Unit]
+Description=Instagram API polling five minutes after each completed round
+[Timer]
+OnActiveSec=30s
+OnUnitInactiveSec=300s
+AccuracySec=5s
+Unit=umraniye-osint-instagram-api.service
+[Install]
+WantedBy=timers.target

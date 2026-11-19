@@ -1,0 +1,15 @@
+[Unit]
+Description=Umraniye OSINT DENEME - DHA Haber Tarama
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=osintdeneme
+Group=osintdeneme
+WorkingDirectory=/opt/umraniye-osint-deneme/server
+ExecStart=/usr/bin/python3 /opt/umraniye-osint-deneme/server/dha-collector.py
+Environment=PYTHONDONTWRITEBYTECODE=1
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=240

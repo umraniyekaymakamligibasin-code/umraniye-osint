@@ -1,0 +1,10 @@
+[Unit]
+Description=Supplemental X coverage every seven minutes after completed round
+[Timer]
+OnActiveSec=7min
+OnUnitInactiveSec=7min
+RandomizedDelaySec=30
+AccuracySec=5s
+Unit=umraniye-osint-x-twscrape-deneme.service
+[Install]
+WantedBy=timers.target

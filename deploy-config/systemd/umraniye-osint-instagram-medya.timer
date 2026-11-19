@@ -1,0 +1,10 @@
+[Unit]
+Description=Bounded read-only Instagram media monitor (posts, reels, stories)
+[Timer]
+OnBootSec=180s
+OnUnitInactiveSec=180s
+AccuracySec=30s
+Persistent=false
+Unit=umraniye-osint-instagram-medya.service
+[Install]
+WantedBy=timers.target
