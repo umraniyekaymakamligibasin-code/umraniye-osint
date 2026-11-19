@@ -378,9 +378,10 @@
       "haric": []
     },
     "UMR_MUHTARLIK": {
-      "rol": "mahalle hizmet gozlemi",
+      "rol": "mahalle hizmet gozlemi ve nobetci muhtarlik (okul binalari dahil)",
       "oncelik": [
-        "neighborhood_service_observation"
+        "neighborhood_service_observation",
+        "school_facility"
       ],
       "haric": []
     },
