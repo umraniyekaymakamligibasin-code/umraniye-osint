@@ -83,10 +83,12 @@ export async function projectContextEvent({ db, event, route, profiller, kuyrukl
   let eslesen = null;
   try {
     const pencere = new Date((Date.parse(ilkGorulme) || Date.now()) - BIRLESTIRME_PENCERE_MS).toISOString();
+    // Konu bazli degil KURUM bazli bakilir: ayni haber, farkli kaynakta farkli
+    // konuya (ornek: trafik kazasi -> traffic_safety / public_safety) dusebiliyor.
     const r = await db.prepare(`SELECT id,source_event_id,title,first_seen_at,first_published_at
         FROM coord_cases
-        WHERE institution_id=? AND topic_id=? AND status<>'dismissed' AND first_seen_at>=?`)
-      .bind(onayli.institution_id, onayli.topic_id, pencere).all();
+        WHERE institution_id=? AND status<>'dismissed' AND first_seen_at>=?`)
+      .bind(onayli.institution_id, pencere).all();
     for (const aday of (r?.results ?? [])) {
       if (String(aday.source_event_id) === String(event.id)) continue;
       if (hikayeAyniMi(baslik, aday.title, ilkGorulme, aday.first_seen_at)) { eslesen = aday; break; }

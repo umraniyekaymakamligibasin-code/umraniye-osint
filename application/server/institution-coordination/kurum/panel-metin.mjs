@@ -47,6 +47,10 @@ const PII = [
   [/\b(?:\+90|0)?[\s(]*\d{3}[\s).-]*\d{3}[\s.-]*\d{2}[\s.-]*\d{2}\b/gu, '[telefon gizlendi]'],
   [/\b(?:daire|kap[ıi]|bina)\s*(?:no|numaras[ıi])?\s*[:#-]?\s*\d+[A-Za-z]?\b/giu, '[adres no gizlendi]'],
   [/\b(?:plaka|ara[çc] plakas[ıi])\s*[:#-]?\s*[0-9]{2}\s*[A-ZÇĞİÖŞÜ]{1,3}\s*\d{2,4}\b/giu, '[plaka gizlendi]'],
+  // "Ali H.", "Seçil Ö." gibi yarim anonim isimler
+  [/\b[A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,}\s+[A-ZÇĞİÖŞÜ]\.(?=[\s,;:!?)]|$)/gu, '[kişi adı gizlendi]'],
+  // "S.Ö." gibi bas harf kisaltmalari (T.C. / M.Ö. haric)
+  [/\b(?:[A-ZÇĞİÖŞÜ]\.\s?){2,3}(?=[\s,;:!?)]|$)/gu, (m) => (/T\.C\.|M\.Ö\.|M\.S\./u.test(m) ? m : '[kişi adı gizlendi]')],
 ];
 
 const GENEL_KELIME = new Set(`umraniye umraniyede umraniyenin istanbul turkiye bir ve ile de da bu o yerel
@@ -69,6 +73,9 @@ export function temizMetin(value) {
   const kes = KES.exec(t);
   if (kes) t = t.slice(0, kes.index);
   for (const r of ON_EK) t = t.replace(r, '');
+  // Kaynak metinlerde apostrof/kesme isaretinin etrafinda bosluk olabiliyor:
+  // "Ümraniye' de" -> "Ümraniye'de", "Mahallesi ’nde" -> "Mahallesi'nde".
+  t = t.replace(/\s+([’'])\s*/gu, '$1');
   return t.replace(/\s+/g, ' ').trim();
 }
 
