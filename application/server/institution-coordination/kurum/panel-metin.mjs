@@ -24,6 +24,16 @@ const BOILER = [
   /reklam\s*[.…-]*/giu,
 ];
 
+/** Metnin devaminda gelen site/etiket/reklam copunu keser. */
+const KES = /(Ümraniye\s+haberleri|Okuyacağınız\s+haberin\s+kaynağını|İlçe\s+Haber\s*[-–—]\s*Son\s+Dakika|Google['’]?da\s+tercih\s+edilen|Tıkla\s+ve\s+ekle|İlgili\s+Haberler|Bu\s+habere\s+yorum|habere\s+yorum|Etiketler|Yorumlar|Tüm\s+hakları|©|Reklam|Haberin\s+Devamı|haberin\s+devamı)/iu;
+
+/** Haber ajansi oneklerini atar. */
+const ON_EK = [
+  /^\s*İhlas\s+Haber\s+Ajansı\s*\(İHA\)\s*İstanbul\s+muhabirlerinin\s+sahadan\s+aktardığı\s+bilgilere\s+göre,?/iu,
+  /^\s*İhlas\s+Haber\s+Ajansı\s*\(İHA\)\s*/iu,
+  /^\s*(?:DHA|AA|ANKA|İHA)\s*[-–—,:]\s*/u,
+];
+
 const SITE = [
   /\s*\|\s*[^|]{0,70}$/u,
   /\s*[-–—]\s*(ensonhaber\.com|net\s*haberler?|son\s*gazete|yerel\s*haber[^-]{0,40}|tgrt\s*haber|haberler\.com|h[üu]rriyet[^-]{0,40}|milliyet[^-]{0,40}|sabah[^-]{0,40}|ntv[^-]{0,40}|cnn\s*t[üu]rk[^-]{0,40}|iha[^-]{0,40})\s*$/iu,
@@ -56,6 +66,9 @@ export function temizMetin(value) {
   let t = String(value ?? '').replace(/<[^>]*>/g, ' ');
   t = t.replace(/&(?:[a-z]+|#\d+);/giu, ' ');
   for (const r of BOILER) t = t.replace(r, ' ');
+  const kes = KES.exec(t);
+  if (kes) t = t.slice(0, kes.index);
+  for (const r of ON_EK) t = t.replace(r, '');
   return t.replace(/\s+/g, ' ').trim();
 }
 
@@ -76,7 +89,8 @@ function basligiTemizle(value) {
 function ozetCumleleri(value, adet = 3, sinir = 620) {
   const t = temizMetin(value);
   if (!t) return '';
-  const cumleler = t.split(/(?<=[.!?…])\s+/u).map(x => x.trim()).filter(x => x.length >= 25);
+  // Kisaltmalardan (S.Ö., 15.30 vb.) bolmemek icin sonraki karakter buyuk harf olmali.
+  const cumleler = t.split(/(?<=[.!?…])\s+(?=[A-ZÇĞİÖŞÜ])/u).map(x => x.trim()).filter(x => x.length >= 25);
   let sec = (cumleler.length ? cumleler.slice(0, adet).join(' ') : t).slice(0, sinir).trim();
   return piiTemizle(sec);
 }
