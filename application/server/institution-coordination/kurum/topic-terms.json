@@ -106,7 +106,9 @@
       "asit",
       "tanker devril",
       "zehirli gaz",
-      "patlayici madde"
+      "patlayici madde",
+      "el bombasi",
+      "bomba"
     ],
     "flooding": [
       "su baskin",
@@ -138,7 +140,15 @@
       "motosiklet",
       "makas atan",
       "makas atti",
-      "drift"
+      "drift",
+      "kamyonet",
+      "freni bosal",
+      "surucusuz",
+      "kontrolden cik",
+      "yol verme",
+      "arac devril",
+      "kaza yapti",
+      "ulasim kilitlen"
     ],
     "public_safety": [
       "silahli",
@@ -161,7 +171,14 @@
       "kursunlama",
       "cephane",
       "mermi",
-      "yumruklad"
+      "yumruklad",
+      "el bombasi",
+      "bomba",
+      "supheli canta",
+      "dehset",
+      "aracina zarar",
+      "maganda",
+      "vurgun"
     ],
     "school_facility": [
       "okul binasi",
@@ -218,7 +235,13 @@
       "asfalt",
       "yol cukuru",
       "yaya gecidi",
-      "kaldirim bozuk"
+      "kaldirim bozuk",
+      "kazi",
+      "yol kapandi",
+      "ulasima kapan",
+      "ulasim kilitlen",
+      "yikim",
+      "insaat"
     ],
     "parks_public_space": [
       "oyun alani",
