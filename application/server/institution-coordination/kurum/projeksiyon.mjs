@@ -81,6 +81,20 @@ export async function projectContextEvent({ db, event, route, profiller, kuyrukl
 
   // --- hikaye birlestirme: ayni olay farkli kaynaklarda tekrar etmesin ---
   let eslesen = null;
+  // 1) Kesin sinyal: kaynak URL'si ayni kurumun baska bir vakasinda zaten var.
+  if (kaynaklar.length) {
+    try {
+      const urls = [...new Set(kaynaklar.map(k => k.url))];
+      const ph = urls.map(() => '?').join(',');
+      const r = await db.prepare(`SELECT c.id,c.source_event_id,c.title,c.first_seen_at
+          FROM coord_case_sources s JOIN coord_cases c ON c.id=s.coord_case_id
+          WHERE c.institution_id=? AND c.status<>'dismissed' AND s.source_url IN (${ph})
+          ORDER BY c.first_seen_at DESC LIMIT 1`)
+        .bind(onayli.institution_id, ...urls).first();
+      if (r && String(r.source_event_id) !== String(event.id)) eslesen = r;
+    } catch { /* URL kontrolu basarisizsa baslik benzerligine devam */ }
+  }
+  // 2) Baslik benzerligi (ayni hikaye, farkli URL).
   try {
     const pencere = new Date((Date.parse(ilkGorulme) || Date.now()) - BIRLESTIRME_PENCERE_MS).toISOString();
     // Konu bazli degil KURUM bazli bakilir: ayni haber, farkli kaynakta farkli
@@ -90,6 +104,7 @@ export async function projectContextEvent({ db, event, route, profiller, kuyrukl
         WHERE institution_id=? AND status<>'dismissed' AND first_seen_at>=?`)
       .bind(onayli.institution_id, pencere).all();
     for (const aday of (r?.results ?? [])) {
+      if (eslesen) break;
       if (String(aday.source_event_id) === String(event.id)) continue;
       if (hikayeAyniMi(baslik, aday.title, ilkGorulme, aday.first_seen_at)) { eslesen = aday; break; }
     }
