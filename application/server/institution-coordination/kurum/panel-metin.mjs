@@ -89,6 +89,11 @@ export function piiTemizle(value) {
 function basligiTemizle(value) {
   let t = temizMetin(value);
   for (const r of SITE) t = t.replace(r, '');
+  // Bazi kaynaklarda baslik + spot tek alanda geliyor:
+  // "Ümraniye'de vinç devrildi ... Ümraniye, Elmalıkent Mahallesi ...".
+  // Ayni ilce adi ikinci kez geciyorsa spot kismini at.
+  const m = [...t.matchAll(/Ümraniye/giu)];
+  if (m.length > 1 && m[1].index >= 30) t = t.slice(0, m[1].index);
   t = t.replace(/^[\s:;,\-–—]+/u, '').replace(/[\s:;,\-–—]+$/u, '');
   return piiTemizle(t).replace(/\s+/g, ' ').trim();
 }
