@@ -97,12 +97,12 @@ export async function projectContextEvent({ db, event, route, profiller, kuyrukl
   // 2) Baslik benzerligi (ayni hikaye, farkli URL).
   try {
     const pencere = new Date((Date.parse(ilkGorulme) || Date.now()) - BIRLESTIRME_PENCERE_MS).toISOString();
-    // Konu bazli degil KURUM bazli bakilir: ayni haber, farkli kaynakta farkli
-    // konuya (ornek: trafik kazasi -> traffic_safety / public_safety) dusebiliyor.
+    // Baslik benzerligi ayni (kurum, konu) icinde kalir; konu farki yalnizca
+    // yukaridaki kesin URL eslesmesiyle birlestirilir.
     const r = await db.prepare(`SELECT id,source_event_id,title,first_seen_at,first_published_at
         FROM coord_cases
-        WHERE institution_id=? AND status<>'dismissed' AND first_seen_at>=?`)
-      .bind(onayli.institution_id, pencere).all();
+        WHERE institution_id=? AND topic_id=? AND status<>'dismissed' AND first_seen_at>=?`)
+      .bind(onayli.institution_id, onayli.topic_id, pencere).all();
     for (const aday of (r?.results ?? [])) {
       if (eslesen) break;
       if (String(aday.source_event_id) === String(event.id)) continue;
