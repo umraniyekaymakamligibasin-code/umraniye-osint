@@ -1,0 +1,44 @@
+[Unit]
+Description=Umraniye OSINT kurum e-posta gonderimi (outbox tuketicisi)
+Documentation=file:/opt/umraniye-osint-deneme/server/institution-coordination/kurum/README-KURUM.txt
+After=network-online.target umraniye-osint-deneme.service
+Wants=umraniye-osint-deneme.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
+# SMTP yapilandirmasi yoksa birim HIC calismaz: yanlislikla mail denemesi olmaz.
+ConditionPathExists=/var/lib/umraniye-osint-deneme/smtp.json
+ConditionPathExists=/var/lib/umraniye-osint-deneme/smtp.key
+
+[Service]
+Type=oneshot
+User=osintdeneme
+Group=osintdeneme
+UMask=0077
+WorkingDirectory=/opt/umraniye-osint-deneme
+EnvironmentFile=/etc/umraniye-osint-deneme.env
+Environment=DATA_DIR=/var/lib/umraniye-osint-deneme
+# OSINT_PORTAL_URL EnvironmentFile icinde tanimli olmalidir (https zorunlu).
+ExecStart=/opt/node-v24.22.1-linux-x64/bin/node --max-old-space-size=256 /opt/umraniye-osint-deneme/server/institution-coordination/kurum/kurum-zamanlayici.mjs --tek-sefer --gonder --sunucu /opt/umraniye-osint-deneme
+Restart=no
+TimeoutStartSec=300
+MemoryHigh=192M
+MemoryMax=320M
+TasksMax=32
+Nice=10
+CPUQuota=40%
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+ReadWritePaths=/var/lib/umraniye-osint-deneme
+
+[Install]
+WantedBy=multi-user.target

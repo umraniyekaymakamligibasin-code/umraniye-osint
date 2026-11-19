@@ -1,0 +1,10 @@
+[Unit]
+Description=Medya geri donusum kutusunu her 5 dakikada kontrol et
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=5min
+Unit=umraniye-medya-trash.service
+
+[Install]
+WantedBy=timers.target

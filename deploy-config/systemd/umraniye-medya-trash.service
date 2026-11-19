@@ -1,0 +1,12 @@
+[Unit]
+Description=Medya arsivi 48 saatlik geri donusum kutusu temizligi
+Requires=docker.service
+After=docker.service umraniye-medya.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/umraniye-medya
+ExecStart=/usr/bin/flock -n /run/umraniye-medya-backup.lock /bin/bash deploy/medya.sh run --rm --no-deps -T app node --import tsx scripts/purge-trash.ts
+TimeoutStartSec=1800
+UMask=0077
+

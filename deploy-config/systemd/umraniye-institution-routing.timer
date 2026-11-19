@@ -1,0 +1,7 @@
+[Unit]
+Description=Live institution routing schedule
+[Timer]
+OnBootSec=30
+OnUnitInactiveSec=30
+[Install]
+WantedBy=timers.target

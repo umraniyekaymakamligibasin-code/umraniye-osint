@@ -1,0 +1,13 @@
+[Unit]
+Description=Umraniye OSINT sequential scans, never two scheduled browser workers at once
+
+[Timer]
+OnActiveSec=15s
+OnUnitInactiveSec=10s
+OnUnitActiveSec=180s
+AccuracySec=5s
+Persistent=false
+Unit=umraniye-osint-sirali.service
+
+[Install]
+WantedBy=timers.target

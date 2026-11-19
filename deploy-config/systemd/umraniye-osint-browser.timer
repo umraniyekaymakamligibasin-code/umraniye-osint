@@ -1,0 +1,9 @@
+[Unit]
+Description=Umraniye OSINT browser collection every ten minutes
+[Timer]
+OnBootSec=120
+OnUnitActiveSec=10min
+AccuracySec=10s
+Unit=umraniye-osint-browser.service
+[Install]
+WantedBy=timers.target

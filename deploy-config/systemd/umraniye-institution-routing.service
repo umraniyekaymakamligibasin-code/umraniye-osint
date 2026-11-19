@@ -1,0 +1,9 @@
+[Unit]
+Description=Live institutional topic projection
+[Service]
+Type=oneshot
+User=osintdeneme
+ExecStart=/usr/bin/python3 /usr/local/lib/umraniye-institution-live-worker.py
+Nice=15
+CPUQuota=10%
+MemoryMax=128M

@@ -1,0 +1,16 @@
+[Unit]
+Description=Umraniye OSINT DENEME - Instagram intelligent news classifier
+After=umraniye-osint-deneme.service
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /opt/umraniye-osint-deneme/scripts/instagram-intelligence-v1.py
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/umraniye-osint-deneme
+ProtectHome=true
+TimeoutStartSec=60

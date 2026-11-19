@@ -1,0 +1,27 @@
+[Unit]
+Description=Umraniye OSINT Instagram Graph API reader (no browser)
+After=network-online.target umraniye-osint-deneme.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+StateDirectory=umraniye-osint-instagram-api
+StateDirectoryMode=0700
+LoadCredential=token.json:/etc/umraniye-osint-instagram-api/credentials.json
+LoadCredential=bridge.key:/var/lib/umraniye-osint-deneme/browser-service.key
+LoadCredential=targets.json:/opt/umraniye-osint-browser/.instagram-v60/targets.json
+ExecStart=/usr/bin/python3 /opt/umraniye-osint-instagram-api/worker.py
+TimeoutStartSec=240
+UMask=0077
+MemoryMax=128M
+TasksMax=16
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX

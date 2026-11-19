@@ -1,0 +1,28 @@
+[Unit]
+Description=Umraniye OSINT browser collection round
+After=network-online.target umraniye-osint-deneme.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=osintdeneme
+Group=osintdeneme
+WorkingDirectory=/opt/umraniye-osint-browser
+Environment=PLAYWRIGHT_BROWSERS_PATH=/opt/umraniye-osint-browser/browsers
+Environment=OSINT_BROWSER_DATA=/var/lib/umraniye-osint-deneme
+ExecStart=/opt/umraniye-osint-browser/venv/bin/python /opt/umraniye-osint-browser/collector.py
+TimeoutStartSec=480
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/var/lib/umraniye-osint-deneme
+MemoryHigh=700M
+MemoryMax=1000M
+TasksMax=256
+LimitNOFILE=4096

@@ -1,0 +1,12 @@
+[Unit]
+Description=Medya arsivi salt okunur sunucu olcumleri
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/umraniye-medya/deploy/collect-status.py
+UMask=0022
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/umraniye-medya-status
+TimeoutStartSec=120

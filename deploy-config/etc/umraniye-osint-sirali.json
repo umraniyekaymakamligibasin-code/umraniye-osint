@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "jobs": [
+    {
+      "name": "x",
+      "service": "umraniye-osint-browser-x.service",
+      "legacyTimer": "umraniye-osint-browser-x.timer"
+    },
+    {
+      "name": "instagram",
+      "service": "umraniye-osint-browser-instagram.service",
+      "legacyTimer": "umraniye-osint-browser-instagram.timer"
+    },
+    {
+      "name": "instagram_media",
+      "service": "umraniye-osint-instagram-medya.service",
+      "legacyTimer": "umraniye-osint-instagram-medya.timer"
+    },
+    {
+      "name": "facebook",
+      "service": "umraniye-osint-browser-facebook.service",
+      "legacyTimer": "umraniye-osint-browser-facebook.timer"
+    }
+  ]
+}
