@@ -20,6 +20,8 @@ LINK = re.compile(r'^https://(?:www\.)?instagram\.com/(?:p|reel)/[A-Za-z0-9_-]+/
 # Each source is read only every few rounds, so the former 1-hour cut-off silently dropped posts
 # that were discovered 1-3 hours after publication.
 FRESH_SECONDS = 3 * 3600
+# Her turda tüm uygun kaynaklar okunur (eskiden 3). Steady state'te her kaynak tek kısa sayfa çeker.
+SOURCES_PER_ROUND = 20
 ACCESS_BLOCK_CODE = 'meta_error_200_5258005'
 ACCESS_RECHECK_SECONDS = 1800
 
@@ -170,7 +172,7 @@ class Worker:
         # Least recently attempted eligible source first, ties retain rotation order.
         attempts = {r[0]: r[1] for r in self.db.execute('SELECT handle,last_attempt FROM source_progress')}
         eligible.sort(key=lambda h: attempts.get(h, 0))
-        return eligible[:3], [h for h in rotated if states.get(h, 0) > now()]
+        return eligible[:SOURCES_PER_ROUND], [h for h in rotated if states.get(h, 0) > now()]
 
     def source_progress(self, row):
         previous = self.db.execute('SELECT last_success FROM source_progress WHERE handle=?', (row['handle'],)).fetchone()
@@ -358,7 +360,7 @@ class Worker:
             match = re.fullmatch(r'meta_error_(\d+)_(\d+)', str(health[1]))
             report['waitingSourceStates'].append({'handle': handle, 'retryAt': iso(health[0]), 'code': int(match[1]) if match else None, 'subcode': int(match[2]) if match else None,
                 'reason': 'source_unavailable_to_api' if str(health[1]) == 'meta_error_110_2207013' else 'source_backoff'})
-        report['sourceBudgetPerRound'] = 3
+        report['sourceBudgetPerRound'] = SOURCES_PER_ROUND
         report['deferredSources'] = max(0, len(self.handles)-len(waiting)-len(order))
         attempted = 0
         for handle in order:
@@ -375,6 +377,7 @@ class Worker:
             observed = set()
             try:
                 cursor = None
+                caught_up = False
                 for page in range(3):
                     media = self.discover(handle, cursor)
                     posts = media.get('data') or []
@@ -387,12 +390,19 @@ class Worker:
                             continue
                         observed.add(media_id)
                         row['uniqueRead'] += 1
-                        if media_id.isdigit() and self.db.execute('SELECT 1 FROM posts WHERE id=?', (media_id,)).fetchone() is None:
+                        known = media_id.isdigit() and self.db.execute('SELECT 1 FROM posts WHERE id=?', (media_id,)).fetchone() is not None
+                        if media_id.isdigit() and not known:
                             row['newIdentities'] += 1
+                        if known:
+                            caught_up = True
                         status = self.remember(handle, post)
                         row['reasons'][status] = row['reasons'].get(status, 0) + 1
                         row['newPending'] += status == 'pending'
                     cursor = (media.get('paging') or {}).get('cursors', {}).get('after')
+                    # Steady state: bir sayfada zaten bilinen gönderi varsa daha yeniler tamamen alınmıştır; dur.
+                    if caught_up:
+                        row['caughtUp'] = True
+                        break
                     # Do not assume API result order: inspect all bounded pages.
                     if not cursor or len(posts) < 25:
                         break
