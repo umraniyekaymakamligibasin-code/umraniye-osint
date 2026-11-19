@@ -372,7 +372,7 @@ async function baglamTuru(db, mods, bul, kural, a) {
     baglam: true, profilSurum: profiller.surum, kuralSurum: kural.version,
     olay: olaylar.length, denenen: 0, yonlendirilebilir: 0, tutuldu: 0,
     sebepler: {}, kurumlar: {}, konular: {}, rotalar: [],
-    yazilan: 0, mukerrer: 0, yazmaHatasi: 0, kuyruga: 0, islenen: 0, basarisiz: 0,
+    yazilan: 0, mukerrer: 0, birlesen: 0, yazmaHatasi: 0, kuyruga: 0, islenen: 0, basarisiz: 0,
     ornekler: [],
   };
 
@@ -409,6 +409,8 @@ async function baglamTuru(db, mods, bul, kural, a) {
         s.kurumlar[r.institution] = (s.kurumlar[r.institution] || 0) + 1;
       } else if (p.decision === 'duplicate') {
         s.mukerrer++;
+      } else if (p.decision === 'merged') {
+        s.birlesen++;
       } else {
         s.yazmaHatasi++;
         if (s.ornekler.length < 5) s.ornekler.push({ id: e.id, sebep: p.reason });

@@ -5,6 +5,7 @@ const affected = result => Number(result?.meta?.changes ?? result?.changes ?? 0)
 const safeResult = (sent = 0, retried = 0, held = 0, dead = 0) => ({ sent, retried, held, dead });
 
 const ELIGIBILITY = `SELECT o.id,o.coord_case_id,o.institution_id,o.recipient_id,o.attempts,o.provider_idempotency_key,
+  c.title AS case_title,c.summary_redacted AS case_summary,c.neighborhood AS case_neighborhood,
   r.address_ciphertext,r.key_version,r.address_fingerprint
   FROM coord_mail_outbox o
   JOIN coord_cases c ON c.id=o.coord_case_id AND c.institution_id=o.institution_id AND c.sensitivity<>'restricted'
@@ -64,11 +65,22 @@ export async function dispatchDueInstitutionNotices({ db, decryptAddress, sendWi
         result.held++; continue;
       }
       const idem = stillEligible.provider_idempotency_key;
+      const caseTitle = String(stillEligible.case_title || '').slice(0, 160);
+      const caseSummary = String(stillEligible.case_summary || '').slice(0, 700);
+      const caseWhere = String(stillEligible.case_neighborhood || '').slice(0, 80);
       await sendWithIdempotency({
         to: address,
         idempotencyKey: idem,
-        subject: 'Ümraniye OSINT kurum panelinde yeni kayıt',
-        text: `Yetkili olduğunuz kurum paneline yeni bir kayıt eklendi. Ayrıntıları güvenli panel oturumunuzdan inceleyin.\n\n${parsedPortal.origin}${parsedPortal.pathname}`
+        subject: (caseTitle ? `Ümraniye OSINT: ${caseTitle}` : 'Ümraniye OSINT kurum panelinde yeni kayıt').slice(0, 200),
+        text: [
+          'Yetkili olduğunuz kurum paneline yeni bir kayıt eklendi.',
+          '',
+          caseTitle ? `Konu: ${caseTitle}` : null,
+          caseWhere ? `Konum: ${caseWhere}` : null,
+          caseSummary ? `Özet: ${caseSummary}` : null,
+          '',
+          `Ayrıntılar: ${parsedPortal.origin}${parsedPortal.pathname}`,
+        ].filter(x => x !== null).join('\n')
       });
       await db.prepare(`UPDATE coord_mail_outbox SET state='sent',sent_at=?,last_error_code=NULL WHERE id=? AND state='sending'`)
         .bind(isoNow(), row.id).run();

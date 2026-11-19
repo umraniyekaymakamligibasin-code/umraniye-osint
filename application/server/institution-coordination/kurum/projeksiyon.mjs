@@ -4,23 +4,21 @@
  * `baglam.mjs` yalnizca karar uretir; burasi o karari `coord_cases` +
  * `coord_audit` (+ istege bagli `coord_mail_outbox`) olarak atomik yazar.
  *
- * Neden ayri? Eski `route-event.mjs` yuksek hassasiyetli konulari ve
- * displayTitles'da olmayan 40 konuyu blokluyor. Emniyet'in asayis/trafik/
- * yangin gorevleri tam da bu kapida takiliyordu. Bu dosya ayni tablo
- * sozlesmesini kullanir ama kapiyi baglam motorunun karari belirler.
- *
  * Guvenlik kurallari (degismez):
  *   - Yazmadan ONCE kurum + konu + grant yeniden DB'den dogrulanir.
- *   - Baslik ve ozet yalnizca kategori duzeyinde uretilir; kaynak metin
- *     KOPYALANMAZ (kisisel veri tasinmaz).
+ *   - Baslik/ozet gercek haber metninden uretilir ama kisisel veri MASKELENIR;
+ *     metin yoksa kategori duzeyindeki guvenli metne duser (panel-metin.mjs).
  *   - Ayni (kurum, olay, konu) ikinci kez yazilmaz (UNIQUE + ON CONFLICT).
+ *   - Ayni hikayenin farkli kaynaklardaki tekrari YENI vaka acmaz; mevcut
+ *     vakaya kaynak eklenir (48 saat, muhafazakar benzerlik).
  *   - Mail kuyrugu VARSAYILAN KAPALI; acmak icin `kuyrukla:true` gerekir.
  */
 import { randomUUID } from 'node:crypto';
-import { guvenliBaslik, guvenliOzet } from './baglam.mjs';
+import { panelBaslik, panelOzet, hikayeAyniMi } from './panel-metin.mjs';
 
 const IZINLI_HASSASIYET = new Set(['ordinary', 'high']);
 const IZINLI_KONUM = new Set(['district', 'neighborhood']);
+const BIRLESTIRME_PENCERE_MS = 48 * 3600 * 1000;
 
 function simdi() { return new Date().toISOString(); }
 
@@ -45,8 +43,8 @@ export async function projectContextEvent({ db, event, route, profiller, kuyrukl
     return { decision: 'held', reason: 'verified_umraniye_locality_required' };
   }
 
-  const baslik = guvenliBaslik(route.topic, profiller);
-  const ozet = guvenliOzet(event, route, profiller);
+  const baslik = panelBaslik(event, profiller, route.topic);
+  const ozet = panelOzet(event, route, profiller);
   if (!baslik || !ozet) return { decision: 'held', reason: 'no_safe_projection_title' };
 
   // Yazmadan once gercek DB durumu: onayli kurum + onayli konu + aktif grant.
@@ -75,6 +73,42 @@ export async function projectContextEvent({ db, event, route, profiller, kuyrukl
   const ilkYayin = event.publishedAt ?? null;
   const ilkGorulme = event.firstSeenAt ?? createdAt;
 
+  // Kaynak satirlari (coord_case_sources): panelin "Kaynaklar" bolumu icin.
+  // Kurumsal metaveri (url, yayinci adi, platform, tarih) tasinir; metin KOPYALANMAZ.
+  const kaynaklar = (Array.isArray(event?.kaynaklar) ? event.kaynaklar : [])
+    .filter(k => k && typeof k.url === 'string' && /^https?:\/\//i.test(k.url) && k.url.length <= 500)
+    .slice(0, 20);
+
+  // --- hikaye birlestirme: ayni olay farkli kaynaklarda tekrar etmesin ---
+  let eslesen = null;
+  try {
+    const pencere = new Date((Date.parse(ilkGorulme) || Date.now()) - BIRLESTIRME_PENCERE_MS).toISOString();
+    const r = await db.prepare(`SELECT id,source_event_id,title,first_seen_at,first_published_at
+        FROM coord_cases
+        WHERE institution_id=? AND topic_id=? AND status<>'dismissed' AND first_seen_at>=?`)
+      .bind(onayli.institution_id, onayli.topic_id, pencere).all();
+    for (const aday of (r?.results ?? [])) {
+      if (String(aday.source_event_id) === String(event.id)) continue;
+      if (hikayeAyniMi(baslik, aday.title, ilkGorulme, aday.first_seen_at)) { eslesen = aday; break; }
+    }
+  } catch { /* birlestirme opsiyonel: hata yazmayi engellemez */ }
+
+  if (eslesen) {
+    if (kaynaklar.length) {
+      try {
+        await db.batch(kaynaklar.map(k => db.prepare(`INSERT INTO coord_case_sources(
+            id,coord_case_id,source_url,source_name,platform,published_at,added_at)
+          VALUES(?,?,?,?,?,?,?)
+          ON CONFLICT(coord_case_id,source_url) DO NOTHING`)
+          .bind(randomUUID(), eslesen.id, k.url.slice(0, 500),
+            String(k.name || 'Yayıncı belirtilmemiş').slice(0, 120),
+            String(k.platform || 'news').slice(0, 20), k.publishedAt ?? null, createdAt)));
+      } catch { /* kaynak eklenemese de birlestirme sonucu korunur */ }
+    }
+    return { decision: 'merged', reason: 'story_duplicate',
+      institution: route.institution, topic: route.topic, caseId: eslesen.id };
+  }
+
   const insertCase = db.prepare(`INSERT INTO coord_cases(
       id,institution_id,topic_id,source_event_id,source_revision,idempotency_key,
       title,summary_redacted,neighborhood,location_precision,first_published_at,
@@ -96,13 +130,9 @@ export async function projectContextEvent({ db, event, route, profiller, kuyrukl
   // istenirse ve alici dogrulanmissa girer.
   const ifadeler = [insertCase, auditInsert];
 
-  // Kaynak satirlari (coord_case_sources): panelin "Kaynaklar" bolumu icin.
-  // Kurumsal metaveri (url, yayinci adi, platform, tarih) tasinir; metin KOPYALANMAZ.
   // coord_case_id, ayni batch icindeki INSERT/ON CONFLICT sonrasi gercek vaka
   // satirindan cozulur -> mukerrer turlarda mevcut vakanin kaynaklari da tamamlanir.
-  const kaynaklar = Array.isArray(event?.kaynaklar) ? event.kaynaklar : [];
-  for (const k of kaynaklar.slice(0, 20)) {
-    if (!k || typeof k.url !== 'string' || !/^https?:\/\//i.test(k.url) || k.url.length > 500) continue;
+  for (const k of kaynaklar) {
     ifadeler.push(db.prepare(`INSERT INTO coord_case_sources(
         id,coord_case_id,source_url,source_name,platform,published_at,added_at)
       SELECT ?, c.id, ?, ?, ?, ?, ?
