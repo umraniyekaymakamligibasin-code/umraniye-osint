@@ -25,7 +25,7 @@ const BOILER = [
 ];
 
 /** Metnin devaminda gelen site/etiket/reklam copunu keser. */
-const KES = /(Ümraniye\s+haberleri|Okuyacağınız\s+haberin\s+kaynağını|İlçe\s+Haber\s*[-–—]\s*Son\s+Dakika|Google['’]?da\s+tercih\s+edilen|Tıkla\s+ve\s+ekle|İlgili\s+Haberler|Bu\s+habere\s+yorum|habere\s+yorum|Etiketler|Yorumlar|Tüm\s+hakları|©|Reklam|Haberin\s+Devamı|haberin\s+devamı)/iu;
+const KES = /(Ümraniye\s+haberleri|Okuyacağınız\s+haberin\s+kaynağını|İlçe\s+Haber\s*[-–—]\s*Son\s+Dakika|Google['’]?da\s+tercih\s+edilen|Tıkla\s+ve\s+ekle|İlgili\s+Haberler|Bu\s+habere\s+yorum|habere\s+yorum|Etiketler|Yorumlar|Tüm\s+hakları|©|Haberin\s+Devamı|haberin\s+devamı)/iu;
 
 /** Haber ajansi oneklerini atar. */
 const ON_EK = [
