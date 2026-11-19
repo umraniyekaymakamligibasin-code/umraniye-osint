@@ -96,17 +96,19 @@ export async function projectContextEvent({ db, event, route, profiller, kuyrukl
   }
   // 2) Baslik benzerligi (ayni hikaye, farkli URL).
   try {
-    const pencere = new Date((Date.parse(ilkGorulme) || Date.now()) - BIRLESTIRME_PENCERE_MS).toISOString();
-    // Baslik benzerligi ayni (kurum, konu) icinde kalir; konu farki yalnizca
-    // yukaridaki kesin URL eslesmesiyle birlestirilir.
-    const r = await db.prepare(`SELECT id,source_event_id,title,first_seen_at,first_published_at
+    // Pencere KAYNAK yayin tarihine degil, vakanin YAZILMA zamanina bakar:
+    // geriye donuk olaylar eski tarihli olabildigi icin aksi halde mukerrer
+    // gorunurler. Baslik benzerligi ayni (kurum, konu) icinde kalir; konu
+    // farki yalnizca yukaridaki kesin URL eslesmesiyle birlestirilir.
+    const pencere = new Date((Date.parse(createdAt) || Date.now()) - BIRLESTIRME_PENCERE_MS).toISOString();
+    const r = await db.prepare(`SELECT id,source_event_id,title,created_at
         FROM coord_cases
-        WHERE institution_id=? AND topic_id=? AND status<>'dismissed' AND first_seen_at>=?`)
+        WHERE institution_id=? AND topic_id=? AND status<>'dismissed' AND created_at>=?`)
       .bind(onayli.institution_id, onayli.topic_id, pencere).all();
     for (const aday of (r?.results ?? [])) {
       if (eslesen) break;
       if (String(aday.source_event_id) === String(event.id)) continue;
-      if (hikayeAyniMi(baslik, aday.title, ilkGorulme, aday.first_seen_at)) { eslesen = aday; break; }
+      if (hikayeAyniMi(baslik, aday.title, createdAt, aday.created_at)) { eslesen = aday; break; }
     }
   } catch { /* birlestirme opsiyonel: hata yazmayi engellemez */ }
 

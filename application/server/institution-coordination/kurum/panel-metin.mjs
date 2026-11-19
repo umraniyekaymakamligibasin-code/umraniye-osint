@@ -75,7 +75,7 @@ export function temizMetin(value) {
   for (const r of ON_EK) t = t.replace(r, '');
   // Kaynak metinlerde apostrof/kesme isaretinin etrafinda bosluk olabiliyor:
   // "Ümraniye' de" -> "Ümraniye'de", "Mahallesi ’nde" -> "Mahallesi'nde".
-  t = t.replace(/\s+([’'])\s*/gu, '$1');
+  t = t.replace(/\s+([‘’'])\s*/gu, '$1');
   return t.replace(/\s+/g, ' ').trim();
 }
 
