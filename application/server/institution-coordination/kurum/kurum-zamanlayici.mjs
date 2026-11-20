@@ -195,6 +195,7 @@ function olayCevir(e, kural, yerelLocality, snapshotAt) {
     institutionalReference: e.institutionalReference && typeof e.institutionalReference === 'object'
       ? e.institutionalReference : null,
     mentions: Array.isArray(e.mentions) ? e.mentions : undefined,
+    kaynakAdi: String(e.sourceName ?? ''),
     policyVersion: String(kural.version),
   };
 }

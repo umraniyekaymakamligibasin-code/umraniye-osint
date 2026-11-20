@@ -255,6 +255,48 @@ const KISITLI_KONULAR = Object.freeze(new Set([
   'district_coordination', 'multi_agency_incident',
 ]));
 
+/**
+ * Resmi kurum kaynagi: kendi gorev alanina giren DUYURU/toplanti icerigini de
+ * bilgi olarak alir (ornek: Kaymakamlik "Egitime Destek Platformu toplantisi").
+ * Baslikta konu terimi gecmesi sart; tesadufi metin eslesmesi sayilmaz.
+ */
+const RESMI_KAYNAK = /(kaymakamligi|kaymakamlığı|ilce mem|ilçe mill[iî]\s*egitim|milli egitim|millî eğitim|belediyesi|valilik|bakanligi|bakanlığı|mudurlugu|müdürlüğü)/iu;
+
+/** Bu konularda resmi kurumun duyurusu da kuruma bilgi olarak duser. */
+const KURUMSAL_BILGI_KONULARI = Object.freeze(new Set([
+  'education_service_access',
+]));
+
+function kurumsalBilgi(event, { profiller, izinler, katalog, norm }) {
+  const kaynak = String(event?.kaynakAdi ?? event?.sourceName ?? '');
+  if (!RESMI_KAYNAK.test(kaynak)) return null;
+  const bulunan = konulariBul(norm, katalog).filter(b => KURUMSAL_BILGI_KONULARI.has(b.konu));
+  if (!bulunan.length) return null;
+  const izinSet = new Set((izinler || []).map(x => x.institution + '|' + x.topic));
+  const baslikNorm = normalize(event?.title || '');
+  const routes = [];
+  for (const b of bulunan) {
+    if (KISITLI_KONULAR.has(b.konu)) continue;
+    // Duyuru istisnasinda baslik kaniti zorunlu (metinde tesadufen gecmesin).
+    const baslikta = (b.terimler || []).some(t => terimGecti(baslikNorm, t));
+    if (!baslikta) continue;
+    for (const [kurum, profil] of Object.entries(profiller.kurumlar || {})) {
+      const izinli = new Set([...(profil.oncelik || []), ...(profil.ek || [])]);
+      const haric = new Set(profil.haric || []);
+      if (!izinli.has(b.konu) || haric.has(b.konu)) continue;
+      if (!izinSet.has(kurum + '|' + b.konu)) continue;
+      const baglam = profil.baglam?.[b.konu];
+      if (Array.isArray(baglam) && baglam.length && !baglam.some(t => terimGecti(norm, t))) continue;
+      routes.push({
+        institution: kurum, topic: b.konu, confidence: 0.9, hits: b.hits,
+        terms: b.terimler.slice(0, 5), titleHit: true, alternatifler: [], kurumsalBilgi: true,
+      });
+    }
+  }
+  if (!routes.length) return null;
+  return { decision: 'candidates', reason: 'institutional_notice', routes };
+}
+
 /** Vatandas basvurusu sayilan kategoriler (kurumun kendi tanitim paylasimi HARIC). */
 const VATANDAS_KATEGORI = new Set([
   'VATANDAS_SIKAYETI', 'SIKAYET', 'BILGI_TALEBI', 'TALEP', 'BASVURU',
@@ -358,6 +400,9 @@ export function baglamliDegerlendir(event, { katalog, profiller, izinler }) {
   // olayi gercek bir olay gibi gostermemeli (ornek: AFAD gonullu egitimi).
   const dBaslik = duyuruAnaliz(normalize(event.title || ''), genel);
   if (d.duyuru && !dBaslik.olay) {
+    // Resmi kurumun KENDI gorev alanina giren duyurusu bilgi olarak duser.
+    const kb = kurumsalBilgi(event, { profiller, izinler, katalog, norm });
+    if (kb) return kb;
     return { decision: 'held', reason: 'announcement_not_incident', routes: [], duyuru: d.duyuruTerim.slice(0, 5) };
   }
 
