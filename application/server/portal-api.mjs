@@ -136,7 +136,9 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
   if(request.method!=='GET'&&(request.method!=='POST'||request.headers.get('Origin')!==origin))return json({error:'İstek kaynağı reddedildi'},403);
   if(!['GET','POST'].includes(request.method))return json({error:'Yöntem desteklenmiyor'},405);
   try{
-   const data=await snapshot(request),rows=await cases(),route=u.pathname.slice(12),today=day(new Date().toISOString());
+   const route=u.pathname.slice(12);
+   if(['report','export'].includes(route)||u.searchParams.get('section')==='alerts')return json({error:'Bu bölüm kullanımdan kaldırıldı'},410);
+   const data=await snapshot(request),rows=await cases(),today=day(new Date().toISOString());
    if(route==='thumbnail'){
     const id=u.searchParams.get('id');if(!id||id.length>180)return new Response(null,{status:400});
     const e=data.news.find(e=>e.id===id);if(!e)return new Response(null,{status:404});
@@ -147,7 +149,7 @@ export function createPortalAPI(base,env,{origin,live=false,socialItems=null}){
    }
    if(route==='summary'){
     const localNews=data.news.filter(e=>scopeOf(e).local),localSocial=data.social.filter(e=>scopeOf(e).local),localAll=[...localNews,...localSocial];
-    return json({actor:{id:a.id,name:a.name,admin:a.admin},snapshot:!live,syncedAt:data.syncedAt,counters:{todayNews:localNews.filter(e=>day(published(e))===today).length,social:localSocial.length,priority:localAll.filter(e=>rank(e)!=='normal').length,review:localAll.filter(e=>e.locationStatus==='review_required').length},headlines:localNews.slice(0,4).map(e=>card(e,rows)),latest:localNews.slice(4,14).map(e=>card(e,rows)),priority:localAll.filter(e=>rank(e)!=='normal').sort(compareRecordsNewest).slice(0,5).map(e=>card(e,rows)),social:localSocial.slice(0,5).map(e=>card(e,rows)),allCounts:{news:data.news.length,social:data.social.length},sources:[...new Set(data.all.flatMap(e=>[e.sourceName,...(e.sources||[]).map(s=>s.sourceName)]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'tr'))});
+    return json({actor:{id:a.id,name:a.name,admin:a.admin},snapshot:!live,syncedAt:data.syncedAt,counters:{todayNews:localNews.filter(e=>day(published(e))===today).length,social:localSocial.length,priority:0,review:localAll.filter(e=>e.locationStatus==='review_required').length},headlines:localNews.slice(0,4).map(e=>card(e,rows)),latest:localNews.slice(4,14).map(e=>card(e,rows)),priority:[],social:localSocial.slice(0,5).map(e=>card(e,rows)),allCounts:{news:data.news.length,social:data.social.length},sources:[...new Set(data.all.flatMap(e=>[e.sourceName,...(e.sources||[]).map(s=>s.sourceName)]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'tr'))});
    }
    if(route==='list'||route==='export'){
     let all=u.searchParams.get('stream')==='news'?data.news:u.searchParams.get('stream')==='social'?data.social:data.all;
