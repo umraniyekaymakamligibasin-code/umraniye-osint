@@ -5,7 +5,7 @@
  *   1) `neighborhood` alani tam olarak Ümraniye mahallesi ise  -> mahalle duzeyi
  *   2) Metinde (baslik + ozet + ilk 250 karakter) Ümraniye / Dudullu
  *      veya ayirt edici bir mahalle adi geciyorsa               -> ilce duzeyi
- *   3) Kaynak adi Ümraniye/mahalle tasiyorsa ve metin baska bir
+ *   3) Kaynak adi Ümraniye/mahalle tasiyorsa ve metin baska bi
  *      il/ilceye isaret etmiyorsa                               -> ilce duzeyi
  *
  * Guvenlik: "İlçe geneli" / "Türkiye geneli" gibi YER TUTUCU mahalle
@@ -53,21 +53,28 @@ const JENERIK = [
   'asagi dudullu', 'yukari dudullu',
 ];
 
-/** Baska il/ilce isaretleri: bunlar baskinsa olay yerel sayilmaz. */
-const DIGER_IL = new RegExp(
-  '(?:' + [
-    'malatya', 'ankara', 'izmir', 'bursa', 'antalya', 'adana', 'konya',
-    'gaziantep', 'sanliurfa', 'diyarbakir', 'kayseri', 'mersin', 'eskisehir',
-    'samsun', 'trabzon', 'erzurum', 'van', 'hatay', 'kahramanmaras', 'sakarya',
-    'kocaeli', 'tekirdag', 'balikesir', 'manisa', 'aydin', 'mugla', 'denizli',
-    'afyon', 'sivas', 'tokat', 'ordu', 'giresun', 'rize', 'bolu', 'duzce',
-    'yalova', 'bilecik', 'edirne', 'kirklareli', 'canakkale', 'tuzla',
-    'kadikoy', 'uskudar', 'atasehir', 'maltepe', 'kartal', 'pendik',
-    'sancaktepe', 'cekmekoy', 'beykoz', 'beylikduzu', 'besiktas', 'sisli',
-    'fatih', 'bakirkoy', 'bahcelievler', 'kucukcekmece', 'buyukcekmece',
-    'arnavutkoy', 'basaksehir', 'sultanbeyli', 'sancaktepe', 'esenyurt',
-  ].join('|') + ')\\b'
-);
+/** Baska il isaretleri: bunlar baskinsa olay yerel sayilmaz (81 il, aksansiz). */
+const DIGER_IL_ADLARI = [
+  'adana', 'adiyaman', 'afyonkarahisar', 'afyon', 'agri', 'aksaray', 'amasya',
+  'ankara', 'antalya', 'ardahan', 'artvin', 'aydin', 'balikesir', 'bartin',
+  'batman', 'bayburt', 'bilecik', 'bingol', 'bitlis', 'bolu', 'burdur', 'bursa',
+  'canakkale', 'cankiri', 'corum', 'denizli', 'diyarbakir', 'duzce', 'edirne',
+  'elazig', 'erzincan', 'erzurum', 'eskisehir', 'gaziantep', 'giresun',
+  'gumushane', 'hakkari', 'hatay', 'igdir', 'isparta', 'izmir', 'kahramanmaras',
+  'karabuk', 'karaman', 'kars', 'kastamonu', 'kayseri', 'kilis', 'kirikkale',
+  'kirklareli', 'kirsehir', 'kocaeli', 'konya', 'kutahya', 'malatya', 'manisa',
+  'mardin', 'mersin', 'mugla', 'mus', 'nevsehir', 'nigde', 'ordu', 'osmaniye',
+  'rize', 'sakarya', 'samsun', 'sanliurfa', 'siirt', 'sinop', 'sirnak', 'sivas',
+  'tekirdag', 'tokat', 'trabzon', 'tunceli', 'usak', 'van', 'yalova', 'yozgat',
+  'zonguldak',
+  // Istanbul'un diger ilceleri: baska ilce haberi Ümraniye sayilmaz.
+  'tuzla', 'kadikoy', 'uskudar', 'atasehir', 'maltepe', 'kartal', 'pendik',
+  'sancaktepe', 'cekmekoy', 'beykoz', 'beylikduzu', 'besiktas', 'sisli',
+  'bakirkoy', 'bahcelievler', 'kucukcekmece', 'buyukcekmece', 'arnavutkoy',
+  'basaksehir', 'sultanbeyli', 'esenyurt', 'esenler', 'fatih', 'gaziosmanpasa',
+  'gungoren', 'kagithane', 'sariyer', 'silivri', 'sultangazi', 'tuzla',
+];
+const DIGER_IL = new RegExp('\\b(?:' + [...new Set(DIGER_IL_ADLARI)].join('|') + ')\\b');
 
 /** Sehir geneli ifadeler: yerel cipa yoksa kaynak adi tek basina yetmez. */
 const SEHIR_GENEL = /\b(?:istanbul|turkiye)(?:'?[a-z]{1,4})?\b/;
