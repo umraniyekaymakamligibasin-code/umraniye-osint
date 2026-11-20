@@ -149,7 +149,20 @@
       "yol verme",
       "arac devril",
       "kaza yapti",
-      "ulasim kilitlen"
+      "ulasim kilitlen",
+      "hatali park",
+      "park ihlali",
+      "park edilen arac",
+      "park etmis arac",
+      "park yasagi",
+      "manevra engel",
+      "manevrayi engel",
+      "otobus donemiyor",
+      "otobus gecemiyor",
+      "yolu kapatan arac",
+      "ulasim aksiyor",
+      "ulasimi engelliyor",
+      "yol kapandi"
     ],
     "public_safety": [
       "silahli",
