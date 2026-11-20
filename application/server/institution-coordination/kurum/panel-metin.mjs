@@ -170,6 +170,8 @@ export function panelBaslik(event, profiller, topic) {
   if (kullanilamaz) {
     const alt = metinIlkCumle();
     if (alt.length >= 25 && !/^https?:\/\//iu.test(alt) && !tarihKalinti.test(alt)) t = alt;
+    // Alternatif metin de yoksa arayuz/tarih copunu panele tasima.
+    else if (t.length < 25 || /^https?:\/\//iu.test(t) || tarihKalinti.test(t)) return yedek;
   }
   if (t.length < 15) return yedek;
   return t.length > 200 ? t.slice(0, 197).trimEnd() + '…' : t;
@@ -184,7 +186,10 @@ export function panelOzet(event, route, profiller) {
   // Bazi kaynaklarda ozet, basligin aynisiyla basliyor; tekrari at.
   const b = basligiTemizle(event?.title);
   if (b && normalize(o).startsWith(normalize(b))) {
-    const kalan = o.slice(b.length).replace(/^[\s:;,.\-–—]+/u, '');
+    let kalan = o.slice(b.length);
+    // Baslik 200 karakterde kirpildiysa kalan metin kelime ortasindan baslar:
+    // yarim kelimeyi at, ilk tam kelimeden devam et.
+    kalan = kalan.replace(/^\S*\s+/u, ' ').replace(/^[\s:;,.\-–—]+/u, '');
     if (kalan.length >= 40) o = kalan;
   }
   return o;

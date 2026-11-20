@@ -6,6 +6,9 @@ const safeResult = (sent = 0, retried = 0, held = 0, dead = 0) => ({ sent, retri
 
 const ELIGIBILITY = `SELECT o.id,o.coord_case_id,o.institution_id,o.recipient_id,o.attempts,o.provider_idempotency_key,
   c.title AS case_title,c.summary_redacted AS case_summary,c.neighborhood AS case_neighborhood,
+  c.source_event_id,c.created_at AS case_created_at,
+  i.display_name AS institution_name,
+  t.display_name AS topic_name,t.code AS topic_code,
   r.address_ciphertext,r.key_version,r.address_fingerprint
   FROM coord_mail_outbox o
   JOIN coord_cases c ON c.id=o.coord_case_id AND c.institution_id=o.institution_id AND c.sensitivity<>'restricted'
@@ -16,9 +19,99 @@ const ELIGIBILITY = `SELECT o.id,o.coord_case_id,o.institution_id,o.recipient_id
     AND r.verified_at IS NOT NULL AND r.verified_by IS NOT NULL AND r.address_fingerprint=o.recipient_hash
   WHERE o.id=? AND o.institution_id=? AND o.coord_case_id=? AND o.state='sending'`;
 
+/* ------------------------------------------------------------------ *
+ * Mail icerigi: haberin TAMAMI + kaynak baglantilari + kurumun gorev
+ * alani. Kisisel veri maskelenir; hassas kategoriler zaten kapida
+ * tutuldugu icin buraya gelmez.
+ * ------------------------------------------------------------------ */
+
+const MAIL_METIN_SINIRI = 6000;
+
+const PII = [
+  [/\b\d{11}\b/gu, '[kimlik no gizlendi]'],
+  [/\bTR\d{2}\s?(?:\d{4}\s?){5}\d{2}\b/giu, '[IBAN gizlendi]'],
+  [/\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/gu, '[e-posta gizlendi]'],
+  [/\b(?:\+90|0)?[\s(]*\d{3}[\s).-]*\d{3}[\s.-]*\d{2}[\s.-]*\d{2}\b/gu, '[telefon gizlendi]'],
+  [/\b(?:plaka|ara[çc] plakas[ıi])\s*[:#-]?\s*[0-9]{2}\s*[A-ZÇĞİÖŞÜ]{1,3}\s*\d{2,4}\b/giu, '[plaka gizlendi]'],
+  [/\b(?:daire|kap[ıi]|bina)\s*(?:no|numaras[ıi])?\s*[:#-]?\s*\d+[A-Za-z]?\b/giu, '[adres no gizlendi]'],
+];
+
+function piiMaskele(value) {
+  let t = String(value ?? '');
+  for (const [r, yer] of PII) t = t.replace(r, yer);
+  return t;
+}
+
+function metinTemizle(value) {
+  return String(value ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&(?:[a-z]+|#\d+);/giu, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/** Kaynak olayin tam metnini (lab_items veya snapshots) bulur. */
+async function olayMetniBul(db, sourceEventId) {
+  if (!sourceEventId) return null;
+  const kimlik = String(sourceEventId);
+  try {
+    const r = await db.prepare('SELECT data FROM lab_items WHERE id=?').bind(kimlik).first();
+    if (r?.data) {
+      const v = JSON.parse(r.data);
+      return {
+        title: v.title ?? null,
+        metin: [v.description, v.fullText, v.text].filter(Boolean).join('\n\n'),
+        kaynakAdi: v.sourceName ?? null, platform: v.platform ?? null,
+        url: v.url ?? null, publishedAt: v.publishedAt ?? null,
+      };
+    }
+  } catch { /* snapshots'a gec */ }
+  try {
+    const sonuc = await db.prepare('SELECT data FROM snapshots').all();
+    for (const satir of sonuc?.results ?? []) {
+      let veri; try { veri = JSON.parse(satir.data); } catch { continue; }
+      const e = (veri?.events || []).find(x => x && String(x.id) === kimlik);
+      if (!e) continue;
+      return {
+        title: e.title ?? null,
+        metin: [e.description, e.fullText, e.text].filter(Boolean).join('\n\n'),
+        kaynakAdi: e.sourceName ?? null, platform: e.platform ?? null,
+        url: e.url ?? null, publishedAt: e.publishedAt ?? null,
+      };
+    }
+  } catch { /* yok */ }
+  return null;
+}
+
+/** Vakanin kaynak baglantilari. */
+async function kaynaklariBul(db, caseId) {
+  try {
+    const r = await db.prepare(`SELECT source_url,source_name,platform,published_at
+      FROM coord_case_sources WHERE coord_case_id=? ORDER BY added_at LIMIT 20`).bind(caseId).all();
+    return (r?.results ?? []).filter(x => x && /^https?:\/\//i.test(String(x.source_url || '')));
+  } catch { return []; }
+}
+
+function tarihTR(iso) {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return null;
+  return new Intl.DateTimeFormat('tr-TR', { timeZone: 'Europe/Istanbul',
+    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(t));
+}
+
+/** Konu satiri ve panel basligi icin kisa, okunur baslik (ilk cumle). */
+function kisaBaslik(value, sinir = 140) {
+  const t = String(value ?? '').replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  const ilk = t.split(/(?<=[.!?…])\s+/u)[0] || t;
+  const sec = ilk.length >= 25 ? ilk : t;
+  return sec.length > sinir ? sec.slice(0, sinir - 1).trimEnd() + '…' : sec;
+}
+
 /**
  * Event-only dispatcher. The host must supply encrypted-recipient decryption,
- * verified-address checks, an allow-listed HTTPS portal URL, and a mail adapter
+ * verified-address checks, an allow-listed HTTPS portal URL, and a mail adapte
  * that guarantees idempotency by key. Ambiguous send outcomes are never retried.
  */
 export async function dispatchDueInstitutionNotices({ db, decryptAddress, sendWithIdempotency, portalUrl, limit = 10, onError }) {
@@ -65,22 +158,79 @@ export async function dispatchDueInstitutionNotices({ db, decryptAddress, sendWi
         result.held++; continue;
       }
       const idem = stillEligible.provider_idempotency_key;
-      const caseTitle = String(stillEligible.case_title || '').slice(0, 160);
-      const caseSummary = String(stillEligible.case_summary || '').slice(0, 700);
+      const tamBaslik = String(stillEligible.case_title || '').trim();
+      const caseTitle = kisaBaslik(tamBaslik, 140);
+      const caseSummary = String(stillEligible.case_summary || '');
       const caseWhere = String(stillEligible.case_neighborhood || '').slice(0, 80);
+      const kurumAdi = String(stillEligible.institution_name || 'Kurumunuz').slice(0, 160);
+      const konuAdi = String(stillEligible.topic_name || stillEligible.topic_code || '').slice(0, 160);
+      const konuKodu = String(stillEligible.topic_code || '');
+      const caseId = String(stillEligible.coord_case_id || '');
+      const olay = await olayMetniBul(db, stillEligible.source_event_id);
+      const kaynaklar = await kaynaklariBul(db, caseId);
+
+      // Haberin TAMAMI: olay metni once, yoksa vaka ozeti.
+      let hamMetin = metinTemizle(olay?.metin || '') || metinTemizle(caseSummary);
+      // Metin baslikla basliyorsa tekrari at (baslik ayri satirda gosterilir).
+      if (tamBaslik && hamMetin) {
+        const norm = (s) => s.toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
+        if (norm(hamMetin).startsWith(norm(tamBaslik))) {
+          // Baslik kirpildiysa kalan metin kelime ortasindan baslar.
+          hamMetin = hamMetin.slice(tamBaslik.length)
+            .replace(/^\S*\s+/u, ' ')
+            .replace(/^[\s:;,.·|\-–—]+/u, '');
+        }
+      }
+      let govde = piiMaskele(hamMetin);
+      if (govde.length > MAIL_METIN_SINIRI) {
+        govde = govde.slice(0, MAIL_METIN_SINIRI).replace(/\s+\S*$/u, '') + '\n\n[… haber metni kısaltıldı; tamamı panelde]';
+      }
+
+      const kaynakSatirlari = [];
+      const gorulen = new Set();
+      for (const k of kaynaklar) {
+        const url = String(k.source_url);
+        if (gorulen.has(url)) continue;
+        gorulen.add(url);
+        const ad = String(k.source_name || '').trim() || 'Kaynak';
+        const plat = String(k.platform || '').trim();
+        const tar = tarihTR(k.published_at);
+        kaynakSatirlari.push(`- ${ad}${plat ? ` (${plat})` : ''}${tar ? ` · ${tar}` : ''}\n  ${url}`);
+      }
+      if (olay?.url && !gorulen.has(String(olay.url))) {
+        const ad = String(olay.kaynakAdi || 'Kaynak').trim();
+        kaynakSatirlari.push(`- ${ad}${olay.platform ? ` (${olay.platform})` : ''}\n  ${olay.url}`);
+      }
+
+      const panelAdresi = `${parsedPortal.origin}${parsedPortal.pathname}`;
+      const satirlar = [
+        `Sayın ${kurumAdi} yetkilisi,`,
+        '',
+        'Kurumunuzun görev alanına giren yeni bir kayıt kurum paneline eklendi.',
+        '',
+        '— GÖREV ALANI —',
+        konuAdi ? `Konu: ${konuAdi}` : null,
+        caseWhere ? `Konum: ${caseWhere}, Ümraniye` : 'Konum: Ümraniye',
+        tarihTR(stillEligible.case_created_at) ? `Kayıt zamanı: ${tarihTR(stillEligible.case_created_at)}` : null,
+        '',
+        '— HABER —',
+        caseTitle ? `Başlık: ${piiMaskele(caseTitle)}` : null,
+        '',
+        govde || null,
+        '',
+        '— KAYNAK —',
+        kaynakSatirlari.length ? kaynakSatirlari.join('\n') : 'Kaynak bağlantısı panelde görüntülenebilir.',
+        '',
+        `Panelde görüntüle: ${panelAdresi}`,
+        '',
+        'Bu bildirim, kurumunuzun görev alanına giren kayıtlar için otomatik gönderilmiştir.',
+      ].filter(x => x !== null);
+
       await sendWithIdempotency({
         to: address,
         idempotencyKey: idem,
         subject: (caseTitle ? `Ümraniye OSINT: ${caseTitle}` : 'Ümraniye OSINT kurum panelinde yeni kayıt').slice(0, 200),
-        text: [
-          'Yetkili olduğunuz kurum paneline yeni bir kayıt eklendi.',
-          '',
-          caseTitle ? `Konu: ${caseTitle}` : null,
-          caseWhere ? `Konum: ${caseWhere}` : null,
-          caseSummary ? `Özet: ${caseSummary}` : null,
-          '',
-          `Ayrıntılar: ${parsedPortal.origin}${parsedPortal.pathname}`,
-        ].filter(x => x !== null).join('\n')
+        text: satirlar.join('\n'),
       });
       await db.prepare(`UPDATE coord_mail_outbox SET state='sent',sent_at=?,last_error_code=NULL WHERE id=? AND state='sending'`)
         .bind(isoNow(), row.id).run();
