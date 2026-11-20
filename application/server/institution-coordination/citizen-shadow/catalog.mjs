@@ -1,3 +1,4 @@
+import {incidentRules} from './incident-rules.mjs';
 import {extendedCatalog} from './extended-catalog.mjs';
 import {domainCatalog} from './domain-catalog.mjs';
 // Explicit, reviewable subtypes; never a Cartesian product used to inflate counts.
@@ -28,4 +29,4 @@ const groups = [
  ['religion','Kamu hizmeti','Din hizmetleri','UMR_ILCE_MUFTULUK','İlçe Müftülüğü','ordinary',['caminin erişim rampası yok','caminin abdesthanesi arızalı','din hizmeti başvurusu sonuçlanmıyor']],
  ['consumer','Tüketici','Tüketici uyuşmazlığı',null,'Tüketici hakem heyeti; yetki teyidi gerekli','restricted',['ayıplı ürün iadesi yapılmıyor','garanti kapsamında onarım yapılmıyor','izinsiz banka kesintisi var','ücret ödenmiyor','internet aboneliği iptal edilemiyor','kiralık konutta depozito iade edilmiyor']],
 ];
-export const catalog=Object.freeze([...groups.flatMap(([prefix,family,subcategory,panels,authority,sensitivity,titles])=>titles.map((title,index)=>Object.freeze({code:`CIT-${prefix.toUpperCase()}-${String(index+1).padStart(3,'0')}`,title,family,subcategory,patterns:[title],exclusions:['advertisement','negated','historical','football'],risk:/yangın|gaz kokusu|kablo|şiddet|saldırı/.test(title)?'high':'normal',sensitivity,panelCandidates:panels?panels.split('|'):[],serviceAuthority:authority,conditions:['locality_verified','institution_approved','topic_approved','grant_active'],mandateVerified:false}))),...extendedCatalog,...domainCatalog]);
+export const catalog=Object.freeze([...groups.flatMap(([prefix,family,subcategory,panels,authority,sensitivity,titles])=>titles.map((title,index)=>Object.freeze({code:`CIT-${prefix.toUpperCase()}-${String(index+1).padStart(3,'0')}`,title,family,subcategory,patterns:[title],exclusions:['advertisement','negated','historical','football'],risk:/yangın|gaz kokusu|kablo|şiddet|saldırı/.test(title)?'high':'normal',sensitivity,panelCandidates:panels?panels.split('|'):[],serviceAuthority:authority,conditions:['locality_verified','institution_approved','topic_approved','grant_active'],mandateVerified:false}))),...extendedCatalog,...domainCatalog,...incidentRules]);

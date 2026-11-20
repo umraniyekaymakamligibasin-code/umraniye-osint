@@ -2,6 +2,7 @@ import{DatabaseSync}from'node:sqlite';import{readFile,writeFile,rename,mkdir}fro
 const dir=process.env.CIT_STATE_DIR||'/var/lib/umraniye-osint-deneme/citizen-routing';
 await mkdir(dir,{recursive:true,mode:0o700});
 let state={cursor:'',rounds:0};try{state={...state,...JSON.parse(await readFile(dir+'/status.json','utf8'))};}catch(e){if(e.code!=='ENOENT')throw e;}
+let ledger={};try{ledger=JSON.parse(await readFile(dir+'/ledger.json','utf8'));}catch(e){if(e.code!=='ENOENT')throw e;}
 const db=new DatabaseSync('/var/lib/umraniye-osint-deneme/osint.sqlite',{timeout:5000});
 try{
  db.exec('PRAGMA foreign_keys=ON');
@@ -12,6 +13,8 @@ try{
  const plan=preview(db,events),projection=persistPlan(db,plan,{allowWrites:true});
  const reasons={};for(const r of plan.results)if(!r.tasks.length)reasons[r.reason]=(reasons[r.reason]||0)+1;
  const next={cursor:historical.at(-1)?.id||'',rounds:state.rounds+1,at:new Date().toISOString(),examined:events.length,latest:latest.length,backlog:historical.length,taskCandidates:plan.results.reduce((n,r)=>n+r.tasks.length,0),projection,reasons,messagesSent:0};
+ for(const r of plan.results)if(r.eventId)ledger[r.eventId]={at:next.at,status:r.status,reason:r.reason,taskTopics:[...new Set(r.tasks.map(t=>t.topic))],evaluations:(ledger[r.eventId]?.evaluations||0)+1};
+ const ledgerTmp=dir+'/ledger.json.tmp';await writeFile(ledgerTmp,JSON.stringify(ledger),{mode:0o600});await rename(ledgerTmp,dir+'/ledger.json');
  const tmp=dir+'/status.json.tmp';await writeFile(tmp,JSON.stringify(next),{mode:0o600});await rename(tmp,dir+'/status.json');
  console.log(JSON.stringify(next));
 }finally{db.close();}
