@@ -215,21 +215,17 @@ const HEDEF_ANAHTAR = [
   ['TURK_TELEKOM_UMR', ['turk telekom']],
 ];
 
-function hedefKurumCoz(hedefler, metinNorm) {
-  const kumeler = new Set();
-  const kaynak = [...(hedefler || []).map(h => normalize(String(h))), metinNorm];
+function hedefKurumCoz(hedefler) {
+  const kaynak = (hedefler || []).map(h => normalize(String(h))).filter(Boolean);
   const bulunan = [];
   for (const [kurum, anahtarlar] of HEDEF_ANAHTAR) {
     const eslesti = anahtarlar.some(a => {
       const n = normalize(a);
       if (!n) return false;
-      // handle icinde bitisik gecis (umraniyeilcemem) veya kelime grubu
       return kaynak.some(k => {
-        if (!k) return false;
         if (n.includes(' ')) return k.includes(n);
         if (k.split(' ').includes(n)) return true;
-        // bitisik: 'umraniyeilcemem' -> 'ilcemem' ile biter
-        return n.length >= 5 && k.split(/\s+/).some(t => t === n || t.endsWith(n));
+        return n.length >= 4 && k.split(/\s+/).some(t => t === n || t.endsWith(n));
       });
     });
     if (eslesti) bulunan.push(kurum);
@@ -237,10 +233,60 @@ function hedefKurumCoz(hedefler, metinNorm) {
   return bulunan;
 }
 
-function vatandasYonlendirme(event, { profiller, izinler, bulunan, norm }) {
+/** Metindeki acik @etiketleri cikarir (duz metin kaynak imzasi SAYILMAZ). */
+export function bahsedilenHesaplar(event) {
+  const metin = [event?.title, event?.summary, event?.description, event?.fullText]
+    .filter(Boolean).join(' ');
+  const hesaplar = new Set();
+  for (const m of String(metin).matchAll(/@([A-Za-z0-9_]{2,30})/g)) hesaplar.add(m[1].toLowerCase());
+  for (const h of Array.isArray(event?.mentions) ? event.mentions : []) {
+    const s = String(h ?? '').replace(/^@/, '').trim().toLowerCase();
+    if (s) hesaplar.add(s);
+  }
+  return [...hesaplar];
+}
+
+/** Vatandas basvurusu sayilan kategoriler (kurumun kendi tanitim paylasimi HARIC). */
+const VATANDAS_KATEGORI = new Set([
+  'VATANDAS_SIKAYETI', 'SIKAYET', 'BILGI_TALEBI', 'TALEP', 'BASVURU',
+  'CITIZEN_COMPLAINT', 'INFORMATION_REQUEST',
+]);
+
+/** Metin bir sorun/sikayet/talep mi? (kategori yoksa yedek olcut) */
+const SIKAYET_SINYAL = [
+  'sikayet', 'cozum bul', 'magdur', 'yetisemiyor', 'izin verilmiyor',
+  'verilmiyor', 'yapilmiyor', 'calismiyor', 'bozuk', 'eksik', 'talep',
+  'rica ediyor', 'yardim', 'ne zaman', 'neden', 'sorun', 'problem',
+  'ihmal', 'koku', 'gurultu', 'rahatsiz',
+];
+
+function kategoriKodu(ref) {
+  const k = ref?.category;
+  const kod = typeof k === 'string' ? k : (k?.code ?? '');
+  return String(kod).toUpperCase();
+}
+
+function vatandasYonlendirme(event, { profiller, izinler, bulunan }) {
   const ref = event?.institutionalReference;
-  const hedefler = Array.isArray(ref?.targets) ? ref.targets : [];
-  const kurumlar = hedefKurumCoz(hedefler, norm);
+  const targets = Array.isArray(ref?.targets) ? ref.targets.map(String) : [];
+  const handles = bahsedilenHesaplar(event);
+  const hedefler = [...targets, ...handles];
+  if (!hedefler.length) return null;
+
+  // Kurumun KENDI paylasimi vatandas basvurusu degildir.
+  const kaynakHandle = normalize(String(event?.sourceName || '').match(/@([A-Za-z0-9_]{2,30})/)?.[1] ?? '');
+  const hedefNorm = hedefler.map(h => normalize(String(h).replace(/^@/, '')));
+  if (kaynakHandle && hedefNorm.includes(kaynakHandle)) return null;
+
+  const kategori = kategoriKodu(ref);
+  const norm = normalize(metin(event));
+  const sikayet = SIKAYET_SINYAL.some(t => norm.includes(normalize(t)));
+  const kategoriUygun = VATANDAS_KATEGORI.has(kategori);
+  // Kategori yoksa yalnizca acik sikayet/talep dili varsa ve metin duyuru degilse.
+  if (!kategoriUygun && !sikayet) return null;
+  if (!kategoriUygun && kategori && !sikayet) return null;
+
+  const kurumlar = hedefKurumCoz(hedefler);
   if (!kurumlar.length) return null;
   const izinSet = new Set((izinler || []).map(x => x.institution + '|' + x.topic));
   const routes = [];
@@ -301,7 +347,7 @@ export function baglamliDegerlendir(event, { katalog, profiller, izinler }) {
 
   const bulunan = konulariBul(norm, katalog);
   // Vatandas basvurusu: acikca etiketlenen kuruma dogrudan gider.
-  const vatandas = vatandasYonlendirme(event, { profiller, izinler, bulunan, norm });
+  const vatandas = vatandasYonlendirme(event, { profiller, izinler, bulunan });
   if (!bulunan.length) {
     if (vatandas) return { ...vatandas, topics: [] };
     // HIÇBİR HABER DÜŞMESİN: konu sözlüğü eşleşmese de, olay sinyali taşıyan

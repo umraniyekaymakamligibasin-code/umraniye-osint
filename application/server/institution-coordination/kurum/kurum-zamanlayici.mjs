@@ -192,6 +192,9 @@ function olayCevir(e, kural, yerelLocality, snapshotAt) {
     sensitivity: String(e.sensitivity ?? 'ordinary'),
     sensitivityFlags: e.sensitivityFlags && typeof e.sensitivityFlags === 'object'
       ? e.sensitivityFlags : {},
+    institutionalReference: e.institutionalReference && typeof e.institutionalReference === 'object'
+      ? e.institutionalReference : null,
+    mentions: Array.isArray(e.mentions) ? e.mentions : undefined,
     policyVersion: String(kural.version),
   };
 }
