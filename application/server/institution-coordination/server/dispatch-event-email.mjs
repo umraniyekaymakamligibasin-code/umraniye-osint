@@ -118,12 +118,12 @@ function tekrarlariAt(metin) {
   if (!t) return '';
   const parcalar = t.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
   const gorulenParagraf = new Set();
+  const gorulenCumle = new Set();   // tum metin boyunca (paragraflar arasi da)
   const cikti = [];
   for (const p of parcalar) {
     const np = p.toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
     if (np.length >= 40 && gorulenParagraf.has(np)) continue;
     if (np.length >= 40) gorulenParagraf.add(np);
-    const gorulenCumle = new Set();
     const cumleler = p.split(/(?<=[.!?…])\s+/u);
     const temiz = [];
     for (const c of cumleler) {
@@ -260,7 +260,7 @@ export async function dispatchDueInstitutionNotices({ db, decryptAddress, sendWi
       await sendWithIdempotency({
         to: address,
         idempotencyKey: idem,
-        subject: (caseTitle ? `Ümraniye OSINT: ${kisaBaslik(caseTitle, 95)}` : 'Ümraniye OSINT kurum panelinde yeni kayıt').slice(0, 200),
+        subject: (caseTitle ? `Ümraniye OSINT: ${kisaBaslik(caseTitle, 80)}` : 'Ümraniye OSINT kurum panelinde yeni kayıt').slice(0, 200),
         text: satirlar.join('\n'),
       });
       await db.prepare(`UPDATE coord_mail_outbox SET state='sent',sent_at=?,last_error_code=NULL WHERE id=? AND state='sending'`)
