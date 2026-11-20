@@ -183,6 +183,8 @@ export function panelOzet(event, route, profiller) {
   const raw = event?.description || event?.fullText || event?.summary || '';
   let o = ozetCumleleri(raw);
   if (o.length < 40) return yedek;
+  // Ozet bir URL veya sosyal medya arayuz kalintisi ise guvenli kategori ozetine don.
+  if (/^https?:\/\//iu.test(o) || /\d{1,2}:\d{2}\s*·\s*/u.test(o)) return yedek;
   // Bazi kaynaklarda ozet, basligin aynisiyla basliyor; tekrari at.
   const b = basligiTemizle(event?.title);
   if (b && normalize(o).startsWith(normalize(b))) {
