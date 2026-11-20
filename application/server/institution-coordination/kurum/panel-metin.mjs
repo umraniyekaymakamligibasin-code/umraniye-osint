@@ -186,11 +186,17 @@ export function panelOzet(event, route, profiller) {
   // Bazi kaynaklarda ozet, basligin aynisiyla basliyor; tekrari at.
   const b = basligiTemizle(event?.title);
   if (b && normalize(o).startsWith(normalize(b))) {
-    let kalan = o.slice(b.length);
-    // Baslik 200 karakterde kirpildiysa kalan metin kelime ortasindan baslar:
-    // yarim kelimeyi at, ilk tam kelimeden devam et.
-    kalan = kalan.replace(/^\S*\s+/u, ' ').replace(/^[\s:;,.\-–—]+/u, '');
-    if (kalan.length >= 40) o = kalan;
+    let kalan = o.slice(b.length).replace(/^\S*\s+/u, '').replace(/^[\s:;,.\-–—]+/u, '');
+    // Kalan metin cumle basindan baslamiyorsa kisaltmayi UYGULAMA:
+    // aksi halde panelde "attı. Ancak..." gibi cumle ortasi ozet gorunur.
+    const cumleBasi = /^[A-ZÇĞİÖŞÜ0-9"“'‘]/u.test(kalan);
+    if (kalan.length >= 40 && cumleBasi) {
+      o = kalan;
+    } else if (kalan.length >= 40) {
+      const nokta = kalan.search(/[.!?…]\s+/u);
+      if (nokta !== -1 && nokta < 140) o = kalan.slice(nokta + 1).trim();
+      // nokta yoksa tam metin kalir; baslik tekrari olsa da okunur ozet budur.
+    }
   }
   return o;
 }
