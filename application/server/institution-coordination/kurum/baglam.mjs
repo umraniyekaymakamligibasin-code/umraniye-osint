@@ -252,7 +252,7 @@ export function bahsedilenHesaplar(event) {
 
 /** DB'de gercekten 'restricted' isaretli konular (projeksiyon bunlari yazmaz). */
 const KISITLI_KONULAR = Object.freeze(new Set([
-  'district_coordination', 'district_emergency_coordination',
+  'district_coordination', 'multi_agency_incident',
 ]));
 
 /** Vatandas basvurusu sayilan kategoriler (kurumun kendi tanitim paylasimi HARIC). */
