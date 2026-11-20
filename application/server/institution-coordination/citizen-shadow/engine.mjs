@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {catalog} from './catalog.mjs';
 import {fold,clauseState,phrasesMatch as phraseMatch} from './language.mjs';
+import{deriveLocality}from'./locality.mjs';
 export {fold} from './language.mjs';
 const digest=s=>createHash('sha256').update(s).digest('hex');
 // Bounded Turkish suffix recognition; does not invent arbitrary stems.
@@ -13,7 +14,8 @@ export function analyze(event,{rules=catalog,approvedInstitutions=[],approvedTop
  const incident=/yangin cikti|yaralandi|kavga cikti|silahli saldiri/.test(text);
  if(/senetli satis|vade farki|uygun fiyat|siparis|indirim kampanyasi/.test(text)&&!incident)return {...base,status:'excluded',reason:'advertisement'};
  const place=event.locality;
- if(place?.district!=='Ümraniye'||place.verified!==true||!['district','neighborhood'].includes(place.precision))return {...base,status:'review_required',reason:'locality_unverified'};
+ const textEvidence=place?.routingEligible===true&&place?.evidence==='explicit_district_statement';
+ if(place?.district!=='Ümraniye'||!(place.verified===true||textEvidence)||!['district','neighborhood'].includes(place.precision))return {...base,status:'review_required',reason:'locality_unverified'};
  if(/\b(?:ankara|kadikoy|uskudar|izmir|atasehir)(?:da|de|daki|deki)?\b/.test(text))return {...base,status:'review_required',reason:'conflicting_location'};
  const privacyText=text.replace(/hasta cagri|hasta haklari|hasta hayvan/g,'tesis hizmeti');
  const sensitive=Object.values(event.sensitivityFlags||{}).some(Boolean)||['restricted','high','special'].includes(event.sensitivity)||/\b\d{11}\b|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b(?:cocuk kimligi|cocugun adi|hasta|tani|tc kimlik|aile ici siddet|telefon numarasi|daire no|kapi no)\b|(?:\+90|0)[\s()-]*5\d{2}[\s()-]*\d{3}[\s()-]*\d{2}[\s()-]*\d{2}/.test(privacyText);
@@ -21,7 +23,7 @@ export function analyze(event,{rules=catalog,approvedInstitutions=[],approvedTop
  for(const rule of rules){if(codes.has(rule.code))return {...base,status:'review_required',reason:'rule_code_conflict'};codes.add(rule.code);for(const pattern of rule.patterns){const signature=fold(pattern),route=JSON.stringify([...rule.panelCandidates].sort());if(signatures.has(signature)&&signatures.get(signature)!==route)return {...base,status:'review_required',reason:'rule_authority_conflict'};signatures.set(signature,route);}}
  const clauses=raw.split(/[.!?;\n]+|\s+ama\s+|\s+ancak\s+/iu).filter(Boolean);
  for(const rule of rules){const matched=clauses.filter(c=>rule.patterns.some(p=>phraseMatch(c,p)));if(!matched.length)continue;
-  const active=matched.filter(c=>clauseState(c)==='active');
+  const active=matched.filter(c=>clauseState(c)==='active'&&(!textEvidence||deriveLocality({description:c})?.routingEligible===true));
   if(!active.length){base.issues.push({code:rule.code,status:'held',reason:'negated_or_historical'});continue;}
  const key=digest(JSON.stringify([event.eventIdentity||event.canonicalEventId||event.id||event.url||digest(text),rule.code]));
   if(seenKeys.includes(key)){base.issues.push({code:rule.code,status:'duplicate',key});continue;}

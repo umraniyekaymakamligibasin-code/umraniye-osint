@@ -1,10 +1,10 @@
 import {randomUUID,createHash} from 'node:crypto';
 import {shadowBatch} from './integration.mjs';
 import {catalog} from './catalog.mjs';
+import {deriveLocality} from './locality.mjs';
 const known=new Set(catalog.map(r=>r.code));
 export function adaptEvent(event){
- const locality=event.locality?.verified===true?event.locality:
-  event.locationVerified===true&&event.districtScope==='local'?{district:'Ümraniye',verified:true,precision:'district'}:null;
+ const locality=deriveLocality(event);
  return {...event,locality};
 }
 export function snapshot(db){return {institutions:db.prepare('SELECT * FROM coord_institutions').all(),topics:db.prepare('SELECT * FROM coord_topics').all(),grants:db.prepare('SELECT * FROM coord_institution_topic_grants').all()};}
