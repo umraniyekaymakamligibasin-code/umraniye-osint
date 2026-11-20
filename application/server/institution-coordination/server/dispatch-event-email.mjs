@@ -113,15 +113,18 @@ function kisaBaslik(value, sinir = 140) {
  * Kaynak kaziyicilar ayni cumleyi/paragrafi tekrar edebiliyor.
  * Haberin anlamini bozmadan birebir tekrar eden uzun cumleleri atar.
  */
-function tekrarlariAt(metin) {
+function tekrarlariAt(metin, baslik = '') {
   const t = String(metin ?? '');
   if (!t) return '';
+  const normBaslik = String(baslik || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
   const parcalar = t.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
   const gorulenParagraf = new Set();
   const gorulenCumle = new Set();   // tum metin boyunca (paragraflar arasi da)
   const cikti = [];
   for (const p of parcalar) {
     const np = p.toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
+    // Basligin kendisi ayri satirda gosteriliyor; metindeki tekrarini at.
+    if (normBaslik && np.length >= 20 && normBaslik.startsWith(np)) continue;
     if (np.length >= 40 && gorulenParagraf.has(np)) continue;
     if (np.length >= 40) gorulenParagraf.add(np);
     const cumleler = p.split(/(?<=[.!?…])\s+/u);
@@ -212,7 +215,7 @@ export async function dispatchDueInstitutionNotices({ db, decryptAddress, sendWi
             .replace(/^[\s:;,.·|\-–—]+/u, '');
         }
       }
-      let govde = piiMaskele(tekrarlariAt(hamMetin));
+      let govde = piiMaskele(tekrarlariAt(hamMetin, tamBaslik));
       if (govde.length > MAIL_METIN_SINIRI) {
         govde = govde.slice(0, MAIL_METIN_SINIRI).replace(/\s+\S*$/u, '') + '\n\n[… haber metni kısaltıldı; tamamı panelde]';
       }
