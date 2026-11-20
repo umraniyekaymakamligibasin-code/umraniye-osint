@@ -47,9 +47,8 @@ export function persistPlan(db,plan,{allowWrites=false,now=()=>new Date().toISOS
    if(!inserted.changes){report.duplicates++;continue;}
    report.inserted++;
    for(const s of e.sources?.length?e.sources:[e]){
-    try{const url=canonicalSource(s.url);if(!url)continue;
+    const url=canonicalSource(s?.url);if(!url)continue;
      db.prepare('INSERT OR IGNORE INTO coord_case_sources VALUES(?,?,?,?,?,?,?)').run(randomUUID(),id,url,String(s.sourceName||'Kaynak').slice(0,120),String(s.platform||e.platform||'web').slice(0,32),validPublication(s.publishedAt)||publication,stamp);
-    }catch{continue;}
    }
    db.prepare("INSERT INTO coord_audit(id,actor_account_id,actor_kind,institution_id,action,target_type,target_id,request_id,created_at) VALUES(?,NULL,'system',?,'cit_projection','case',?,NULL,?)").run(randomUUID(),allowed.institution_id,id,stamp);
   }
