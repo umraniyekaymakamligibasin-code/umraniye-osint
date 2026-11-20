@@ -163,6 +163,10 @@ export function hassasMi(event, text) {
  */
 function genelYonlendirme(event, { profiller, izinler, reason, d }) {
   if (!d || d.olay !== true) return null;
+  // NOT: district_coordination DB'de 'restricted' isaretli; projeksiyon onu
+  // yazmaz. Bu yuzden gercek olaylar icin 'ordinary' olan kamu hizmeti
+  // konusu kullanilir (Kaymakamlik + Belediye yetkili).
+  const KONU = 'public_service_access';
   const izinSet = new Set((izinler || []).map(x => x.institution + '|' + x.topic));
   const routes = [];
   for (const kurum of ['UMR_KAYMAKAMLIK', 'UMR_BELEDIYE']) {
@@ -170,10 +174,10 @@ function genelYonlendirme(event, { profiller, izinler, reason, d }) {
     if (!profil) continue;
     const izinli = new Set([...(profil.oncelik || []), ...(profil.ek || [])]);
     const haric = new Set(profil.haric || []);
-    if (!izinli.has('district_coordination') || haric.has('district_coordination')) continue;
-    if (!izinSet.has(kurum + '|district_coordination')) continue;
+    if (!izinli.has(KONU) || haric.has(KONU)) continue;
+    if (!izinSet.has(kurum + '|' + KONU)) continue;
     routes.push({
-      institution: kurum, topic: 'district_coordination', confidence: 0.66,
+      institution: kurum, topic: KONU, confidence: 0.66,
       hits: 0, terms: [], titleHit: false, alternatifler: [], fallback: true,
     });
   }
@@ -246,6 +250,14 @@ export function bahsedilenHesaplar(event) {
   return [...hesaplar];
 }
 
+/** Projeksiyon katmani bu hassasiyetleri yazmaz (DB'de 'restricted' isaretli konular). */
+const KISITLI_KONULAR = Object.freeze(new Set([
+  'district_coordination', 'district_emergency_coordination', 'electrical_hazard',
+  'fallen_power_equipment', 'gas_leak_public_hazard', 'hazardous_material_response',
+  'health_service_access', 'multi_agency_incident', 'public_transport_safety',
+  'school_perimeter_safety', 'social_assistance_service_access', 'social_service_access',
+]));
+
 /** Vatandas basvurusu sayilan kategoriler (kurumun kendi tanitim paylasimi HARIC). */
 const VATANDAS_KATEGORI = new Set([
   'VATANDAS_SIKAYETI', 'SIKAYET', 'BILGI_TALEBI', 'TALEP', 'BASVURU',
@@ -301,7 +313,7 @@ function vatandasYonlendirme(event, { profiller, izinler, bulunan }) {
     for (const b of bulunan || []) {
       if (izinli.has(b.konu) && !haric.has(b.konu) && izinSet.has(kurum + '|' + b.konu)) { topic = b.konu; break; }
     }
-    for (const yedek of ['public_service_access', 'district_coordination', 'education_service_access', 'municipal_service_access']) {
+    for (const yedek of ['public_service_access', 'municipal_service_access', 'education_service_access', 'school_facility']) {
       if (topic) break;
       if (izinli.has(yedek) && !haric.has(yedek) && izinSet.has(kurum + '|' + yedek)) topic = yedek;
     }
@@ -309,6 +321,13 @@ function vatandasYonlendirme(event, { profiller, izinler, bulunan }) {
       topic = (profil.oncelik || []).find(k => !haric.has(k) && izinSet.has(kurum + '|' + k)) ?? null;
     }
     if (!topic) continue;
+    // DB'de 'restricted' isaretli konular projeksiyonda yazilmaz; bos vaka uretme.
+    if (KISITLI_KONULAR.has(topic)) {
+      const yedekKonu = (profil.oncelik || []).find(k =>
+        !haric.has(k) && !KISITLI_KONULAR.has(k) && izinSet.has(kurum + '|' + k));
+      if (!yedekKonu) continue;
+      topic = yedekKonu;
+    }
     routes.push({
       institution: kurum, topic, confidence: 0.9, hits: 0, terms: [],
       titleHit: false, alternatifler: [], vatandasBasvurusu: true,
