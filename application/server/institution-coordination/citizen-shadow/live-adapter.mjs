@@ -2,6 +2,7 @@ import {randomUUID,createHash} from 'node:crypto';
 import {shadowBatch} from './integration.mjs';
 import {catalog} from './catalog.mjs';
 import {deriveLocality} from './locality.mjs';
+import{canonicalSource,validPublication}from'./source-url.mjs';
 const known=new Set(catalog.map(r=>r.code));
 export function adaptEvent(event){
  const locality=deriveLocality(event);
@@ -33,6 +34,8 @@ export function persistPlan(db,plan,{allowWrites=false,now=()=>new Date().toISOS
    // Re-run against fresh source and current grants; a stale preview is not authority.
    const fresh=preview(db,[e]).results[0].tasks.find(t=>t.key===task.key);
    if(!fresh){report.held++;continue;}
+   const publication=validPublication(e.publishedAt),seen=validPublication(e.firstSeenAt||e.collectedAt);
+   if(publication===undefined||seen===undefined){report.held++;continue;}
    if(fresh.legacyTopic){
     const cacheKey=allowed.institution_id+'|'+fresh.legacyTopic;
     if(!legacyCache.has(cacheKey)){const prior=db.prepare('SELECT c.source_event_id,l.data FROM coord_cases c JOIN coord_topics t ON t.id=c.topic_id LEFT JOIN lab_items l ON l.id=c.source_event_id WHERE c.institution_id=? AND t.code=?').all(allowed.institution_id,fresh.legacyTopic);const identities=new Set();for(const p of prior){identities.add(p.source_event_id);if(p.data){try{identities.add(adaptEvent(JSON.parse(p.data)).eventIdentity);}catch{}}}legacyCache.set(cacheKey,identities);}
@@ -40,12 +43,12 @@ export function persistPlan(db,plan,{allowWrites=false,now=()=>new Date().toISOS
    }
    const stamp=now(),id=randomUUID(),key=JSON.stringify([allowed.institution_id,e.eventIdentity||task.sourceEventId,allowed.topic_id]);
    const inserted=db.prepare(`INSERT INTO coord_cases(id,institution_id,topic_id,source_event_id,source_revision,idempotency_key,title,summary_redacted,neighborhood,location_precision,first_published_at,first_seen_at,confidence,status,priority,sensitivity,created_at,updated_at)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'new',?,'ordinary',?,?) ON CONFLICT DO NOTHING`).run(id,allowed.institution_id,allowed.topic_id,task.sourceEventId,createHash('sha256').update(source.data).digest('hex'),key,fresh.title,fresh.summary,fresh.locality.neighborhood,fresh.locality.precision,e.publishedAt||null,e.firstSeenAt||e.collectedAt||stamp,0.86,fresh.risk==='high'?'important':'normal',stamp,stamp);
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'new',?,'ordinary',?,?) ON CONFLICT DO NOTHING`).run(id,allowed.institution_id,allowed.topic_id,task.sourceEventId,createHash('sha256').update(source.data).digest('hex'),key,fresh.title,fresh.summary,fresh.locality.neighborhood,fresh.locality.precision,publication,seen||stamp,0.86,fresh.risk==='high'?'important':'normal',stamp,stamp);
    if(!inserted.changes){report.duplicates++;continue;}
    report.inserted++;
    for(const s of e.sources?.length?e.sources:[e]){
-    try{const u=new URL(s.url);if(u.protocol!=='https:'||u.username||u.password)continue;
-     db.prepare('INSERT OR IGNORE INTO coord_case_sources VALUES(?,?,?,?,?,?,?)').run(randomUUID(),id,u.href,String(s.sourceName||'Kaynak').slice(0,120),String(s.platform||e.platform||'web').slice(0,32),s.publishedAt||e.publishedAt||null,stamp);
+    try{const url=canonicalSource(s.url);if(!url)continue;
+     db.prepare('INSERT OR IGNORE INTO coord_case_sources VALUES(?,?,?,?,?,?,?)').run(randomUUID(),id,url,String(s.sourceName||'Kaynak').slice(0,120),String(s.platform||e.platform||'web').slice(0,32),validPublication(s.publishedAt)||publication,stamp);
     }catch{continue;}
    }
    db.prepare("INSERT INTO coord_audit(id,actor_account_id,actor_kind,institution_id,action,target_type,target_id,request_id,created_at) VALUES(?,NULL,'system',?,'cit_projection','case',?,NULL,?)").run(randomUUID(),allowed.institution_id,id,stamp);

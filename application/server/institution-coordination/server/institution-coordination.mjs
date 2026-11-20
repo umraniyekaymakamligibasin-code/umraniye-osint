@@ -75,7 +75,7 @@ function safeSource(row) {
   try {
     const u = new URL(row.source_url);
     if (u.protocol === 'https:' && !u.username && !u.password) {
-      u.search = '';
+      for(const key of [...u.searchParams.keys()])if(!['id','p','story_fbid','fbid','post','post_id','v'].includes(key))u.searchParams.delete(key);
       u.hash = '';
       sourceUrl = u.toString().slice(0, 1000);
     }
