@@ -34,6 +34,41 @@ const ON_EK = [
   /^\s*(?:DHA|AA|ANKA|İHA)\s*[-–—,:]\s*/u,
 ];
 
+/**
+ * Sosyal medya kaziyicilarinin basliga sizdirdigi ARAYUZ metnini atar.
+ * Ornek (Facebook): "Facebook Facebook … Kerim Öztürk · Takip Et
+ * 24 Ekim 2026 Cumartesi, 13:14 · | Ümraniye'deki Güven Sanayi Sitesi'nde…"
+ */
+const ARAYUZ_BAS = [
+  /^(?:(?:Facebook|Instagram|X|Twitter|Threads|LinkedIn|TikTok)\s*[:·|-]?\s*)+/giu,
+  /^[\s·|:,-]*/u,
+];
+const ARAYUZ_KES = /(Daha\s+fazlasını\s+gör|Daha\s+fazla|Yorum\s+yaz|Tüm\s+yorumlar|Beğen\s*·|Paylaş\s*·|Takip\s+et\s*·)/iu;
+
+/** "Ad · Takip Et <tarih/saat> · | gercek baslik" deseninden gercek basligi cikarir. */
+const TARIH_IFADE = /(?:\d+\s*(?:saniye|dakika|saat|gün|gun|hafta|ay)\s*önce|\d{1,2}\s+(?:Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+\d{4}[^·|]*)/iu;
+
+function sosyalArayuzTemizle(t) {
+  let s = String(t);
+  for (const r of ARAYUZ_BAS) s = s.replace(r, '');
+  // "Takip Et" + tarih/saat ifadesi arayuzdur, at.
+  const takipEslesme = /Takip\s+Et/iu.exec(s);
+  if (takipEslesme) {
+    const once = s.slice(0, takipEslesme.index).replace(/[\s·|:,-]+$/u, '');
+    const sonra = s.slice(takipEslesme.index);
+    // "Takip Et"ten sonra ayrac varsa ayrac sonrasi gercek basliktir.
+    const ayrac = sonra.search(/[·|]/u);
+    const kuyruk = ayrac >= 0 ? sonra.slice(ayrac).replace(/^[·|\s]+/u, '').trim() : '';
+    const tarihsizKuyruk = sonra.replace(/^Takip\s+Et/iu, '').replace(TARIH_IFADE, '').replace(/^[\s·|:,-]+/u, '').trim();
+    if (kuyruk.length >= 15) s = kuyruk;
+    else if (tarihsizKuyruk.length >= 15) s = tarihsizKuyruk;
+    else s = ''; // yalnizca yazar+arayuz kaldi: baslik metinden turetilecek
+  }
+  const kes = ARAYUZ_KES.exec(s);
+  if (kes && kes.index >= 15) s = s.slice(0, kes.index);
+  return s;
+}
+
 const SITE = [
   /\s*\|\s*[^|]{0,70}$/u,
   /\s*[-–—]\s*(ensonhaber\.com|net\s*haberler?|son\s*gazete|yerel\s*haber[^-]{0,40}|tgrt\s*haber|haberler\.com|h[üu]rriyet[^-]{0,40}|milliyet[^-]{0,40}|sabah[^-]{0,40}|ntv[^-]{0,40}|cnn\s*t[üu]rk[^-]{0,40}|iha[^-]{0,40})\s*$/iu,
@@ -47,7 +82,7 @@ const PII = [
   [/\b(?:\+90|0)?[\s(]*\d{3}[\s).-]*\d{3}[\s.-]*\d{2}[\s.-]*\d{2}\b/gu, '[telefon gizlendi]'],
   [/\b(?:daire|kap[ıi]|bina)\s*(?:no|numaras[ıi])?\s*[:#-]?\s*\d+[A-Za-z]?\b/giu, '[adres no gizlendi]'],
   [/\b(?:plaka|ara[çc] plakas[ıi])\s*[:#-]?\s*[0-9]{2}\s*[A-ZÇĞİÖŞÜ]{1,3}\s*\d{2,4}\b/giu, '[plaka gizlendi]'],
-  // "Ali H.", "Seçil Ö." gibi yarim anonim isimler
+  // "Ali H.", "Seçil Ö." gibi yarim anonim isimle
   [/\b[A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,}\s+[A-ZÇĞİÖŞÜ]\.(?=[\s,;:!?)]|$)/gu, '[kişi adı gizlendi]'],
   // "S.Ö." gibi bas harf kisaltmalari (T.C. / M.Ö. haric)
   [/\b(?:[A-ZÇĞİÖŞÜ]\.\s?){2,3}(?=[\s,;:!?)]|$)/gu, (m) => (/T\.C\.|M\.Ö\.|M\.S\./u.test(m) ? m : '[kişi adı gizlendi]')],
@@ -88,6 +123,11 @@ export function piiTemizle(value) {
 
 function basligiTemizle(value) {
   let t = temizMetin(value);
+  // Sosyal medya kaziyici arayuzu basliga sizmisse gercek icerigi cikar.
+  if (/^(?:(?:Facebook|Instagram|X|Twitter|Threads|LinkedIn|TikTok)\s*[:·|-]?\s*)+/iu.test(t)
+      || /Takip\s+Et/iu.test(t)) {
+    t = sosyalArayuzTemizle(t);
+  }
   for (const r of SITE) t = t.replace(r, '');
   // Bazi kaynaklarda baslik + spot tek alanda geliyor:
   // "Ümraniye'de vinç devrildi ... Ümraniye, Elmalıkent Mahallesi ...".
@@ -110,7 +150,27 @@ function ozetCumleleri(value, adet = 3, sinir = 620) {
 /** Panel basligi: gercek haber basligi; yoksa kategori basligi. */
 export function panelBaslik(event, profiller, topic) {
   const yedek = guvenliBaslik(topic, profiller);
-  const t = basligiTemizle(event?.title);
+  const metinIlkCumle = () => {
+    const ilk = String(event?.description || event?.summary || event?.fullText || '')
+      .split(/(?<=[.!?…])\s+/u)[0] || '';
+    return basligiTemizle(ilk);
+  };
+  let t = basligiTemizle(event?.title);
+
+  // Baslik kullanilamaz durumdaysa metnin ilk cumlesine gec:
+  //  - arayuz/yazar-tarih copunden ibaret (cok kisa)
+  //  - URL
+  //  - "6 saat önce 3 Kasım 2026" gibi tarih kalinti
+  //  - etiket gibi biten cok kisa cumle ("Aziz Tıkır, Huzur Mahallesi'de.")
+  const tarihKalinti = /(?:\d+\s*(?:saniye|dakika|saat|gün|gun|hafta|ay)\s*önce|\d{1,2}\s+(?:Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+\d{4})/iu;
+  const kullanilamaz = t.length < 25
+    || /^https?:\/\//iu.test(t)
+    || tarihKalinti.test(t)
+    || (t.length < 45 && /[.,]$/u.test(t));
+  if (kullanilamaz) {
+    const alt = metinIlkCumle();
+    if (alt.length >= 25 && !/^https?:\/\//iu.test(alt) && !tarihKalinti.test(alt)) t = alt;
+  }
   if (t.length < 15) return yedek;
   return t.length > 200 ? t.slice(0, 197).trimEnd() + '…' : t;
 }
@@ -151,7 +211,7 @@ function yerCakismasi(a, b) {
   const A = yerAdlari(a), B = yerAdlari(b);
   if (!A.size || !B.size) return false;
   for (const x of A) if (B.has(x)) return false;
-  return true; // iki baslikta da yer adi var ve hic ortak degil -> farkli yer
+  return true; // iki baslikta da yer adi var ve hic ortak degil -> farkli ye
 }
 
 /**
