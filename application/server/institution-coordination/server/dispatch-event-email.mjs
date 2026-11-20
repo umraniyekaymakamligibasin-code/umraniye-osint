@@ -248,7 +248,7 @@ export async function dispatchDueInstitutionNotices({ db, decryptAddress, sendWi
         tarihTR(stillEligible.case_created_at) ? `Kayıt zamanı: ${tarihTR(stillEligible.case_created_at)}` : null,
         '',
         '— HABER —',
-        caseTitle ? `Başlık: ${piiMaskele(caseTitle)}` : null,
+        caseTitle ? `Başlık: ${piiMaskele(tamBaslik)}` : null,
         '',
         govde || null,
         '',
