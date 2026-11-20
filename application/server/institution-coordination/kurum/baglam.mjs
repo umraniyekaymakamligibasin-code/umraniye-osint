@@ -389,6 +389,7 @@ export function baglamliDegerlendir(event, { katalog, profiller, izinler }) {
     const uygun = [];
     for (const b of bulunan) {
       if (!izinli.has(b.konu) || haric.has(b.konu)) continue;
+      if (KISITLI_KONULAR.has(b.konu)) continue;                 // projeksiyon yazmaz
       if (!izinSet.has(kurum + '|' + b.konu)) continue;          // DB grant sarti
       // Asayis sinyali varsa park/cop/moloz gibi genel alan konulari yalnizca
       // guvenlik kurumuna gider; belediyeye "parkta kavga" dusmez.
