@@ -447,12 +447,6 @@ async function baglamTuru(db, mods, bul, kural, a) {
 
 /** Tek tur. */
 async function tur(db, mods, bul, kural, a) {
-  if (process.env.OSINT_ROUTING_UNIFIED === '1' && !a.kuru) {
-    const {runPipeline}=await import('../citizen-shadow/pipeline.mjs');
-    const result=runPipeline({dbPath:veritabaniYolu(a),limit:Math.min(50,Math.max(1,a.limit|0||25))});
-    if(a.gonder)result.gonderim=await gonderimAdimi(db,mods,bul,a,10);
-    return {...result,engine:'unified_delivery_queue'};
-  }
   if (baglamModu()) return baglamTuru(db, mods, bul, kural, a);
   const limit = Math.max(1, Math.min(200, a.limit | 0 || 25));
   // Kuru deneme yalnizca orneklem alir. Gercek turde TUM olaylar taranir:
@@ -568,7 +562,7 @@ async function main() {
     const db = ac();
     try {
       const kural = await mods.policy.kurallariUret(db, {});
-      if (kural.state !== 'approved' && process.env.OSINT_ROUTING_UNIFIED !== '1') {
+      if (kural.state !== 'approved') {
         return { atlandi: 'kurallar_onaysiz', sebep: kural.sebep,
                  sayilar: await sayilar(db),
                  kurallar: mods.policy.kurallariOzetle(kural) };

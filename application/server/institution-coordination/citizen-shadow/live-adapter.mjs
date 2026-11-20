@@ -3,8 +3,7 @@ import {shadowBatch} from './integration.mjs';
 import {catalog} from './catalog.mjs';
 import {deriveLocality} from './locality.mjs';
 import{canonicalSource,validPublication}from'./source-url.mjs';
-import{legacyCodes,fallbackDecision}from'./legacy-rules.mjs';
-const known=new Set([...catalog.map(r=>r.code),...legacyCodes]);
+const known=new Set(catalog.map(r=>r.code));
 export function adaptEvent(event){
  const locality=deriveLocality(event);
  const body=String(event.fullText||event.description||event.title||'').toLocaleLowerCase('tr-TR').replace(/\s+/g,' ').trim();
@@ -13,14 +12,14 @@ export function adaptEvent(event){
  return {...event,locality,eventIdentity:event.eventIdentity||event.canonicalEventId||correlation||event.id};
 }
 export function snapshot(db){return {institutions:db.prepare('SELECT * FROM coord_institutions').all(),topics:db.prepare('SELECT * FROM coord_topics').all(),grants:db.prepare('SELECT * FROM coord_institution_topic_grants').all()};}
-export function preview(db,events,options={}){const state=snapshot(db),adapted=events.map(adaptEvent),plan=shadowBatch(adapted,state,options);for(let i=0;i<plan.results.length;i++)if(plan.results[i].reason==='no_eligible_task'){const fallback=fallbackDecision(adapted[i],state);if(fallback.tasks.length)plan.results[i]=fallback;}return plan;}
+export function preview(db,events,options={}){return shadowBatch(events.map(adaptEvent),snapshot(db),options);}
 // Caller must opt in explicitly. Every permission is rechecked in the transaction.
 // No mail/Telegram outbox statements exist in this adapter.
-export function persistPlan(db,plan,{allowWrites=false,now=()=>new Date().toISOString(),transaction=true}={}){
+export function persistPlan(db,plan,{allowWrites=false,now=()=>new Date().toISOString()}={}){
  if(!allowWrites)throw Error('writes_not_explicitly_enabled');
  if(plan.mode!=='shadow'||!Array.isArray(plan.results))throw Error('invalid_plan');
  const report={inserted:0,duplicates:0,held:0,notifications:0};const legacyCache=new Map();
- if(transaction)db.exec('BEGIN IMMEDIATE');else if(!db.isTransaction)throw Error('outer_transaction_required');
+ db.exec('BEGIN IMMEDIATE');
  try{
   for(const result of plan.results)for(const task of result.tasks||[]){
    if(!known.has(task.topic)||!task.sourceEventId||task.locality?.district!=='Ümraniye'){report.held++;continue;}
@@ -53,6 +52,6 @@ export function persistPlan(db,plan,{allowWrites=false,now=()=>new Date().toISOS
    }
    db.prepare("INSERT INTO coord_audit(id,actor_account_id,actor_kind,institution_id,action,target_type,target_id,request_id,created_at) VALUES(?,NULL,'system',?,'cit_projection','case',?,NULL,?)").run(randomUUID(),allowed.institution_id,id,stamp);
   }
-  if(transaction)db.exec('COMMIT');return report;
- }catch(error){if(transaction)db.exec('ROLLBACK');throw error;}
+  db.exec('COMMIT');return report;
+ }catch(error){db.exec('ROLLBACK');throw error;}
 }
