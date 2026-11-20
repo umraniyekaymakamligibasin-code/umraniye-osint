@@ -43,7 +43,7 @@ export function persistPlan(db,plan,{allowWrites=false,now=()=>new Date().toISOS
     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'new',?,'ordinary',?,?) ON CONFLICT DO NOTHING`).run(id,allowed.institution_id,allowed.topic_id,task.sourceEventId,createHash('sha256').update(source.data).digest('hex'),key,fresh.title,fresh.summary,fresh.locality.neighborhood,fresh.locality.precision,e.publishedAt||null,e.firstSeenAt||e.collectedAt||stamp,0.86,fresh.risk==='high'?'important':'normal',stamp,stamp);
    if(!inserted.changes){report.duplicates++;continue;}
    report.inserted++;
-   for(const s of fresh.limitedDisclosure?[]:e.sources?.length?e.sources:[e]){
+   for(const s of e.sources?.length?e.sources:[e]){
     try{const u=new URL(s.url);if(u.protocol!=='https:'||u.username||u.password)continue;
      db.prepare('INSERT OR IGNORE INTO coord_case_sources VALUES(?,?,?,?,?,?,?)').run(randomUUID(),id,u.href,String(s.sourceName||'Kaynak').slice(0,120),String(s.platform||e.platform||'web').slice(0,32),s.publishedAt||e.publishedAt||null,stamp);
     }catch{continue;}
