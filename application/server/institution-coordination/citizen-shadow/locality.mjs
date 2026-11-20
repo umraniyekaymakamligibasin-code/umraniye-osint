@@ -6,7 +6,7 @@ export function deriveLocality(event){
  const text=fold(event.fullText||event.description||event.title||'');
  if(/\b(ankara|izmir|kadikoy|uskudar|atasehir|beykoz|sancaktepe|cekmekoy|pendik|kartal)(?:da|de|dan|den|daki|deki)?\b/.test(text))return null;
  if(/\b(umraniye beykoz|beykoz umraniye|umraniye kavacik|kavacik umraniye)\b/.test(text))return null;
- const located=/\bumraniye (?:de|ilcesinde|ilcesi sinirlarinda)\b|\bumraniyede\b|\bumraniye (?:[a-z]+ ){1,4}mahallesi(?:nde| nde| sinirlarinda)\b/.exec(text);
+ const located=/\bumraniye (?:de|ilcesinde|ilcesi sinirlarinda)\b|\bumraniyede\b|\bumraniye (?:[a-z]+ ){1,4}(?:mahallesi(?:nde| nde| sinirlarinda)?|mah|mh)\b|\bistanbul umraniye (?:[a-z]+ ){1,4}(?:caddesi|sokagi)\b|\bumraniye istanbul\b/.exec(text);
  if(!located)return null;
  return{district:'Ümraniye',precision:'district',verified:false,routingEligible:true,evidence:'explicit_district_statement',evidenceRange:[located.index,located.index+located[0].length]};
 }

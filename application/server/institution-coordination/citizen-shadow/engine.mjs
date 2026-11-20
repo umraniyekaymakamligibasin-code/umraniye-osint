@@ -21,18 +21,19 @@ export function analyze(event,{rules=catalog,approvedInstitutions=[],approvedTop
  const sensitive=Object.values(event.sensitivityFlags||{}).some(Boolean)||['restricted','high','special'].includes(event.sensitivity)||/\b\d{11}\b|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b(?:cocuk kimligi|cocugun adi|hasta|tani|tc kimlik|aile ici siddet|telefon numarasi|daire no|kapi no)\b|(?:\+90|0)[\s()-]*5\d{2}[\s()-]*\d{3}[\s()-]*\d{2}[\s()-]*\d{2}/.test(privacyText);
  const signatures=new Map(),codes=new Set();
  for(const rule of rules){if(codes.has(rule.code))return {...base,status:'skipped',reason:'rule_code_conflict'};codes.add(rule.code);for(const pattern of rule.patterns){const signature=fold(pattern),route=JSON.stringify([...rule.panelCandidates].sort());if(signatures.has(signature)&&signatures.get(signature)!==route)return {...base,status:'skipped',reason:'rule_authority_conflict'};signatures.set(signature,route);}}
- const clauses=raw.split(/[.!?;\n]+|\s+ama\s+|\s+ancak\s+/iu).filter(Boolean);
- for(const rule of rules){const matched=clauses.filter(c=>rule.patterns.some(p=>phraseMatch(c,p)));if(!matched.length)continue;
+ const clauses=raw.replace(/\b(mah|mh|cad|cd|sk|sok)\./giu,'$1').split(/[.!?;\n]+|\s+ama\s+|\s+ancak\s+/iu).filter(Boolean);
+ for(const rule of rules){if(rule.requireAll?.some(p=>!phraseMatch(raw,p)))continue;const matched=clauses.filter(c=>rule.patterns.some(p=>phraseMatch(c,p))||(rule.contextPatterns||[]).some(group=>group.every(pattern=>new RegExp(pattern).test(fold(c)))));if(!matched.length)continue;
   const active=matched.filter(c=>clauseState(c)==='active'&&(!textEvidence||deriveLocality({description:c})?.routingEligible===true));
   if(!active.length){base.issues.push({code:rule.code,status:'skipped',reason:'negated_or_historical'});continue;}
  const key=digest(JSON.stringify([event.eventIdentity||event.canonicalEventId||event.id||event.url||digest(text),rule.code]));
   if(seenKeys.includes(key)){base.issues.push({code:rule.code,status:'duplicate',key});continue;}
-  if(sensitive||rule.sensitivity!=='ordinary'){base.issues.push({code:rule.code,status:'skipped',reason:'sensitive',key});continue;}
+  const minimized=rule.sensitiveHandling==='category_only'&&['CIT-FIRE-MINIMIZED-INCIDENT','CIT-POLICE-MINIMIZED-INCIDENT'].includes(rule.code);
+  if((sensitive&&!minimized)||rule.sensitivity!=='ordinary'){base.issues.push({code:rule.code,status:'skipped',reason:'sensitive',key});continue;}
   if(!rule.panelCandidates.length){base.issues.push({code:rule.code,status:'skipped',reason:'authority_unknown',key});continue;}
   for(const institution of rule.panelCandidates){const taskKey=digest(key+'|'+institution);if(seenKeys.includes(taskKey)){base.issues.push({code:rule.code,institution,status:'duplicate',key:taskKey});continue;}const grant=grants.find(g=>g.institution===institution&&g.topic===rule.code&&g.granted===true&&g.approvalReference);
    if(!approvedInstitutions.includes(institution)||!approvedTopics.includes(rule.code)||!grant){base.issues.push({code:rule.code,institution,status:'skipped',reason:'scope_not_approved',key});continue;}
    const neighborhood=neighborhoods.get(fold(place.neighborhood))||null;
-   base.tasks.push({key:digest(key+'|'+institution),issueKey:key,topic:rule.code,institution,panelRole:institution==='UMR_BELEDIYE'?'coordination':'review',serviceAuthority:rule.serviceAuthority,mandateVerified:rule.mandateVerified,title:rule.title,summary:`Ümraniye için ${rule.subcategory} kapsamında inceleme adayı.`,locality:{district:'Ümraniye',precision:neighborhood?'neighborhood':'district',neighborhood},risk:rule.risk,sourceEventId:event.id||null});
+   base.tasks.push({key:digest(key+'|'+institution),issueKey:key,topic:rule.code,institution,panelRole:institution==='UMR_BELEDIYE'?'coordination':'review',serviceAuthority:rule.serviceAuthority,mandateVerified:rule.mandateVerified,title:rule.title,summary:minimized?'Kaynakta Ümraniye ile ilgili olay bildiriliyor. Bilgi bağımsız doğrulanmamıştır; kişi ve özel adres ayrıntıları paylaşılmamıştır.':`Ümraniye için ${rule.subcategory} kapsamında inceleme adayı.`,locality:{district:'Ümraniye',precision:!minimized&&neighborhood?'neighborhood':'district',neighborhood:minimized?null:neighborhood},limitedDisclosure:minimized,legacyTopic:rule.legacyTopic||null,risk:rule.risk,sourceEventId:event.id||null});
   }
  }
  base.tasks=[...new Map(base.tasks.map(t=>[t.key,t])).values()];
