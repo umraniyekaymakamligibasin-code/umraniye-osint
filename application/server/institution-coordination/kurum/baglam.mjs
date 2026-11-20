@@ -250,12 +250,9 @@ export function bahsedilenHesaplar(event) {
   return [...hesaplar];
 }
 
-/** Projeksiyon katmani bu hassasiyetleri yazmaz (DB'de 'restricted' isaretli konular). */
+/** DB'de gercekten 'restricted' isaretli konular (projeksiyon bunlari yazmaz). */
 const KISITLI_KONULAR = Object.freeze(new Set([
-  'district_coordination', 'district_emergency_coordination', 'electrical_hazard',
-  'fallen_power_equipment', 'gas_leak_public_hazard', 'hazardous_material_response',
-  'health_service_access', 'multi_agency_incident', 'public_transport_safety',
-  'school_perimeter_safety', 'social_assistance_service_access', 'social_service_access',
+  'district_coordination', 'district_emergency_coordination',
 ]));
 
 /** Vatandas basvurusu sayilan kategoriler (kurumun kendi tanitim paylasimi HARIC). */
