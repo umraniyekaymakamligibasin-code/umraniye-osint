@@ -110,6 +110,37 @@ function kisaBaslik(value, sinir = 140) {
 }
 
 /**
+ * Kaynak kaziyicilar ayni cumleyi/paragrafi tekrar edebiliyor.
+ * Haberin anlamini bozmadan birebir tekrar eden uzun cumleleri atar.
+ */
+function tekrarlariAt(metin) {
+  const t = String(metin ?? '');
+  if (!t) return '';
+  const parcalar = t.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+  const gorulenParagraf = new Set();
+  const cikti = [];
+  for (const p of parcalar) {
+    const np = p.toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
+    if (np.length >= 40 && gorulenParagraf.has(np)) continue;
+    if (np.length >= 40) gorulenParagraf.add(np);
+    const gorulenCumle = new Set();
+    const cumleler = p.split(/(?<=[.!?…])\s+/u);
+    const temiz = [];
+    for (const c of cumleler) {
+      const nc = c.toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
+      if (nc.length >= 30) {
+        if (gorulenCumle.has(nc)) continue;
+        gorulenCumle.add(nc);
+      }
+      temiz.push(c);
+    }
+    const birlesik = temiz.join(' ').trim();
+    if (birlesik) cikti.push(birlesik);
+  }
+  return cikti.join('\n\n');
+}
+
+/**
  * Event-only dispatcher. The host must supply encrypted-recipient decryption,
  * verified-address checks, an allow-listed HTTPS portal URL, and a mail adapte
  * that guarantees idempotency by key. Ambiguous send outcomes are never retried.
@@ -181,7 +212,7 @@ export async function dispatchDueInstitutionNotices({ db, decryptAddress, sendWi
             .replace(/^[\s:;,.·|\-–—]+/u, '');
         }
       }
-      let govde = piiMaskele(hamMetin);
+      let govde = piiMaskele(tekrarlariAt(hamMetin));
       if (govde.length > MAIL_METIN_SINIRI) {
         govde = govde.slice(0, MAIL_METIN_SINIRI).replace(/\s+\S*$/u, '') + '\n\n[… haber metni kısaltıldı; tamamı panelde]';
       }
@@ -229,7 +260,7 @@ export async function dispatchDueInstitutionNotices({ db, decryptAddress, sendWi
       await sendWithIdempotency({
         to: address,
         idempotencyKey: idem,
-        subject: (caseTitle ? `Ümraniye OSINT: ${caseTitle}` : 'Ümraniye OSINT kurum panelinde yeni kayıt').slice(0, 200),
+        subject: (caseTitle ? `Ümraniye OSINT: ${kisaBaslik(caseTitle, 95)}` : 'Ümraniye OSINT kurum panelinde yeni kayıt').slice(0, 200),
         text: satirlar.join('\n'),
       });
       await db.prepare(`UPDATE coord_mail_outbox SET state='sent',sent_at=?,last_error_code=NULL WHERE id=? AND state='sending'`)
