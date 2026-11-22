@@ -29,5 +29,9 @@ test('queued source reaches authorized portal API and is hidden from another ins
  const adapter={prepare(sql){return{bind(...args){return{first:()=>db.prepare(sql).get(...args),all:()=>({results:db.prepare(sql).all(...args)}),run:()=>({meta:db.prepare(sql).run(...args)})}}}}};
  const api=createInstitutionCoordination({db:adapter,authenticate:async()=>({accountId:'viewer'}),isCentralAdmin:async()=>false,verifyCsrf:async()=>false,rateLimit:async()=>true});
  const response=await api.handle(new Request('https://fixture.invalid/api/institution/cases/'+id+'?institution=ISKI_UMR'));assert.equal(response.status,200);assert.equal((await response.json()).sources[0].source_url,event().url);
+ db.prepare("UPDATE coord_cases SET first_seen_at='2030-01-01T00:00:00Z' WHERE id=?").run(id);
+ put(db,{...event('backfill'),firstSeenAt:'2010-01-01T00:00:00Z'});run(db,{now:2000000});
+ const list=await api.handle(new Request('https://fixture.invalid/api/institution/cases?institution=ISKI_UMR&limit=1'));const page=await list.json();assert.equal(page.cases[0].first_seen_at,'2010-01-01T00:00:00.000Z');
+ const second=await api.handle(new Request('https://fixture.invalid/api/institution/cases?institution=ISKI_UMR&limit=1&before='+page.nextBefore));assert.equal((await second.json()).cases[0].id,id);
  assert.equal((await api.handle(new Request('https://fixture.invalid/api/institution/cases/'+id+'?institution=UMR_EMNIYET'))).status,404);
 }finally{db.close();}});

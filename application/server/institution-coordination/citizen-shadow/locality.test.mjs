@@ -1,0 +1,10 @@
+import test from'node:test';import assert from'node:assert/strict';import{deriveLocality}from'./locality.mjs';import{preview}from'./live-adapter.mjs';
+test('explicit locative creates evidence without fake verification',()=>{const l=deriveLocality({description:"Ümraniye'de su kesintisi var"});assert.equal(l.routingEligible,true);assert.equal(l.verified,false);});
+test('district name only and source name are insufficient',()=>{assert.equal(deriveLocality({description:'su kesintisi var',sourceName:'Ümraniye Haber'}),null);assert.equal(deriveLocality({description:'Ümraniye Belediyesi duyurdu'}),null);});
+test('district conflicts and transport routes held',()=>{for(const description of ["Ümraniye'de duyuruldu, Kadıköy'de su kesintisi var","Ümraniye'de Beykoz güzergahı değişti"])assert.equal(deriveLocality({description}),null);});
+test('legacy review cannot become verified',()=>assert.equal(deriveLocality({locationVerified:true,locationStatus:'review_required',districtScope:'local'}),null));
+test('outside verified locality not accepted',()=>assert.equal(deriveLocality({locality:{district:'Ankara',verified:true}}),null));
+test('real local bus incident is not rejected merely for saying sefer',()=>assert.equal(deriveLocality({description:"Ümraniye'de hatalı park otobüs seferini aksattı"}).routingEligible,true));
+test('explicit district plus neighborhood grammar',()=>assert.equal(deriveLocality({description:"Ümraniye Ihlamurkuyu Mahallesi'nde hatalı park nedeniyle otobüsün ilerleyemediği bildirildi"}).routingEligible,true));
+test('real neighborhood locative and bolgesinde are recognized',()=>{for(const description of ["Ümraniye Çakmak'ta elektrik kesintileri çok olmaya başladı",'Istanbul ümraniye cakmak bolgesinde kesintiler oluyor'])assert.equal(deriveLocality({description}).routingEligible,true);});
+test('street alone and agency possessive are not independent location evidence',()=>{for(const description of ['Menekşe Caddesinde yangın çıktı','Ümraniye Belediye Başkanımız da konuştu'])assert.equal(deriveLocality({description}),null);});

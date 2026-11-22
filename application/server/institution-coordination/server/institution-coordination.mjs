@@ -88,7 +88,7 @@ function safeSource(row) {
   };
 }
 function encodeCursor(row) {
-  const value = JSON.stringify({ t: row.first_seen_at, id: row.id });
+  const value = JSON.stringify({ t: row.created_at, id: row.id });
   return Buffer.from(value, 'utf8').toString('base64url');
 }
 function decodeCursor(value) {
@@ -157,7 +157,7 @@ export function createInstitutionCoordination(adapters) {
         const q = text(url.searchParams.get('q'), 100);
         const clauses = [CASE_SELECT];
         const params = [tenant.institution_id];
-        if (cursor) { clauses.push('AND (c.first_seen_at < ? OR (c.first_seen_at = ? AND c.id < ?))'); params.push(cursor.t, cursor.t, cursor.id); }
+        if (cursor) { clauses.push('AND (c.created_at < ? OR (c.created_at = ? AND c.id < ?))'); params.push(cursor.t, cursor.t, cursor.id); }
         if (STATUS.has(status)) { clauses.push('AND c.status = ?'); params.push(status); }
         else { clauses.push("AND c.status <> 'dismissed'"); }
         if (q) {
@@ -165,7 +165,7 @@ export function createInstitutionCoordination(adapters) {
           clauses.push("AND (c.title LIKE ? ESCAPE '!' OR c.summary_redacted LIKE ? ESCAPE '!')");
           params.push(`%${escaped}%`, `%${escaped}%`);
         }
-        clauses.push('ORDER BY c.first_seen_at DESC,c.id DESC LIMIT ?'); params.push(limit + 1);
+        clauses.push('ORDER BY c.created_at DESC,c.id DESC LIMIT ?'); params.push(limit + 1);
         const rows = await all(db, clauses.join('\n'), ...params);
         const hasMore = rows.length > limit;
         const page = rows.slice(0, limit);

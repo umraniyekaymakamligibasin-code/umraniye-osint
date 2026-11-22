@@ -1,7 +1,7 @@
 import{DatabaseSync}from'node:sqlite';
 import{createHash,randomUUID}from'node:crypto';
 import{readFileSync}from'node:fs';
-import{preview,persistPlan,snapshot,adaptEvent}from'./live-adapter.mjs';
+import{preview,persistPlan,snapshot,adaptEvent,findLegacyCase}from'./live-adapter.mjs';
 import{canonicalSource}from'./source-url.mjs';
 const hash=s=>createHash('sha256').update(s).digest('hex');
 const hour=3600000;
@@ -30,7 +30,7 @@ function synchronize(db,e,plan,revision,now){
  const desired=new Set();let updated=0,withdrawn=0,restored=0,verified=0;
  for(const task of plan.results[0].tasks){
   let c=resolveCase(db,e,task);
-  if(!c&&task.legacyTopic)c=db.prepare(`SELECT c.* FROM coord_cases c JOIN coord_institutions i ON i.id=c.institution_id JOIN coord_topics t ON t.id=c.topic_id WHERE i.code=? AND t.code=? AND c.source_event_id=? LIMIT 1`).get(task.institution,task.legacyTopic,e.id);
+  if(!c&&task.legacyTopic)c=findLegacyCase(db,e,task.institution,task.legacyTopic);
   if(!c||!permitted(db,c))throw Error('delivery_verification_failed');
   desired.add(c.id);verified++;
   // Adopt only cases created by this engine; legacy/human records are preserved.

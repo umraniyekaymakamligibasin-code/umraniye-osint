@@ -14,16 +14,16 @@ export function analyze(event,{rules=catalog,approvedInstitutions=[],approvedTop
  const incident=/yangin cikti|yaralandi|kavga cikti|silahli saldiri/.test(text);
  if(/senetli satis|vade farki|uygun fiyat|siparis|indirim kampanyasi/.test(text)&&!incident)return {...base,status:'excluded',reason:'advertisement'};
  const place=event.locality;
- const textEvidence=place?.routingEligible===true&&place?.evidence==='explicit_district_statement';
+ const textEvidence=place?.routingEligible===true&&['explicit_district_statement','dictionary_address_statement'].includes(place?.evidence);
  if(place?.district!=='Ümraniye'||!(place.verified===true||textEvidence)||!['district','neighborhood'].includes(place.precision))return {...base,status:'skipped',reason:'locality_unverified'};
  if(/\b(?:ankara|kadikoy|uskudar|izmir|atasehir)(?:da|de|daki|deki)?\b/.test(text))return {...base,status:'skipped',reason:'conflicting_location'};
  const privacyText=text.replace(/hasta cagri|hasta haklari|hasta hayvan/g,'tesis hizmeti');
  const sensitive=Object.values(event.sensitivityFlags||{}).some(Boolean)||['restricted','high','special'].includes(event.sensitivity)||/\b\d{11}\b|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b(?:cocuk kimligi|cocugun adi|hasta|tani|tc kimlik|aile ici siddet|telefon numarasi|daire no|kapi no)\b|(?:\+90|0)[\s()-]*5\d{2}[\s()-]*\d{3}[\s()-]*\d{2}[\s()-]*\d{2}/.test(privacyText);
  const signatures=new Map(),codes=new Set();
  for(const rule of rules){if(codes.has(rule.code))return {...base,status:'skipped',reason:'rule_code_conflict'};codes.add(rule.code);for(const pattern of rule.patterns){const signature=fold(pattern),route=JSON.stringify([...rule.panelCandidates].sort());if(signatures.has(signature)&&signatures.get(signature)!==route)return {...base,status:'skipped',reason:'rule_authority_conflict'};signatures.set(signature,route);}}
- const clauses=raw.replace(/\b(mah|mh|cad|cd|sk|sok)\./giu,'$1').split(/[.!?;\n]+|\s+ama\s+|\s+ancak\s+/iu).filter(Boolean);
+ const clauses=raw.replace(/(?<=\d)[.,](?=\d)/g,':').replace(/\b(mah|mh|cad|cd|sk|sok)\./giu,'$1').split(/[.!?;\n]+|\s+ama\s+|\s+ancak\s+/iu).filter(Boolean);
  for(const rule of rules){if(rule.requireAll?.some(p=>!phraseMatch(raw,p)))continue;const matched=clauses.filter(c=>rule.patterns.some(p=>phraseMatch(c,p))||(rule.contextPatterns||[]).some(group=>group.every(pattern=>new RegExp(pattern).test(fold(c)))));if(!matched.length)continue;
-  const active=matched.filter(c=>(!rule.requireProblem||/\b(?:ariza|kesinti|kesil|sizinti|patla|tasma|tasti|bozul|kirildi|tehlike|kacak|kaza|carpti|carpis|sorun|calismiyor|verilmiyor|yok|aksadi|magdur|sikayet|coktu|cop|atik|saldiri)[a-z]*\b/.test(fold(c)))&&clauseState(c)==='active'&&(!textEvidence||deriveLocality({description:c})?.routingEligible===true));
+  const active=matched.filter(c=>(!rule.requireProblem||/\b(?:ariza|kesinti|kesil|sizinti|patla|tasma|tasti|bozul|kirildi|tehlike|kacak|kaza|carpti|carpis|sorun|calismiyor|verilmiyor|yok|aksadi|magdur|sikayet|coktu|cop|atik|saldiri)[a-z]*\b/.test(fold(c)))&&clauseState(c)==='active');
   if(!active.length){base.issues.push({code:rule.code,status:'skipped',reason:'negated_or_historical'});continue;}
  const key=digest(JSON.stringify([event.eventIdentity||event.canonicalEventId||event.id||event.url||digest(text),rule.code]));
   if(seenKeys.includes(key)){base.issues.push({code:rule.code,status:'duplicate',key});continue;}
