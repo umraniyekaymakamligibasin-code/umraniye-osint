@@ -42,11 +42,15 @@ function synchronize(db,e,plan,revision,now){
   }
   const expectedUrls=(e.sources?.length?e.sources:[e]).map(s=>canonicalSource(s?.url)).filter(Boolean);
   const actualUrls=db.prepare('SELECT source_url FROM coord_case_sources WHERE coord_case_id=?').all(c.id).map(s=>s.source_url);
-  if(c.source_revision!==revision||expectedUrls.some(url=>!actualUrls.includes(url))){
-   db.prepare('UPDATE coord_cases SET source_revision=?,title=?,summary_redacted=?,neighborhood=?,location_precision=?,updated_at=? WHERE id=?').run(revision,task.title,task.summary,task.locality.neighborhood,task.locality.precision,new Date(now).toISOString(),c.id);updated++;
-   // Source links are refreshed in the same transaction as the changed projection.
+  const primary=c.source_event_id===e.id;
+  if((primary&&c.source_revision!==revision)||expectedUrls.some(url=>!actualUrls.includes(url))){
+   if(primary)db.prepare('UPDATE coord_cases SET source_revision=?,title=?,summary_redacted=?,neighborhood=?,location_precision=?,updated_at=? WHERE id=?').run(revision,task.title,task.summary,task.locality.neighborhood,task.locality.precision,new Date(now).toISOString(),c.id);
+   updated++;
+   // A shared case keeps every active source, without alternating its owner revision.
+   const events=[e];
+   for(const row of db.prepare('SELECT l.data FROM lab_items l JOIN cit_case_links k ON k.event_id=l.id WHERE k.case_id=? AND k.active=1 AND k.event_id<>?').all(c.id,e.id)){try{events.push(JSON.parse(row.data));}catch{}}
    db.prepare('DELETE FROM coord_case_sources WHERE coord_case_id=?').run(c.id);
-   for(const s of e.sources?.length?e.sources:[e]){const url=canonicalSource(s?.url);if(url)db.prepare('INSERT OR IGNORE INTO coord_case_sources VALUES(?,?,?,?,?,?,?)').run(randomUUID(),c.id,url,String(s.sourceName||'Kaynak').slice(0,120),String(s.platform||e.platform||'web').slice(0,32),c.first_published_at,new Date(now).toISOString());}
+   for(const event of events)for(const s of event.sources?.length?event.sources:[event]){const url=canonicalSource(s?.url);if(url)db.prepare('INSERT OR IGNORE INTO coord_case_sources VALUES(?,?,?,?,?,?,?)').run(randomUUID(),c.id,url,String(s.sourceName||'Kaynak').slice(0,120),String(s.platform||event.platform||'web').slice(0,32),c.first_published_at,new Date(now).toISOString());}
    audit(db,c.id,c.institution_id,'cit_auto_updated',now);
   }
   db.prepare(`INSERT INTO cit_case_links(event_id,case_id,topic_code,institution_code,active,source_revision,verified_at) VALUES(?,?,?,?,1,?,?) ON CONFLICT(event_id,case_id) DO UPDATE SET active=1,source_revision=excluded.source_revision,verified_at=excluded.verified_at`).run(e.id,c.id,task.topic,task.institution,revision,now);
@@ -64,7 +68,7 @@ function synchronize(db,e,plan,revision,now){
 }
 export function auditDeliveries(db,{now=Date.now(),limit=10}={}){
  let checked=0,requeued=0,inaccessible=0;
- const rows=db.prepare(`SELECT l.event_id,l.case_id,l.source_revision,c.institution_id,c.topic_id,c.title,c.summary_redacted,c.source_revision case_revision FROM cit_case_links l JOIN coord_cases c ON c.id=l.case_id WHERE l.active=1 ORDER BY l.verified_at,l.case_id LIMIT ?`).all(limit);
+ const rows=db.prepare(`SELECT l.event_id,l.case_id,l.source_revision,c.source_event_id,c.institution_id,c.topic_id,c.title,c.summary_redacted,c.source_revision case_revision FROM cit_case_links l JOIN coord_cases c ON c.id=l.case_id WHERE l.active=1 ORDER BY l.verified_at,l.case_id LIMIT ?`).all(limit);
  for(const c of rows){
   const raw=db.prepare('SELECT data FROM lab_items WHERE id=?').get(c.event_id);if(!raw)continue;
   let e;try{e=JSON.parse(raw.data);}catch{continue;}checked++;
@@ -72,7 +76,7 @@ export function auditDeliveries(db,{now=Date.now(),limit=10}={}){
   const sources=db.prepare('SELECT source_url FROM coord_case_sources WHERE coord_case_id=?').all(c.case_id).map(s=>s.source_url);
   const allowed=permitted(db,c),members=db.prepare(`SELECT count(*) n FROM coord_memberships m JOIN team_accounts a ON a.id=m.account_id AND a.active=1 WHERE m.institution_id=? AND m.active=1`).get(c.institution_id).n;
   if(!members)inaccessible++;
-  if(!allowed||c.source_revision!==c.case_revision||hash(raw.data)!==c.source_revision||!c.title||!c.summary_redacted||expected.some(u=>!sources.includes(u))){
+  if(!allowed||(c.event_id===c.source_event_id&&c.source_revision!==c.case_revision)||hash(raw.data)!==c.source_revision||!c.title||!c.summary_redacted||expected.some(u=>!sources.includes(u))){
    requeued+=Number(db.prepare("UPDATE cit_delivery_jobs SET state='pending',available_at=0 WHERE event_id=? AND state NOT IN('pending','processing')").run(c.event_id).changes);
   }
   db.prepare('UPDATE cit_case_links SET verified_at=? WHERE event_id=? AND case_id=?').run(now,c.event_id,c.case_id);

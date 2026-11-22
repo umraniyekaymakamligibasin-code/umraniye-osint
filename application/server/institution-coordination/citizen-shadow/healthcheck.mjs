@@ -14,6 +14,6 @@ try{
  const sourceUnits={};for(const unit of ['umraniye-osint-instagram-api.service','umraniye-osint-browser.service']){try{sourceUnits[unit]=execFileSync('systemctl',['show',unit,'-p','Result','--value'],{encoding:'utf8',timeout:5000}).trim();}catch{sourceUnits[unit]='unknown';}}
  let recovery=null;const attempts=decision.attempts;
  if(decision.action){attempts.push(now);try{execFileSync('systemctl',['start','--no-block',decision.action==='start_timer'?'umraniye-cit-routing.timer':'umraniye-cit-routing.service'],{stdio:'ignore',timeout:5000});recovery='requested';}catch{recovery='failed';}}
- report={at:new Date(now).toISOString(),healthy:!decision.stale&&!overdue&&!errors.length&&!missingCases&&!last?.deliveryAudit?.inaccessible,queue,errors,overdue,missingCases,lastRunAt:last?.at||null,deliveryAudit:last?.deliveryAudit||null,sourceUnits,recoveryAction:decision.action,recovery,recoveryAttempts:attempts,recoveryLimited:decision.recoveryLimited};
+ report={at:new Date(now).toISOString(),healthy:!decision.stale&&!overdue&&!errors.length&&!missingCases&&!last?.deliveryAudit?.inaccessible&&!Object.values(sourceUnits).some(v=>!['success',''].includes(v)),queue,errors,overdue,missingCases,lastRunAt:last?.at||null,deliveryAudit:last?.deliveryAudit||null,sourceUnits,recoveryAction:decision.action,recovery,recoveryAttempts:attempts,recoveryLimited:decision.recoveryLimited};
  await saveState(dir+'/health.json',report);console.log(JSON.stringify(report));
 }finally{db.close();}
