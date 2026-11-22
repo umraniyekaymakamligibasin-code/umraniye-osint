@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import {publicEventProjection} from './authorized-event.mjs';
 
 /**
  * Tenant-isolated institutional case API.
@@ -173,6 +174,20 @@ export function createInstitutionCoordination(adapters) {
         return json({ institution: tenant.code, cases: page, nextBefore: hasMore && page.length ? encodeCursor(page.at(-1)) : null });
       }
 
+      const eventMatch=path.match(/^\/cases\/([A-Za-z0-9_-]{1,120})\/event$/);
+      if(eventMatch&&request.method==='GET'){
+        const tenant=await resolveMembership(db,actorKey,text(url.searchParams.get('institution'),80));
+        if(!tenant)return json({error:'case_not_found'},404);
+        const allowed=await first(db,`${CASE_SELECT} AND c.id=? LIMIT 1`,tenant.institution_id,eventMatch[1]);
+        if(!allowed)return json({error:'case_not_found'},404);
+        const c=await first(db,'SELECT c.source_event_id,c.sensitivity,c.title,t.code FROM coord_cases c JOIN coord_topics t ON t.id=c.topic_id WHERE c.id=? AND c.institution_id=?',eventMatch[1],tenant.institution_id);
+        const source=await first(db,'SELECT data FROM lab_items WHERE id=?',c.source_event_id);
+        if(!source)return json({available:false,reason:'source_no_longer_available'});
+        let event;try{event=JSON.parse(source.data);}catch{return json({available:false,reason:'source_unavailable'});}
+        const projection=publicEventProjection(c,event);
+        await audit(db,actorKey,tenant.institution_id,'source_view','case',eventMatch[1],requestId);
+        return json(projection||{available:false,reason:'limited_disclosure'});
+      }
       const detailMatch = path.match(/^\/cases\/([A-Za-z0-9_-]{1,120})$/);
       if (detailMatch && request.method === 'GET') {
         const tenant = await resolveMembership(db, actorKey, text(url.searchParams.get('institution'), 80));

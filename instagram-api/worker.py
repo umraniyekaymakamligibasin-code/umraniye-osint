@@ -307,8 +307,8 @@ class Worker:
                 row['paginationDeferred'] = True
                 break
             cursor = None if page == 0 else pending[0]
-            media = self.discover(handle, cursor)
             row['requests'] = row.get('requests', 0) + 1
+            media = self.discover(handle, cursor)
             posts = media.get('data') or []
             if not isinstance(posts, list):
                 raise ValueError('invalid_media_response')
