@@ -221,7 +221,18 @@ class Worker:
         self.control('metrics:' + row['handle'], metrics)
 
     def health_snapshot(self):
-        return [dict(self.control('metrics:' + handle) or {}, handle=handle) for handle in self.handles]
+        rows = []
+        for handle in self.handles:
+            item = dict(self.control('metrics:' + handle) or {}, handle=handle)
+            progress = self.db.execute('SELECT last_attempt,last_success FROM source_progress WHERE handle=?', (handle,)).fetchone()
+            if progress:
+                if progress[0]:item.setdefault('lastAttemptAt', iso(progress[0]))
+                if progress[1]:item.setdefault('lastContentReadAt', iso(progress[1]))
+            gate = self.db.execute('SELECT retry_at,code FROM health WHERE handle=?', (handle,)).fetchone()
+            if gate and gate[0] > now():
+                item.update(nextScanAt=iso(gate[0]),lastErrorKind=gate[1],healthStatus='unreadable' if gate[1]=='meta_error_110_2207013' else 'transient_error')
+            rows.append(item)
+        return rows
 
     def control(self, key, value=None):
         if value is not None:

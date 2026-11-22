@@ -20,11 +20,12 @@ class ShadowTests(unittest.TestCase):
     def test_quote_metadata_football_never_accepted(self):
         e=record();e['metadata']=[{'text':'Ümraniyespor maç sonucu açıklandı'}]
         self.assertEqual(self.filtered(e)['reason'],'excluded_umraniyespor')
-    def test_old_reader_busy_is_only_deferred(self):
+    def test_independent_api_reader_never_starts_or_changes_browser(self):
         with tempfile.TemporaryDirectory() as d:
             state=Path(d);(state/'snapshot.json').write_text(json.dumps(snapshot()),encoding='utf-8');(state/'accounts.sqlite').touch()
-            with patch.object(prepare,'states',return_value={}),patch.object(worker,'old_busy',return_value=True),patch.object(worker,'collect',side_effect=AssertionError('must not collect')):r=worker.run(state,True)
-            self.assertEqual(r['status'],'deferred_existing_x_round');self.assertFalse(r['liveAttempted'])
+            async def collect_fixture(*args,**kwargs):return None
+            with patch.object(prepare,'states',return_value={}),patch.object(worker,'old_busy',return_value=True),patch.object(worker,'collect',side_effect=collect_fixture) as collect:r=worker.run(state,True)
+            self.assertEqual(collect.call_count,1);self.assertTrue(r['liveAttempted']);self.assertEqual(r['productionWrites'],0);self.assertEqual(r['telegramWrites'],0)
     def test_turkish_and_inactive_central_keywords(self):
         self.assertEqual(self.filtered(record())['decision'],'shadow_accepted')
         self.assertEqual(self.filtered(record('Ümraniye pasif konusu hakkında belediye toplantısı gerçekleştirildi.'))['reason'],'keyword_missing')
@@ -73,8 +74,8 @@ class ShadowTests(unittest.TestCase):
                 self.assertEqual(r['status'],'empty_results' if fail is None else worker.status_error(fail))
                 if fail:self.assertGreater(r['retryAt'],__import__('time').time())
     def test_query_rotation_from_enabled_sources_only(self):
-        groups=[{'kind':'olay','terms':['yangın','kaza','polis','trafik','ambulans','deprem']}];sources=[{'handle':'tc_umraniye'}]
-        a=worker.plan(groups,sources,0,worker.utcnow());b=worker.plan(groups,sources,1,worker.utcnow());self.assertNotEqual(a[0],b[0]);self.assertIn('from:tc_umraniye',a[1]['query']);self.assertLessEqual(len(a),2)
+        groups=[{'kind':'olay','terms':['yangın','kaza','polis','trafik','ambulans','deprem']}];sources=[{'handle':'tc_umraniye','enabled':True},{'handle':'local_news','enabled':True},{'handle':'disabled_news','enabled':False}]
+        a=worker.plan(groups,sources,0,worker.utcnow());b=worker.plan(groups,sources,1,worker.utcnow());self.assertNotEqual(a,b);self.assertTrue(any('from:local_news' in p['query'] for p in a));self.assertTrue(any('@tc_umraniye' in p['query'] and '-from:tc_umraniye' in p['query'] for p in a));self.assertFalse(any('disabled_news' in p['query'] for p in a));self.assertLessEqual(len(a),6)
     def test_pinned_real_library_signature(self):
         from twscrape import API
         self.assertEqual(importlib.metadata.version('twscrape'),'0.21.0')
@@ -89,7 +90,7 @@ class ShadowTests(unittest.TestCase):
             c.executescript('CREATE TABLE facebook_keywords(id,term,aliases,enabled);CREATE TABLE common_keyword_groups(id,name,kind,priority,enabled,position);CREATE TABLE common_keyword_members(keyword_id,group_id,provider,enabled);CREATE TABLE common_keyword_state(id,revision);CREATE TABLE workspace_settings(id,data);CREATE TABLE lab_items(data,published_at);CREATE TABLE lab_outbox(id,data);')
             for table in prepare.TABLES:
                 for row in s['tables'][table]:c.execute('INSERT INTO '+table+' ('+','.join(row)+') VALUES('+','.join('?' for _ in row)+')',list(row.values()))
-            c.commit();c.close();before=p.read_bytes();out=prepare.read_snapshot(p,Path(__file__).parent,{})
+            c.execute('CREATE TABLE lab_config(id,data)');c.commit();c.close();before=p.read_bytes();out=prepare.read_snapshot(p,Path(__file__).parent,{})
             self.assertEqual(before,p.read_bytes());self.assertNotIn('lab_outbox',out['tables']);self.assertEqual(out['revision'],5)
 
 if __name__=='__main__':unittest.main(verbosity=2)

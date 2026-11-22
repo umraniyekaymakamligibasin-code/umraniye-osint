@@ -3,6 +3,7 @@ import{createHash,randomUUID}from'node:crypto';
 import{readFileSync}from'node:fs';
 import{preview,persistPlan,snapshot,adaptEvent,findLegacyCase}from'./live-adapter.mjs';
 import{canonicalSource}from'./source-url.mjs';
+import{routingRevision}from'./routing-revision.mjs';
 const hash=s=>createHash('sha256').update(s).digest('hex');
 const hour=3600000;
 export function initDelivery(db){
@@ -15,7 +16,7 @@ export function initDelivery(db){
  }
 }
 export function currentPolicy(db){
- const files=['engine.mjs','language.mjs','locality.mjs','catalog.mjs','domain-catalog.mjs','extended-catalog.mjs','incident-rules.mjs','live-adapter.mjs','legacy-rules.mjs','../kurum/topic-terms.json','pipeline.mjs'];
+ const files=['engine.mjs','language.mjs','locality.mjs','catalog.mjs','domain-catalog.mjs','extended-catalog.mjs','incident-rules.mjs','live-adapter.mjs','legacy-rules.mjs','../kurum/topic-terms.json','routing-revision.mjs','pipeline.mjs'];
  let dictionary='';try{dictionary=db.prepare("SELECT data FROM workspace_settings WHERE id='location-dictionary'").get()?.data||'';}catch{}
  const approvals=snapshot(db);for(const rows of Object.values(approvals))rows.sort((a,b)=>String(a.id||a.institution_id+'|'+a.topic_id).localeCompare(String(b.id||b.institution_id+'|'+b.topic_id)));
  return hash(files.map(f=>readFileSync(new URL(f,import.meta.url),'utf8')).join('\n')+JSON.stringify(approvals)+dictionary);
@@ -90,18 +91,27 @@ export function runBatch(db,{now=Date.now(),limit=25,policyVersion=currentPolicy
  db.prepare(`UPDATE cit_delivery_jobs SET state='pending',available_at=0,attempts=0 WHERE event_id IN(SELECT event_id FROM cit_delivery_jobs WHERE state IN('done','retry') AND policy_version<>? ORDER BY event_id LIMIT 250)`).run(policyVersion);
  const deliveryAudit=auditDeliveries(db,{now,limit:10});
  const jobs=db.prepare(`SELECT j.* FROM cit_delivery_jobs j WHERE j.state IN('pending','retry') AND j.available_at<=? ORDER BY j.priority DESC,j.available_at,j.event_id LIMIT ?`).all(now,limit);
- const report={at:new Date(now).toISOString(),examined:0,inserted:0,duplicates:0,updated:0,withdrawn:0,restored:0,verified:0,failed:0,reasons:{},messagesSent:0,policyVersion,deliveryAudit};
+ const report={at:new Date(now).toISOString(),examined:0,metadataOnly:0,inserted:0,duplicates:0,updated:0,withdrawn:0,restored:0,verified:0,failed:0,reasons:{},messagesSent:0,policyVersion,deliveryAudit};
  for(const job of jobs){
   const token=randomUUID();if(!db.prepare("UPDATE cit_delivery_jobs SET state='processing',claim_token=?,lease_until=?,policy_version=? WHERE event_id=? AND generation=? AND state IN('pending','retry')").run(token,now+120000,policyVersion,job.event_id,job.generation).changes)continue;
   try{
    db.exec('BEGIN IMMEDIATE');const row=db.prepare('SELECT data FROM lab_items WHERE id=?').get(job.event_id);
    if(!row){db.prepare("UPDATE cit_delivery_jobs SET state='waiting_source',outcome='source_missing',lease_until=NULL,claim_token=NULL WHERE event_id=?").run(job.event_id);db.exec('COMMIT');continue;}
    const event=JSON.parse(row.data);if(!event||typeof event!=='object'||event.id!==job.event_id)throw Error('source_identity_invalid');
-   const revision=hash(row.data),e=adaptEvent(event),plan=preview(db,[event]);
+   const revision=hash(row.data),meaningful=routingRevision(event),fingerprintKey='routing_revision:'+event.id;
+   const previous=db.prepare('SELECT value FROM cit_delivery_meta WHERE key=?').get(fingerprintKey)?.value;
+   if(job.source_revision&&job.source_revision!==revision&&job.policy_version===policyVersion&&previous===meaningful){
+    db.prepare('UPDATE cit_case_links SET source_revision=?,verified_at=? WHERE event_id=?').run(revision,now,event.id);
+    db.prepare(`UPDATE coord_cases SET source_revision=? WHERE source_event_id=? AND EXISTS(SELECT 1 FROM cit_case_links l WHERE l.case_id=coord_cases.id AND l.event_id=? AND l.active=1)`).run(revision,event.id,event.id);
+    db.prepare("UPDATE cit_delivery_jobs SET state=?,available_at=?,lease_until=NULL,claim_token=NULL,source_revision=?,updated_at=? WHERE event_id=? AND claim_token=?").run(job.outcome==='approved_panel_candidates'?'done':'retry',job.outcome==='approved_panel_candidates'?0:now+6*hour,revision,now,event.id,token);
+    db.exec('COMMIT');report.metadataOnly++;continue;
+   }
+   const e=adaptEvent(event),plan=preview(db,[event]);
    const result=persistPlan(db,plan,{allowWrites:true,transaction:false,now:()=>new Date(now).toISOString()});
    if(result.held)throw Error('projection_held');
    const synced=synchronize(db,e,plan,revision,now),decision=plan.results[0];
    if(beforeAck)beforeAck(db,job);
+   db.prepare('INSERT INTO cit_delivery_meta VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(fingerprintKey,meaningful);
    const unassigned=!decision.tasks.length;
    db.prepare(`UPDATE cit_delivery_jobs SET state=?,priority=0,attempts=0,available_at=?,lease_until=NULL,claim_token=NULL,policy_version=?,source_revision=?,outcome=?,error_code=NULL,updated_at=? WHERE event_id=? AND claim_token=? AND generation=?`).run(unassigned?'retry':'done',unassigned?now+6*hour:0,policyVersion,revision,decision.reason,now,job.event_id,token,job.generation);
    db.exec('COMMIT');report.examined++;report.inserted+=result.inserted;report.duplicates+=result.duplicates;for(const k of ['updated','withdrawn','restored','verified'])report[k]+=synced[k];report.reasons[decision.reason]=(report.reasons[decision.reason]||0)+1;
