@@ -4,6 +4,7 @@ import {pendingReviewItems,reviewPublicationKey,matchingApproval,manualApproval}
 import {compareRecordsNewest,retainedEvent,retentionCutoff} from '../src/retention.js';
 import {localScopeAssessment,applyLocalScopeSafety} from './local-scope-policy.mjs';
 import {createDeliveryScheduler} from './delivery-scheduler.mjs';
+import {createCadencedTrigger} from './scan-trigger.mjs';
 import {isModerationHidden} from './content-moderation.mjs';
 import {isUmraniyesporContent} from './filters/umraniyespor.mjs';
 import{deliveryFreshness}from './delivery-freshness.mjs';
@@ -36,6 +37,7 @@ export function createIntegrations(base,env,{origin,allowedHosts=[],token='',cha
  const institutional=createInstitutionalManager(env.DB,{origin,now});
  const publicResearch=c=>({...c,platformSources:(c.platformSources||[]).filter(s=>!s.institutional)});
  const facebook=createFacebookManager(env.DB,{dataDir:process.env.DATA_DIR||'/var/lib/umraniye-osint-deneme',research,deliveryAllowed:facebookDeliveryAllowed});
+ const facebookScan=createCadencedTrigger(()=>facebook.scan());
  const hosts=new Set(allowedHosts.map(s=>s.trim().toLowerCase()).filter(Boolean));
  const youtubeCache=new Map();
  let running=null,dispatching=null,closed=false,recovery=null,telegramBaseline=null,nextDeliveryAt=0;
@@ -315,7 +317,7 @@ async function editorialApprove(request,actor){
   }
   if(u.pathname==='/api/admin/integrations/browser-worker'){
    const supplied=Buffer.from(request.headers.get('X-OSINT-Browser-Key')||''),expected=Buffer.from(browserKey);if(!browserKey||supplied.length!==expected.length||!timingSafeEqual(supplied,expected))return reply({error:'Bulunamadı'},404);
-   if(request.method==='GET'){facebook.scan().catch(()=>log(JSON.stringify({event:'facebook_api_scan_failed'})));return reply(await research.config());}
+   if(request.method==='GET'){facebookScan.request().catch(()=>log(JSON.stringify({event:'facebook_api_scan_failed'})));return reply(await research.config());}
    if(request.method==='POST'){try{const text=await request.text();if(text.length>60000)return reply({error:'İstek çok büyük'},413);await loadInstitutionalTargets(env.DB);const result=await research.ingest(JSON.parse(text));const scheduled=deliveryRefresh.request();ctx?.waitUntil?.(scheduled);return reply({ok:true,accepted:result.accepted,rejected:result.rejected,receipts:result.receipts||[]});}catch(e){return reply({error:'Tarayıcı sonuçları alınamadı'},e.message==='revision_conflict'?409:400)}}
    return reply({error:'Bulunamadı'},404);
   }

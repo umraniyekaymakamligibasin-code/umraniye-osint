@@ -22,6 +22,8 @@ LINK = re.compile(r'^https://(?:www\.)?instagram\.com/(?:p|reel)/[A-Za-z0-9_-]+/
 FRESH_SECONDS = 3 * 3600
 ACCESS_BLOCK_CODE = 'meta_error_200_5258005'
 ACCESS_RECHECK_SECONDS = 1800
+RECONCILE_SECONDS = 3600
+PAGE_SIZE = 10
 
 
 def now():
@@ -53,7 +55,7 @@ def finish_report(report, attempted):
     if not attempted:
         report['status'] = 'source_backoff' if report.get('waitingSources') else ('no_active_sources' if not report.get('activeSources') else 'no_sources_attempted')
     elif report['readSources']:
-        report['status'] = 'partial_read' if report['failedSources'] else 'completed'
+        report['status'] = 'partial_read' if report['failedSources'] or report.get('deferredSources') or report.get('timeBudgetReached') else 'completed'
     else:
         report['status'] = 'source_errors' if report['failedSources'] else 'empty_results'
     if report['status'] in ('source_backoff', 'source_errors'):
@@ -65,10 +67,11 @@ def finish_report(report, attempted):
 
 
 class MetaError(Exception):
-    def __init__(self, error):
+    def __init__(self, error, retry_after=None):
         self.code = error.get('code')
         self.subcode = error.get('error_subcode')
         self.details = str(error.get('message') or '')
+        self.retry_after = retry_after
         # No URLs, tokens or raw remote response enter status files/journal.
         super().__init__('meta_error_' + str(self.code) + '_' + str(self.subcode))
 
@@ -90,6 +93,12 @@ def json_request(url, headers=None, payload=None, timeout=18):
             if len(raw) > 4_000_000:
                 raise ValueError('response_too_large')
             result = json.loads(raw)
+            if allowed.hostname == 'graph.facebook.com' and isinstance(result, dict):
+                try:
+                    usage = json.loads(response.headers.get('X-App-Usage', '{}'))
+                    result['_osint_usage'] = {k: v for k, v in usage.items() if k in ('call_count', 'total_time', 'total_cputime') and type(v) in (int, float) and 0 <= v <= 1000}
+                except (ValueError, TypeError, AttributeError):
+                    pass
     except urllib.error.HTTPError as error:
         try:
             raw = json.loads(error.read(65536))
@@ -98,7 +107,11 @@ def json_request(url, headers=None, payload=None, timeout=18):
         finally:
             error.close()
         if isinstance(raw, dict) and isinstance(raw.get('error'), dict) and allowed.hostname == 'graph.facebook.com':
-            raise MetaError(raw['error']) from None
+            try:
+                retry_after = max(0, min(86400, float(error.headers.get('Retry-After', ''))))
+            except (ValueError, TypeError):
+                retry_after = None
+            raise MetaError(raw['error'], retry_after) from None
         raise RuntimeError('http_' + str(error.code)) from None
     if not isinstance(result, dict):
         raise ValueError('response_not_object')
@@ -170,7 +183,7 @@ class Worker:
         # Least recently attempted eligible source first, ties retain rotation order.
         attempts = {r[0]: r[1] for r in self.db.execute('SELECT handle,last_attempt FROM source_progress')}
         eligible.sort(key=lambda h: attempts.get(h, 0))
-        return eligible[:3], [h for h in rotated if states.get(h, 0) > now()]
+        return eligible, [h for h in rotated if states.get(h, 0) > now()]
 
     def source_progress(self, row):
         previous = self.db.execute('SELECT last_success FROM source_progress WHERE handle=?', (row['handle'],)).fetchone()
@@ -178,6 +191,37 @@ class Worker:
         self.db.execute('INSERT OR REPLACE INTO source_progress VALUES(?,?,?,?,?,?)',
                         (row['handle'], now(), last_success, row['status'], row['read'], row.get('newIdentities', 0)))
         self.db.commit()
+        metrics = self.control('metrics:' + row['handle']) or {}
+        metrics['lastAttemptAt'] = iso()
+        if row['status'] == 'readable' and row.get('read', 0) > 0:
+            metrics['lastContentReadAt'] = iso()
+        if row.get('newPending', 0):
+            metrics['lastNewPostAt'] = iso()
+        metrics['totalRead'] = int(metrics.get('totalRead', 0)) + row.get('read', 0)
+        metrics['uniquePosts'] = max(int(metrics.get('uniquePosts', 0)) + row.get('newIdentities', 0), self.db.execute('SELECT count(*) FROM posts WHERE handle=?', (row['handle'],)).fetchone()[0])
+        metrics['newPosts'] = int(metrics.get('newPosts', 0)) + row.get('newPending', 0)
+        metrics['duplicates'] = int(metrics.get('duplicates', 0)) + row.get('reasons', {}).get('known', 0)
+        rejected = metrics.setdefault('rejectedByReason', {})
+        for reason, count in row.get('reasons', {}).items():
+            if reason not in ('known', 'pending'):
+                rejected[reason] = int(rejected.get(reason, 0)) + count
+        samples = (metrics.get('discoverySamples', []) + row.get('discoveryLagSeconds', []))[-100:]
+        metrics['discoverySamples'] = samples
+        ordered = sorted(samples)
+        metrics['latencySamples'] = len(samples)
+        metrics['meanDiscoverySeconds'] = round(sum(samples) / len(samples), 2) if samples else None
+        metrics['p95DiscoverySeconds'] = ordered[int((len(ordered)-1)*.95)] if ordered else None
+        metrics['requests'] = int(metrics.get('requests', 0)) + row.get('requests', 0)
+        metrics['nextScanAt'] = row.get('retryAt') or iso(now() + 300)
+        metrics['verificationRequired'] = row.get('code') == 190
+        metrics['lastErrorKind'] = ('meta_error_' + str(row.get('code')) + '_' + str(row.get('subcode'))) if row['status'] == 'api_error' else row.get('errorType') if row['status'] == 'read_error' else None
+        metrics['healthStatus'] = ('verification_required' if metrics['verificationRequired'] else 'quota_backoff' if row.get('quotaDeferred') else 'transient_error' if row['status'] in ('api_error', 'read_error') else 'partial_read' if row.get('paginationDeferred') else 'healthy' if row.get('newPending') else 'no_new_content')
+        if row.get('code') == 110 and row.get('subcode') == 2207013:
+            metrics['healthStatus'] = 'unreadable'
+        self.control('metrics:' + row['handle'], metrics)
+
+    def health_snapshot(self):
+        return [dict(self.control('metrics:' + handle) or {}, handle=handle) for handle in self.handles]
 
     def control(self, key, value=None):
         if value is not None:
@@ -230,12 +274,77 @@ class Worker:
         modifier = '.after(' + cursor + ')' if cursor else ''
         if cursor and not re.fullmatch(r'[A-Za-z0-9_=\-]+', cursor):
             raise ValueError('invalid_cursor')
-        fields = 'business_discovery.username(' + handle + '){username,media.limit(25)' + modifier + '{id,caption,permalink,timestamp,media_type}}'
+        fields = 'business_discovery.username(' + handle + '){username,media.limit(' + str(PAGE_SIZE) + ')' + modifier + '{id,caption,permalink,timestamp,media_type}}'
         result = graph(self.credentials['igUserId'], self.credentials['token'], {'fields': fields})
+        self.last_usage = result.get('_osint_usage') or {}
         source = result.get('business_discovery') or {}
         if str(source.get('username', '')).lower() != handle.lower():
             raise ValueError('source_identity_mismatch')
         return source.get('media') or {'data': []}
+
+    def read_source(self, handle, row, started):
+        """Always read the newest page; preserve bounded older gaps separately.
+
+        Known IDs do not establish an exhaustive archive. An hourly bounded
+        reconciliation also revisits older pages, including pinned/order changes.
+        """
+        pending = list(self.control('page_gaps:' + handle) or [])
+        reconcile = now() - float(self.control('reconciled:' + handle) or 0) >= RECONCILE_SECONDS
+        observed = set()
+        for page in range(3):
+            if page and now() - started > 150:
+                row['paginationDeferred'] = True
+                break
+            cursor = None if page == 0 else pending[0]
+            media = self.discover(handle, cursor)
+            row['requests'] = row.get('requests', 0) + 1
+            posts = media.get('data') or []
+            if not isinstance(posts, list):
+                raise ValueError('invalid_media_response')
+            if page:
+                pending.pop(0)
+            new_ids = 0
+            row['read'] += len(posts)
+            for post in posts:
+                media_id = str(post.get('id') or '')
+                if media_id in observed:
+                    continue
+                observed.add(media_id)
+                row['uniqueRead'] += 1
+                if media_id.isdigit() and self.db.execute('SELECT 1 FROM posts WHERE id=?', (media_id,)).fetchone() is None:
+                    new_ids += 1
+                    row['newIdentities'] += 1
+                    try:
+                        age = now() - dt.datetime.fromisoformat(post['timestamp'].replace('Z', '+00:00')).timestamp()
+                        if 0 <= age <= FRESH_SECONDS:
+                            row.setdefault('discoveryLagSeconds', []).append(round(age, 2))
+                    except (ValueError, TypeError, KeyError):
+                        pass
+                status = self.remember(handle, post)
+                row['reasons'][status] = row['reasons'].get(status, 0) + 1
+                row['newPending'] += status == 'pending'
+            after = (media.get('paging') or {}).get('cursors', {}).get('after')
+            # Inspect the full page before deciding whether to continue. A busy
+            # first page adds its fresh gap ahead of an existing older backlog.
+            if after and len(posts) >= PAGE_SIZE and (new_ids or reconcile):
+                if after not in pending:
+                    pending.insert(0, after)
+            if page == 0 and reconcile:
+                self.control('reconciled:' + handle, now())
+            self.control('page_gaps:' + handle, pending)
+            usage = getattr(self, 'last_usage', {})
+            if usage:
+                row['usagePercent'] = max(usage.values(), default=0)
+                if row['usagePercent'] >= 90:
+                    row['quotaDeferred'] = True
+                    break
+            if not pending:
+                row['caughtUp'] = new_ids == 0
+                break
+        if pending:
+            row['paginationDeferred'] = True
+            row['pendingPageGaps'] = len(pending)
+        row['boundedRead'] = True
 
     def remember(self, handle, post):
         media_id = str(post.get('id') or '')
@@ -358,7 +467,7 @@ class Worker:
             match = re.fullmatch(r'meta_error_(\d+)_(\d+)', str(health[1]))
             report['waitingSourceStates'].append({'handle': handle, 'retryAt': iso(health[0]), 'code': int(match[1]) if match else None, 'subcode': int(match[2]) if match else None,
                 'reason': 'source_unavailable_to_api' if str(health[1]) == 'meta_error_110_2207013' else 'source_backoff'})
-        report['sourceBudgetPerRound'] = 3
+        report['sourceBudgetPerRound'] = len(order)
         report['deferredSources'] = max(0, len(self.handles)-len(waiting)-len(order))
         attempted = 0
         for handle in order:
@@ -374,33 +483,7 @@ class Worker:
             row = {'handle': handle, 'read': 0, 'newPending': 0, 'status': 'readable', 'reasons': {}, 'newIdentities': 0, 'uniqueRead': 0}
             observed = set()
             try:
-                cursor = None
-                for page in range(3):
-                    media = self.discover(handle, cursor)
-                    posts = media.get('data') or []
-                    if not isinstance(posts, list):
-                        raise ValueError('invalid_media_response')
-                    row['read'] += len(posts)
-                    for post in posts:
-                        media_id = str(post.get('id') or '')
-                        if media_id in observed:
-                            continue
-                        observed.add(media_id)
-                        row['uniqueRead'] += 1
-                        if media_id.isdigit() and self.db.execute('SELECT 1 FROM posts WHERE id=?', (media_id,)).fetchone() is None:
-                            row['newIdentities'] += 1
-                        status = self.remember(handle, post)
-                        row['reasons'][status] = row['reasons'].get(status, 0) + 1
-                        row['newPending'] += status == 'pending'
-                    cursor = (media.get('paging') or {}).get('cursors', {}).get('after')
-                    # Do not assume API result order: inspect all bounded pages.
-                    if not cursor or len(posts) < 25:
-                        break
-                    if now() - started > 150:
-                        row['paginationDeferred'] = True
-                        break
-                else:
-                    row['paginationLimitReached'] = bool(cursor)
+                self.read_source(handle, row, started)
                 self.db.execute('DELETE FROM health WHERE handle=?', (handle,))
                 self.db.commit()
             except MetaError as error:
@@ -423,7 +506,7 @@ class Worker:
                     report['sources'].append(row)
                     break
                 if error.code in (4, 17, 32, 613):
-                    retry_at = now() + 3600
+                    retry_at = now() + (error.retry_after if error.retry_after is not None else 3600)
                     self.control('global_pause', {'fingerprint': fingerprint, 'retryAt': retry_at, 'code': error.code})
                     report.update(retryAt=iso(retry_at), pauseReason='meta_rate_limit', pauseCode=error.code)
                     report['status'] = 'api_rate_limited'
@@ -439,11 +522,18 @@ class Worker:
                 row.update(status='read_error', errorType=type(error).__name__)
             self.source_progress(row)
             report['sources'].append(row)
+            if row.get('quotaDeferred'):
+                retry_at = now() + 300
+                self.control('global_pause', {'fingerprint': fingerprint, 'retryAt': retry_at, 'code': 'usage_high'})
+                report.update(status='api_rate_limited', pauseReason='meta_usage_high', retryAt=iso(retry_at))
+                break
             time.sleep(0.5)
         if report['sources']:
             last = report['sources'][-1]['handle']
             self.control('rotation', (self.handles.index(last)+1) % max(1,len(self.handles)))
         report['uniqueRead'] = sum(r.get('uniqueRead',0) for r in report['sources'])
+        report['deferredSources'] = max(0, len(order) - attempted)
+        report['requests'] = sum(r.get('requests', 0) for r in report['sources'])
         report['newIdentities'] = sum(r.get('newIdentities',0) for r in report['sources'])
         total_read = sum(r.get('read', 0) for r in report['sources'])
         if total_read and report.get('status') != 'token_renewal_required':
@@ -488,6 +578,7 @@ def main():
             worker = Worker(directory, credentials, key, targets)
             try:
                 report = worker.run()
+                report['sourceHealth'] = worker.health_snapshot()
             finally:
                 worker.db.close()
         except Exception as error:

@@ -24,6 +24,13 @@ export function publicInstagramAPIState(value,now=Date.now()){
   waitingSources:count(value.waitingSources),attemptedSources:count(value.attemptedSources),readSources:count(value.readSources),failedSources:count(value.failedSources),
   intervalSeconds:300,activeSources:count(value.activeSources),pending:count(value.pending),
   tokenExpiresAt:date(value.tokenExpiresAt),tokenRenewalDue:expired||value.tokenRenewalDue===true,
+  sourceHealth:(Array.isArray(value.sourceHealth)?value.sourceHealth:[]).slice(0,200).filter(r=>typeof r.handle==='string'&&/^[a-z0-9_.]{1,30}$/.test(r.handle)).map(r=>({
+   handle:r.handle,status:safe(r.healthStatus)||'unknown',lastAttemptAt:date(r.lastAttemptAt),lastContentReadAt:date(r.lastContentReadAt),lastNewPostAt:date(r.lastNewPostAt),nextScanAt:date(r.nextScanAt),
+   totalRead:count(r.totalRead),uniquePosts:count(r.uniquePosts),newPosts:count(r.newPosts),duplicates:count(r.duplicates),requests:count(r.requests),latencySamples:count(r.latencySamples),
+   meanDiscoverySeconds:typeof r.meanDiscoverySeconds==='number'&&Number.isFinite(r.meanDiscoverySeconds)&&r.meanDiscoverySeconds>=0&&r.meanDiscoverySeconds<=10800?r.meanDiscoverySeconds:null,
+   p95DiscoverySeconds:typeof r.p95DiscoverySeconds==='number'&&Number.isFinite(r.p95DiscoverySeconds)&&r.p95DiscoverySeconds>=0&&r.p95DiscoverySeconds<=10800?r.p95DiscoverySeconds:null,
+   lastErrorKind:typeof r.lastErrorKind==='string'&&/^[A-Za-z0-9_]{1,80}$/.test(r.lastErrorKind)?r.lastErrorKind:null,verificationRequired:r.verificationRequired===true,
+   rejectedByReason:Object.fromEntries(Object.entries(r.rejectedByReason||{}).filter(([k,n])=>/^[a-z_]{1,60}$/.test(k)&&Number.isSafeInteger(n)&&n>=0&&n<=1000000000))})),
   sources:rows.slice(0,200).filter(r=>typeof r.handle==='string'&&/^[a-z0-9_.]{1,30}$/.test(r.handle)).map(r=>({
    handle:r.handle,status:safe(r.status)||'unknown',read:count(r.read),newPending:count(r.newPending),
    retryAt:date(r.retryAt),code:Number.isSafeInteger(r.code)?r.code:null,subcode:Number.isSafeInteger(r.subcode)?r.subcode:null,

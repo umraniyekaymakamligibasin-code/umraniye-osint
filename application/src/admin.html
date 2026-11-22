@@ -84,6 +84,12 @@ function instagramSourceStatus(row){
  if(row.code===190)return 'API anahtarı yenilenmeli';
  return ({readable:row.read?'Gönderiler okunuyor':'Profil okundu; gönderi dönmedi',backoff:'Yeniden kontrol için bekliyor',api_error:'API erişim hatası',read_error:'Okuma hatası'})[row.status]||'Kontrol gerekli';
 }
+function instagramSourceHealthTable(apiState){
+ const rows=apiState.sourceHealth||[],labels={healthy:'Okunuyor',no_new_content:'Yeni içerik yok',transient_error:'Geçici hata',quota_backoff:'Kota beklemesi',verification_required:'Doğrulama gerekli',unreadable:'Kaynak okunamıyor',partial_read:'Kısmi okuma',time_budget_exhausted:'Süre doldu',unknown:'Henüz ölçüm yok'};
+ if(!rows.length)return '<p class="muted">Kaynak ölçümleri ilk tamamlanan taramada oluşur.</p>';
+ const n=v=>Number.isFinite(Number(v))?Number(v):0,lag=v=>v===null||v===undefined?'—':(n(v)/60).toFixed(1);
+ return '<div style="overflow:auto"><table><thead><tr><th>Hesap</th><th>Durum</th><th>Son deneme</th><th>Son içerik okuma</th><th>Son yeni paylaşım</th><th>Sonraki kontrol</th><th>Benzersiz / tekrar</th><th>İstek</th><th>Yakalama ort./p95 (dk)</th><th>Eleme / hata</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>@'+esc(r.handle)+'</td><td>'+esc(labels[r.status]||labels.unknown)+'</td><td>'+esc(date(r.lastAttemptAt))+'</td><td>'+esc(date(r.lastContentReadAt))+'</td><td>'+esc(date(r.lastNewPostAt))+'</td><td>'+esc(date(r.nextScanAt))+'</td><td>'+n(r.uniquePosts)+' / '+n(r.duplicates)+'</td><td>'+n(r.requests)+'</td><td>'+lag(r.meanDiscoverySeconds)+' / '+lag(r.p95DiscoverySeconds)+' (n='+n(r.latencySamples)+')</td><td>'+esc(Object.entries(r.rejectedByReason||{}).map(([k,v])=>k+': '+n(v)).join(', ')||'—')+(r.lastErrorKind?' · '+esc(r.lastErrorKind):'')+'</td></tr>').join('')+'</tbody></table></div>';
+}
 function instagramAPICard(){
  const apiState=state.instagramAPI||{},rows=apiState.sources||[];
  const enabled=state.research?.automationEnabled&&state.research?.accounts?.some(a=>a.provider==='instagram'&&a.enabled);
@@ -97,7 +103,7 @@ function instagramAPICard(){
  '<small style="display:block">API anahtarı geçerlilik sonu: '+esc(date(apiState.tokenExpiresAt))+'</small>'+
  (apiState.tokenRenewalDue?'<p class="message error">API anahtarının yenilenmesi gerekiyor. Anahtarı sohbete veya bu sayfaya yapıştırmayın; sunucudaki güvenli kurulum aracını kullanın.</p>':'')+
  '<p>Son tur: '+read+' gönderi okundu · '+Number(apiState.accepted||0)+' kayıt kabul edildi · '+Number(apiState.rejected||0)+' kayıt elendi · '+Number(apiState.pending||0)+' kuyrukta</p>'+
- '<p class="muted">Her tamamlanan turdan sonra 5 dakika beklenir; tur başına en fazla 3 hesap sırayla kontrol edilir. Meta sınır koyarsa bekleme süresi korunur. İlk okunan eski paylaşımlar başlangıç kaydıdır. Hikâye, video sesi ve görseldeki yazılar bu okuyucuyla çözümlenmez.</p>'+
+ '<p class="muted">Hedef, uygun hesapları her turda sırayla okumaktır. Tur süresi veya Meta kotası dolarsa kalan hesaplar sonraki turda öncelik alır. Bilinen gönderiler yeniden haber sayılmaz. Hikâye, video sesi ve görsel yazısı bu API okuyucusuyla çözümlenmez.</p>'+instagramSourceHealthTable(apiState)+
  '<div class="row"><button type="button" data-ig-api-refresh>Durumu yenile</button><button type="button" data-social-action="'+(enabled?'pause':'resume')+'" data-provider="instagram">'+(enabled?'API takibini durdur':'API takibini aç')+'</button></div></section>';
 }
 document.addEventListener('click',async event=>{

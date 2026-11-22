@@ -23,6 +23,24 @@ def public_status(value):
         item['reasons']={k:n for k,n in row.get('reasons',{}).items() if re.fullmatch(r'[a-z_]{1,60}',k) and type(n) is int and 0<=n<=1000000}
         result['sources'].append(item)
     result['ingestion']=[{k:r[k] for k in ('status','submitted','acknowledged','accepted','rejected') if k in r} for r in value.get('ingestion',[])[:10] if isinstance(r,dict)]
+    result['sourceHealth']=[]
+    for row in value.get('sourceHealth',[])[:200]:
+        if not isinstance(row,dict) or not re.fullmatch(r'[a-z0-9_.]{1,30}',str(row.get('handle',''))):continue
+        item={'handle':row['handle']}
+        for key in ('healthStatus','lastErrorKind'):
+            if isinstance(row.get(key),str) and re.fullmatch(r'[A-Za-z0-9_]{1,80}',row[key]):item[key]=row[key]
+        for key in ('lastAttemptAt','lastContentReadAt','lastNewPostAt','nextScanAt'):
+            try:
+                instant=datetime.datetime.fromisoformat(str(row.get(key,'')).replace('Z','+00:00'))
+                if instant.tzinfo:item[key]=instant.isoformat()
+            except ValueError:pass
+        for key in ('totalRead','uniquePosts','newPosts','duplicates','requests','latencySamples'):
+            if type(row.get(key)) is int and 0<=row[key]<=1000000000:item[key]=row[key]
+        for key in ('meanDiscoverySeconds','p95DiscoverySeconds'):
+            if type(row.get(key)) in (int,float) and 0<=row[key]<=10800:item[key]=row[key]
+        item['verificationRequired']=row.get('verificationRequired') is True
+        item['rejectedByReason']={k:n for k,n in (row.get('rejectedByReason') or {}).items() if re.fullmatch(r'[a-z_]{1,60}',k) and type(n) is int and 0<=n<=1000000000}
+        result['sourceHealth'].append(item)
     return result
 def main():
     if os.geteuid()!=0:raise RuntimeError('root_export_only')
