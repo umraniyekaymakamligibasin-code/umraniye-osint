@@ -2,7 +2,7 @@ export const historicalDuties=[
  ['UMR_EMNIYET','public_safety','Asayiş olayı','silahli saldiri|silahli olay|bicakli saldiri|cinayet|hirsizlik|gozalti|uyusturucu operasyon'],
  ['UMR_EMNIYET','traffic_safety','Trafik güvenliği','trafik kazasi|zincirleme kaza|yol trafige kapali|serit trafige kapali'],
  ['ISTANBUL_ITFAIYE','fire_rescue','Yangın ve kurtarma','yangin|alev aldi|mahsur kal|kurtarma calismasi'],
- ['UMR_ILCE_MEM','school_facility','Eğitim hizmetleri','okul|ogrenci|ogretmen|milli egitim|lise'],
+ ['UMR_ILCE_MEM','school_facility','Eğitim hizmetleri','okul|ilkokul|ortaokul|anaokul|ogrenci|ogretmen|milli egitim|lise'],
  ['ISKI_UMR','water_leak','Su altyapısı','su borusu|su kacagi|sebeke suyu'],
  ['ISKI_UMR','water_outage','Su kesintisi','su kesintisi|sular kesik|sular kesildi'],
  ['ISKI_UMR','sewer_overflow','Kanalizasyon','kanalizasyon|atik su|rogar tasti'],
@@ -22,7 +22,8 @@ export function historicalRoutes(event){
  if(/reklam|sponsorlu|indirim kodu/.test(text))return [];
  const found=new Map();
  for(const [institution,topic,label,pattern] of historicalDuties){
-  const re=new RegExp('(?:'+pattern+')','u');
+  // Sözcük başı zorunlu: 'lise' kalıbı 'polise', 'okul' kalıbı 'sokulan' içinde eşleşmesin.
+  const re=new RegExp('(?:^|[^a-z0-9])(?:'+pattern+')','u');
   if(!re.test(text))continue;
   // Rutin tebrik/başarı paylaşımları açık kurum görevi değildir.
   if(institution==='UMR_ILCE_MEM'&&/sampiyon|madalya|tebrik|kutluyor/.test(text)&&!/okulda.*(?:yangin|kaza|saldiri|ariza)/.test(text))continue;

@@ -148,19 +148,25 @@ def save_review(item,reason):
     club=' '.join(str(item.get(k) or '') for k in ('title','description','fullText','sourceName')).casefold().replace('ü','u').replace('\u0307','')
     if 'umraniyespor' in club:return
     if not item.get('url','').startswith('https://www.instagram.com/'):return
-    obj=load(REVIEW,{'items':{}})
-    if not isinstance(obj,dict):obj={'items':{}}
-    items=obj.get('items') or {}
-    if not isinstance(items,dict):items={}
-    key=identity(item['url'])
-    old=items.get(key) or {}
-    timestamp=dt.datetime.now(dt.timezone.utc).isoformat()
-    row={k:str(item.get(k) or '')[:6000] for k in ('url','title','description','fullText','sourceName','publishedAt')}
-    row.update(reason=reason,locationStatus='review_required',locationVerified=False,notificationEligible=False,
-      mediaType=item.get('mediaType',''),firstSeenAt=old.get('firstSeenAt',timestamp),lastSeenAt=timestamp)
-    items[key]=row
-    obj['items']=dict(sorted(items.items(),key=lambda k:k[1].get('lastSeenAt',''),reverse=True)[:1800])
-    atomic(REVIEW,obj)
+    # The browser reader and review_retention.py rewrite the same file under this lock;
+    # without it a concurrent read-modify-write silently loses review items.
+    fd=os.open(REVIEW.with_name('instagram-review.lock'),os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
+    try:
+        fcntl.flock(fd,fcntl.LOCK_EX)
+        obj=load(REVIEW,{'items':{}})
+        if not isinstance(obj,dict):obj={'items':{}}
+        items=obj.get('items') or {}
+        if not isinstance(items,dict):items={}
+        key=identity(item['url'])
+        old=items.get(key) or {}
+        timestamp=dt.datetime.now(dt.timezone.utc).isoformat()
+        row={k:str(item.get(k) or '')[:6000] for k in ('url','title','description','fullText','sourceName','publishedAt')}
+        row.update(reason=reason,locationStatus='review_required',locationVerified=False,notificationEligible=False,
+          mediaType=item.get('mediaType',''),firstSeenAt=old.get('firstSeenAt',timestamp),lastSeenAt=timestamp)
+        items[key]=row
+        obj['items']=dict(sorted(items.items(),key=lambda k:k[1].get('lastSeenAt',''),reverse=True)[:1800])
+        atomic(REVIEW,obj)
+    finally:os.close(fd)
 
 def connect(payload=None):
     key=BROWSER_KEY.read_bytes().hex()
@@ -223,6 +229,7 @@ def run_scan(dry=False):
     with (ROOT/'monitor.lock').open('a') as lf:
         try:fcntl.flock(lf,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:log('ig_extra_overlap_skip');return
+        start=int(state.get('cursor',0))%len(handles)
         selected=choose_accounts(state,handles)
         config=None;profile=None
         try:
@@ -241,7 +248,7 @@ def run_scan(dry=False):
         seen=state.setdefault('seen',{})
         baselined=state.setdefault('baselined',{})
         now=dt.datetime.now(dt.timezone.utc)
-        for handle in selected:
+        for position,handle in enumerate(selected):
             if handle not in targets():continue
             stats['scanned']+=1
             first=(handle not in baselined)
@@ -307,6 +314,8 @@ def run_scan(dry=False):
                     break
             finally:
                 # Checkpoint after each account so a late timeout loses no state.
+                # Advance only past accounts actually attempted: a cooldown break must not skip the rest.
+                state['cursor']=(start+position+1)%len(handles)
                 state['seen']=seen
                 state['seen']={k:v for k,v in seen.items() if time.time()-float(v.get('at',0)) < 3*86400}
                 atomic(STATE,state)

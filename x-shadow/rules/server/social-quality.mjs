@@ -1,3 +1,4 @@
+import {sourceNeighborhoodContext,sourceContextFields} from './social-source-context.mjs';
 import {newsworthiness} from '../src/newsworthiness.js';
 import {localSportsNews} from './local-sports.mjs';
 import {institutionalReference} from './institutional-reference.mjs';
@@ -78,7 +79,7 @@ function curateSocialCore(entry) {
   const n = normalize(text);
 
   if (n.length < 30 || n.split(" ").length < 6) return null;
-  if (!location.test(n)&&!isGovernorActivity(entry)&&!geo.localCandidate) return null;
+  if (!location.test(n)&&!isGovernorActivity(entry)&&!geo.localCandidate&&!sourceNeighborhoodContext(entry)) return null;
   if (advertisement.test(n) && !incident.test(n)) return null;
   if (!incident.test(n) && !development.test(n) && !localSportsNews(text)) return null;
 
@@ -106,7 +107,7 @@ function curateSocialCore(entry) {
     sourceName = author + " · Facebook";
   }
 
-  return {...entry,...geoLocationFields(geo),fullText:entry.fullText||text, title, description, sourceName};
+  return {...entry,...geoLocationFields(geo),...sourceContextFields(entry),fullText:entry.fullText||text, title, description, sourceName};
 }
 
 

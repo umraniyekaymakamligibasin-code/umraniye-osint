@@ -172,13 +172,17 @@ function osintSocialScope(title,description){
   return /\b(?:umraniye|dudullu|ihlamurkuyu|elmalikent|armaganevler|yamanevler)(?:deki|daki|den|dan|nin|nun|de|da|ye|ya|li)?\b/.test(text);
 }
 
-let socialMemo=null,socialPending=null,socialEpoch=0,lastCleanup=0;
+let socialMemo=null,socialPending=null,socialEpoch=0,lastCleanup=0,facebookUrlIndex=null;
+ // node:sqlite eşzamanlıdır: canonical_url araması indekssiz yapılırsa her sosyal liste yenilemesinde facebook_posts tablosu
+ // 100'lük gruplar halinde defalarca baştan sona taranır ve sunucu (tüm HTTP istekleri) yüzlerce ms bloklanır.
+ function ensureFacebookUrlIndex(){return facebookUrlIndex??=Promise.resolve().then(()=>DB.prepare("CREATE INDEX IF NOT EXISTS facebook_posts_canonical_url ON facebook_posts(json_extract(data,'$.canonical_url'))").run()).catch(()=>{facebookUrlIndex=null;});}
  function invalidateSocialCache(){socialEpoch++;socialMemo=null;socialPending=null;}
  async function maintenance(){if(now()-lastCleanup<3600000)return;const report=await purgeContent(DB,{now:now()});lastCleanup=report.incomplete?now()-3300000:now();invalidateSocialCache();return report;}
  async function buildSocialItems(){
  const cutoff=retentionCutoff(now());
  const rows=(await DB.prepare("SELECT data FROM lab_items WHERE source_id!='dha-direct' AND (source_id='browser-research' OR json_extract(data,'$.social')=1) ORDER BY published_at DESC,id DESC LIMIT 2000").all()).results;
  const urls=new Set();for(const row of rows){try{const e=JSON.parse(row.data);if(e.url)urls.add(e.url);for(const source of e.sources||[])if(source.url)urls.add(source.url);}catch{}}
+ await ensureFacebookUrlIndex();
  const fbMap=new Map(),keys=[...urls];for(let i=0;i<keys.length;i+=100){const batch=keys.slice(i,i+100);const found=(await DB.prepare("SELECT data FROM facebook_posts WHERE json_extract(data,'$.canonical_url') IN ("+batch.map(()=>'?').join(',')+')').bind(...batch).all()).results;for(const row of found){try{const p=JSON.parse(row.data);fbMap.set(p.canonical_url,p);}catch{}}}
  const candidates=[];for(let i=0;i<rows.length;i++){let item;try{item=JSON.parse(rows[i].data);}catch{}if(item&&!item.retentionExpired&&item.sourceId!=='dha-direct'&&!item.duplicateOf&&isSocialRecord(item)){const curated=curateSocial(_osintSource(item));if(curated&&_osintValidText(curated))candidates.push(withCorrelation(curated));}if(i%4===3)await new Promise(resolve=>setImmediate(resolve));}
  const decorate=e=>({...applyFacebookSafety(e,{now:now()}),sources:(e.sources||[]).filter(s=>isSocialRecord({...s,platform:s.platform||e.platform})).map(s=>{const p=fbMap.get(s.url);return p?{...s,platform:'facebook',sourceName:p.source||s.sourceName,description:p.text||s.description,fullText:p.full_text||p.text||s.fullText,publishedAt:p.published_at,firstSeenAt:p.first_seen_at}:s;}).map(s=>districtPriorityEligible({...e,...s})?s:{...s,priorityLevel:s.priorityLevel==='P1'?'P3':s.priorityLevel,policePriority:false})});const decorated=[];for(let i=0;i<candidates.length;i++){decorated.push(decorate(candidates[i]));if(i%4===3)await new Promise(resolve=>setImmediate(resolve));}

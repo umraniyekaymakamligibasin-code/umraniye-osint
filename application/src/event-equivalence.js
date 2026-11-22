@@ -26,6 +26,9 @@ function sites(e){
  return out;
 }
 const compatibleName=(a,b)=>a===b||a.endsWith(' '+b)||b.endsWith(' '+a);
+// Extracted site names may carry a preceding non-place word (punctuation is folded away); for conflicts compare the place word itself.
+const siteQualifier=w=>['yukari','asagi','yeni','eski','kuzey','guney','dogu','bati','buyuk','kucuk'].includes(w)?w:'';
+const sameSiteWord=(a,b)=>{if(compatibleName(a,b))return true;const x=a.split(' '),y=b.split(' ');return x.at(-1)===y.at(-1)&&siteQualifier(x.at(-2))===siteQualifier(y.at(-2));};
 function sharedSites(a,b){for(const [type,aa]of a)for(const x of aa)for(const y of b.get(type)||[])if(compatibleName(x,y))return true;return false;}
 function dateAnchors(e){return [...fold(title(e)+' '+body(e)).matchAll(/\b(\d{1,2}) (ocak|subat|mart|nisan|mayis|haziran|temmuz|agustos|eylul|ekim|kasim|aralik)(?: (20\d{2}))?\b/g)].map(m=>[m[1],m[2],m[3]||'']);}
 function incidentTimes(e){const text=title(e)+' '+body(e).slice(0,1800),times=[];for(const m of text.matchAll(/\bsaat(?:lerinde)?\s*(\d{1,2})[.:](\d{2})|\b(\d{1,2})[.:](\d{2})\s*(?:sıralarında|siralarinda)/giu)){const h=Number(m[1]||m[3]),minute=Number(m[2]||m[4]);if(h<24&&minute<60)times.push(h*60+minute);}return [...new Set(times)];}
@@ -35,7 +38,7 @@ function conflict(a,b){
  if(a.scope&&b.scope&&a.scope!==b.scope)return true;
  if(eventEvidence(a).phase!==eventEvidence(b).phase)return true;
  const ap=place(a),bp=place(b);if(ap&&bp&&!compatibleName(ap,bp))return true;
- const aa=eventEvidence(a).locations,bb=eventEvidence(b).locations;for(const [type,values]of aa){const other=bb.get(type);if(type==='village'&&(eventEvidence(a).multiple||eventEvidence(b).multiple))continue;if(other?.size&&![...values].some(x=>[...other].some(y=>compatibleName(x,y))))return true;}
+ const aa=eventEvidence(a).locations,bb=eventEvidence(b).locations;for(const [type,values]of aa){const other=bb.get(type);if(type==='village'&&(eventEvidence(a).multiple||eventEvidence(b).multiple))continue;if(other?.size&&![...values].some(x=>[...other].some(y=>sameSiteWord(x,y))))return true;}
  const A=eventEvidence(a),B=eventEvidence(b);if(A.cities.size&&B.cities.size&&![...A.cities].some(x=>B.cities.has(x)))return true;
  const ak=A.kind,bk=B.kind;if(ak!==bk&&ak!=='general'&&bk!=='general')return true;
  if(['fire','traffic','violence','collapse','explosion'].includes(A.kind)&&A.times.length&&B.times.length&&!A.times.some(a=>B.times.some(b=>Math.min(Math.abs(a-b),1440-Math.abs(a-b))<=60)))return true;
@@ -66,7 +69,7 @@ const eventCities=["adana", "adiyaman", "afyonkarahisar", "agri", "amasya", "ank
 const aliases=new Map([['afyon','afyonkarahisar'],['urfa','sanliurfa'],['antep','gaziantep'],['maras','kahramanmaras']]);
 const evidenceCache=new WeakMap();
 function canonicalPlace(value){return String(value||'').split(' ').map(w=>aliases.get(w)||w).join(' ');}
-function incidentText(e){return fold(title(e)+' '+body(e).split(/ilgili haberler|benzer haberler|diger haberler|related news|son dakika haberleri/i)[0].slice(0,1800));}
+function incidentText(e){return fold(title(e)+' '+body(e).split(/[iİIı]lg[iİIı]l[iİIı] haberler|benzer haberler|d[iİIı][gğ]er haberler|related news|son dak[iİIı]ka haberler/i)[0].slice(0,1800));}
 export function eventKind(e){
  const headline=fold(title(e)),text=incidentText(e);
  function classify(t){

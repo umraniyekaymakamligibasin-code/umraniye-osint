@@ -31,11 +31,17 @@ def fetch(url):
 
 def candidates():
     found = {}
-    for page_url in PAGES + PAGES:
-        try:
-            page = fetch(page_url)
-        except Exception as exc:
-            print("KAYNAK HATASI:", page_url, str(exc)[:100])
+    # Her liste sayfası başarılıysa bir kez indirilir; yalnız hata durumunda bir kez
+    # yeniden denenir (önceden PAGES + PAGES ile her sayfa koşulsuz iki kez çekiliyordu).
+    for page_url in PAGES:
+        page = None
+        for _attempt in range(2):
+            try:
+                page = fetch(page_url)
+                break
+            except Exception as exc:
+                print("KAYNAK HATASI:", page_url, str(exc)[:100])
+        if page is None:
             continue
 
         blocks = re.split(r'<div class="news__item\b', page)[1:]

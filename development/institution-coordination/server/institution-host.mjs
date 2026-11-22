@@ -1,6 +1,6 @@
 import {createInstitutionRecipients} from './institution-recipients.mjs';
 import {createInstitutionCredentials} from './institution-credentials.mjs';
-import {join} from 'node:path';
+import {join,resolve} from 'node:path';
 import {readFile} from 'node:fs/promises';
 
 import {createInstitutionCoordination} from './institution-coordination.mjs';
@@ -17,13 +17,18 @@ export function createInstitutionHost({base,db,origin,actor,serviceRequestAllowe
 
   const budgets=new Map();
 
-  async function authenticate(request){const a=await actor(request);return a?{...a,accountId:a.id}:null}
+  // handle() and the HTML wrapper below both authenticate the same Request; each call is an
+  // internal /api/account round trip, so resolve it once per request object.
+  const actors=new WeakMap();
+  function authenticate(request){let p=actors.get(request);if(!p){p=Promise.resolve().then(()=>actor(request)).then(a=>a?{...a,accountId:a.id}:null);actors.set(request,p);p.catch(()=>actors.delete(request))}return p}
 
   function csrf(request){return request.headers.get('origin')===expected && request.headers.get('x-osint-action')==='institution' && request.headers.get('content-type')?.startsWith('application/json')}
 
   let vaultPromise,recipientPromise;
-  const credentials=()=>vaultPromise??=(async()=>createInstitutionCredentials({db,key:await (await import('../../accounts.mjs')).accountKey(join(process.env.DATA_DIR,'institution-credentials.key'))}))();
-  const recipients=()=>recipientPromise??=(async()=>createInstitutionRecipients({db,key:await (await import('../../accounts.mjs')).accountKey(join(process.env.DATA_DIR,'institution-recipients.key'))}))();
+  // Same default as server/start.mjs. A failed key load is not cached forever: the next request retries.
+  const dataDir=resolve(process.env.DATA_DIR||'./data');
+  const credentials=()=>vaultPromise??=(async()=>createInstitutionCredentials({db,key:await (await import('../../accounts.mjs')).accountKey(join(dataDir,'institution-credentials.key'))}))().catch(e=>{vaultPromise=null;throw e});
+  const recipients=()=>recipientPromise??=(async()=>createInstitutionRecipients({db,key:await (await import('../../accounts.mjs')).accountKey(join(dataDir,'institution-recipients.key'))}))().catch(e=>{recipientPromise=null;throw e});
   const api=createInstitutionCoordination({db,authenticate,credentials,recipients,isCentralAdmin:a=>a.admin===true,verifyCsrf:csrf,
 
     accountExists:async id=>!!await db.prepare('SELECT id FROM team_accounts WHERE id=?').bind(id).first(),
@@ -35,6 +40,9 @@ export function createInstitutionHost({base,db,origin,actor,serviceRequestAllowe
   });
 
   const loginPaths=new Set(['/giris','/yonetici-giris','/yonetim']);
+
+  // The login screens need their logo, font and stylesheet before a session exists. Only these fixed public files are exempt.
+  const publicAssets=new Set(['/favicon.png','/assets/umraniye-kaymakamligi-logo.png','/assets/admin-portal.css','/assets/InterVariable.woff2']);
 
   const loginAPIs=new Set(['/api/team/login','/api/team/logout','/api/admin/login','/api/admin/logout','/api/session','/api/login','/api/logout']);
 
@@ -52,7 +60,7 @@ export function createInstitutionHost({base,db,origin,actor,serviceRequestAllowe
 
     if(await serviceRequestAllowed(request))return base.fetch(request,...args);
 
-    if(loginPaths.has(u.pathname)||loginAPIs.has(u.pathname))return base.fetch(request,...args);
+    if(loginPaths.has(u.pathname)||loginAPIs.has(u.pathname)||(publicAssets.has(u.pathname)&&['GET','HEAD'].includes(request.method)))return base.fetch(request,...args);
 
     const a=await authenticate(request);
 
