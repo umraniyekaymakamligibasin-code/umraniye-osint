@@ -1,0 +1,10 @@
+[Unit]
+Description=Supplemental public Facebook collection
+[Timer]
+OnActiveSec=5min
+OnUnitInactiveSec=5min
+RandomizedDelaySec=30
+AccuracySec=5s
+Unit=umraniye-osint-facebook-fbgql-deneme.service
+[Install]
+WantedBy=timers.target

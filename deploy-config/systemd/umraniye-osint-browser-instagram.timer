@@ -1,0 +1,9 @@
+[Unit]
+Description=Bounded Instagram collection cycle
+[Timer]
+OnActiveSec=30s
+OnUnitInactiveSec=120s
+AccuracySec=10s
+Unit=umraniye-osint-browser-instagram.service
+[Install]
+WantedBy=timers.target

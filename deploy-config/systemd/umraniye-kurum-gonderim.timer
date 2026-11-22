@@ -1,0 +1,12 @@
+[Unit]
+Description=Umraniye OSINT kurum e-posta kuyrugunu bosalt
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=2min
+RandomizedDelaySec=20
+AccuracySec=10s
+Unit=umraniye-kurum-gonderim.service
+
+[Install]
+WantedBy=timers.target

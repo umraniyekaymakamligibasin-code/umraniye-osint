@@ -1,0 +1,10 @@
+[Unit]
+Description=Umraniye OSINT DENEME - Instagram smart newsroom scan every 3m
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=3min
+AccuracySec=30s
+Persistent=false
+Unit=umraniye-osint-instagram-akilli.service
+[Install]
+WantedBy=timers.target

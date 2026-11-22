@@ -1,0 +1,26 @@
+[Unit]
+Description=Independent Facebook fbgql public posts SHADOW experiment
+After=network-online.target
+[Service]
+Type=oneshot
+User=osintfbshadow
+Group=osintfbshadow
+UMask=0077
+WorkingDirectory=/opt/umraniye-osint-facebook-fbgql-deneme
+ExecStartPre=+/usr/bin/python3 /opt/umraniye-osint-facebook-fbgql-deneme/prepare.py
+ExecStart=/opt/umraniye-osint-facebook-fbgql-deneme/venv/bin/python /opt/umraniye-osint-facebook-fbgql-deneme/worker.py --live
+Restart=no
+TimeoutStartSec=100
+MemoryHigh=200M
+MemoryMax=350M
+TasksMax=24
+Nice=10
+CPUQuota=40%
+ProtectSystem=strict
+ProtectHome=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/umraniye-osint-facebook-fbgql-deneme
+InaccessiblePaths=-/opt/umraniye-osint-browser -/var/lib/umraniye-osint-instagram-api
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+# No timer or [Install] section: no automatic startup.

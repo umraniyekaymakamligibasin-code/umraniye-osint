@@ -1,0 +1,30 @@
+[Unit]
+Description=Independent X twscrape SHADOW reader - manual only
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=osintxshadow
+Group=osintxshadow
+WorkingDirectory=/opt/umraniye-osint-x-twscrape-deneme
+UMask=0077
+Environment=TWS_HTTP_BACKEND=httpx TWS_LOG_LEVEL=CRITICAL
+ExecStartPre=+/usr/bin/python3 /opt/umraniye-osint-x-twscrape-deneme/prepare.py --database /var/lib/umraniye-osint-deneme/osint.sqlite --app /opt/umraniye-osint-deneme --state /var/lib/umraniye-osint-x-twscrape-deneme --owner osintxshadow
+ExecStart=/opt/umraniye-osint-x-twscrape-deneme/venv/bin/python /opt/umraniye-osint-x-twscrape-deneme/worker.py --state /var/lib/umraniye-osint-x-twscrape-deneme --live
+TimeoutStartSec=180
+Restart=no
+MemoryHigh=200M
+MemoryMax=350M
+TasksMax=32
+CPUQuota=40%
+Nice=10
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/umraniye-osint-x-twscrape-deneme
+InaccessiblePaths=-/var/lib/umraniye-osint-browser -/opt/umraniye-osint-browser -/var/lib/umraniye-osint-instagram-api
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# Intentionally no [Install], no timer, no automatic startup.
