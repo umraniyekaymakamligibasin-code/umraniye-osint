@@ -117,13 +117,24 @@ async function audit(db, actorId, institutionId, action, targetType, targetId, r
     VALUES(?,?,?,?,?,?,?,?,?)`, id(), actorId, actorKind, institutionId, action, targetType, targetId ?? null, requestId ?? null, now());
 }
 
-const CASE_SELECT = `SELECT c.id,c.title,c.summary_redacted,c.neighborhood,c.location_precision,
+const CASE_SELECT = `SELECT c.id,c.source_event_id,c.title,c.summary_redacted,c.neighborhood,c.location_precision,
   c.first_published_at,c.first_seen_at,c.confidence,c.status,c.priority,c.created_at,c.updated_at,
   t.code AS topic_code,t.display_name AS topic_name
   FROM coord_cases c JOIN coord_topics t ON t.id=c.topic_id
   JOIN coord_institution_topic_grants g ON g.institution_id=c.institution_id AND g.topic_id=c.topic_id AND g.granted=1
   JOIN coord_institutions i ON i.id=c.institution_id AND i.enabled=1 AND i.approval_status='approved'
   WHERE c.institution_id=? AND t.enabled=1 AND t.approval_status='approved'`;
+
+// Only call after CASE_SELECT has applied tenant membership and topic grants.
+async function sourcePresentation(db,items){
+ const ids=[...new Set(items.map(c=>c.source_event_id).filter(Boolean))];if(!ids.length)return items;
+ const sources=new Map((await all(db,`SELECT id,data FROM lab_items WHERE id IN (${ids.map(()=>'?').join(',')})`,...ids)).map(r=>[r.id,r.data]));
+ return items.map(c=>{let event;try{event=JSON.parse(sources.get(c.source_event_id)||'null')}catch{return c}
+  const original=publicEventProjection(c,event);if(!original)return c;
+  const topic=c.topic_code==='CIT-POLICE-MINIMIZED-INCIDENT'?'Asayiş':c.topic_code==='CIT-FIRE-MINIMIZED-INCIDENT'?'Yangın ve kurtarma':c.topic_name;
+  return{...c,title:original.title||c.title,summary_redacted:original.text?original.text.slice(0,900)+(original.text.length>900?'…':''):c.summary_redacted,topic_name:topic};
+ });
+}
 
 /** Handle only /api/institution/*; return null for unrelated routes. */
 export function createInstitutionCoordination(adapters) {
@@ -163,13 +174,13 @@ export function createInstitutionCoordination(adapters) {
         else { clauses.push("AND c.status <> 'dismissed'"); }
         if (q) {
           const escaped = q.replace(/[!%_]/g, '!$&');
-          clauses.push("AND (c.title LIKE ? ESCAPE '!' OR c.summary_redacted LIKE ? ESCAPE '!')");
-          params.push(`%${escaped}%`, `%${escaped}%`);
+          clauses.push("AND (c.title LIKE ? ESCAPE '!' OR c.summary_redacted LIKE ? ESCAPE '!' OR EXISTS(SELECT 1 FROM lab_items l WHERE l.id=c.source_event_id AND json_extract(CASE WHEN json_valid(l.data) THEN l.data ELSE '{}' END,'$.title') LIKE ? ESCAPE '!'))");
+          params.push(`%${escaped}%`, `%${escaped}%`, `%${escaped}%`);
         }
         clauses.push('ORDER BY c.created_at DESC,c.id DESC LIMIT ?'); params.push(limit + 1);
         const rows = await all(db, clauses.join('\n'), ...params);
         const hasMore = rows.length > limit;
-        const page = rows.slice(0, limit);
+        const page = await sourcePresentation(db,rows.slice(0, limit));
         await audit(db, actorKey, tenant.institution_id, 'list', 'case', null, requestId);
         return json({ institution: tenant.code, cases: page, nextBefore: hasMore && page.length ? encodeCursor(page.at(-1)) : null });
       }
@@ -203,7 +214,8 @@ export function createInstitutionCoordination(adapters) {
         const history=await all(db,`SELECT action,from_value,to_value,note_redacted,created_at FROM coord_case_history
           WHERE coord_case_id=? AND institution_id=? AND action!='view' ORDER BY created_at DESC,id DESC LIMIT 100`,item.id,tenant.institution_id);
         const referrals=await all(db,`SELECT r.mode,i.display_name target,r.created_at FROM coord_referrals r JOIN coord_institutions i ON i.id=r.target_institution_id WHERE r.source_case_id=? AND r.source_institution_id=? ORDER BY r.created_at DESC`,item.id,tenant.institution_id);
-        return json({ case: {...item,role:tenant.role}, sources, history, referrals });
+        const [presented]=await sourcePresentation(db,[item]);
+        return json({ case: {...presented,role:tenant.role}, sources, history, referrals });
       }
 
 
