@@ -87,7 +87,12 @@ export function auditDeliveries(db,{now=Date.now(),limit=10}={}){
 }
 export function importSnapshotSources(db){
  let imported=0;
- for(const row of db.prepare('SELECT data,updated_at FROM snapshots').all()){
+ const newest=new Map();
+ for(const row of db.prepare('SELECT data,updated_at FROM snapshots ORDER BY updated_at DESC').all()){
+  let v;try{v=JSON.parse(row.data);}catch{continue;}
+  for(const e of v.events||[])if(e&&typeof e.id==='string'&&!newest.has(e.id))newest.set(e.id,{data:JSON.stringify({events:[e]}),updated_at:row.updated_at});
+ }
+ for(const row of newest.values()){
   let value;try{value=JSON.parse(row.data);}catch{continue;}
   for(const event of value.events||[]){
    if(!event||typeof event.id!=='string'||event.scope!=='local'||!canonicalSource(event.url)||!Number.isFinite(Date.parse(event.publishedAt)))continue;
