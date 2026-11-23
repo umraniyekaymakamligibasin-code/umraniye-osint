@@ -17,7 +17,15 @@ export function findLegacyCase(db,e,institution,topic){
  const rows=db.prepare(`SELECT c.*,l.data source_data FROM coord_cases c JOIN coord_institutions i ON i.id=c.institution_id JOIN coord_topics t ON t.id=c.topic_id LEFT JOIN lab_items l ON l.id=c.source_event_id WHERE i.code=? AND t.code=? AND NOT(c.status='dismissed' AND EXISTS(SELECT 1 FROM coord_audit a WHERE a.target_id=c.id AND a.action='legacy_projection_dismissed') AND NOT EXISTS(SELECT 1 FROM coord_case_history h WHERE h.coord_case_id=c.id AND h.action='status_change' AND h.to_value='dismissed'))`).all(institution,topic);
  return rows.find(c=>{if(c.source_event_id===e.id)return true;try{return adaptEvent(JSON.parse(c.source_data)).eventIdentity===e.eventIdentity;}catch{return false;}});
 }
-export function preview(db,events,options={}){const state=snapshot(db),adapted=events.map(adaptEvent),plan=shadowBatch(adapted,state,options);for(let i=0;i<plan.results.length;i++)if(plan.results[i].reason==='no_eligible_task'){const fallback=fallbackDecision(adapted[i],state);if(fallback.tasks.length)plan.results[i]=fallback;}return plan;}
+export function preview(db,events,options={}){
+ const state=snapshot(db),adapted=events.map(adaptEvent),plan=shadowBatch(adapted,state,options);
+ for(let i=0;i<plan.results.length;i++){
+  const fallback=fallbackDecision(adapted[i],state);
+  const tasks=[...new Map([...(plan.results[i].tasks||[]),...(fallback.tasks||[])].map(t=>[t.institution+'|'+t.topic,t])).values()];
+  if(tasks.length)plan.results[i]={...plan.results[i],tasks,status:'shadow_candidates',reason:'approved_panel_candidates'};
+ }
+ return plan;
+}
 // Caller must opt in explicitly. Every permission is rechecked in the transaction.
 // No mail/Telegram outbox statements exist in this adapter.
 export function persistPlan(db,plan,{allowWrites=false,now=()=>new Date().toISOString(),transaction=true}={}){
