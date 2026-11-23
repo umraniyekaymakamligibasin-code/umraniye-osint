@@ -113,6 +113,8 @@ export function socialInformation(event,state){
  if(/(?:istihdam merkezi|is basvurusu|kariyer gunleri)/.test(text)&&/belediye/.test(text))candidates.push(['employment_service_access','UMR_BELEDIYE'],['employment_service_access','UMR_ISKUR']);
  if(/(?:kitap fuari|kutuphane acilisi)/.test(text))candidates.push(['municipal_service_access','UMR_BELEDIYE']);
  if(/(?:durak|merdiven)/.test(text)&&/(?:merdiven yapan|durak yapimi|durak yenilendi)/.test(text))candidates.push(['bus_stop_infrastructure','IETT'],['bus_stop_infrastructure','UMR_BELEDIYE']);
+ if(/\bmetro[a-z]*\b/.test(text)&&/\b(?:seferler durdu|seferleri durdu|seferler aksadi|seferleri aksadi|seferler durduruldu|seferler iptal edildi)\b/.test(text))candidates.push(['metro_service_disruption','METRO_ISTANBUL']);
+ if(/\bmetro[a-z]*\b/.test(text)&&/\b(?:patlama|patladi|tahliye|dumandan etkilenen)\b/.test(text))candidates.push(['public_transport_safety','METRO_ISTANBUL']);
  if(event.locality?.evidence==='metropolitan_line_scope'&&/(?:acilis|istasyon|sefer|metro hatt)/.test(text))candidates.push(['metro_station_infrastructure','METRO_ISTANBUL']);
  if(!candidates.length)return null;
  const tasks=[];
