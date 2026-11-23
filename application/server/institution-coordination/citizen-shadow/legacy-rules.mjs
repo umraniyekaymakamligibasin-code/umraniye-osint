@@ -1,5 +1,5 @@
 import{createHash}from'node:crypto';
-import{readFileSync}from'node:fs';import{analyze}from'./engine.mjs';import{fold}from'./language.mjs';import{approvalSnapshot}from'./integration.mjs';
+import{readFileSync}from'node:fs';import{analyze}from'./engine.mjs';import{fold,clauseState}from'./language.mjs';import{approvalSnapshot}from'./integration.mjs';
 import{RESMI_HESAPLAR}from'./locality.mjs';
 // Existing approved topics use the SAME language, location and privacy engine.
 // Broad legacy phrases are a fallback only; never a second parallel decision.
@@ -89,7 +89,10 @@ function kurumsalBilgiKurali(event){
 }
 
 export function socialInformation(event,state){
- const approvals=approvalSnapshot(state),text=fold([event.title,event.fullText||event.description].filter(Boolean).join(' '));
+ const approvals=approvalSnapshot(state),raw=[event.title,event.fullText||event.description].filter(Boolean).join('\n');
+ const active=raw.split(/[.!?;\n]+|\s+ama\s+|\s+ancak\s+/iu).filter(c=>clauseState(c)==='active'&&!/\b(?:iptal edildi|yalanlandi|yapilmadi|gerceklesmedi)\b/.test(fold(c))).map(fold);
+ const text=active.join(' ');
+ if(!text)return null;
  if(event.locality?.district!=='Ümraniye'||!(event.locality.verified||event.locality.routingEligible))return null;
  const candidates=[];
  if(/(?:bayragin golgesinde|egitime destek platformu|ogrenci meclisi|ogretmenler gunu|okul ziyareti|egitim ogretim)/.test(text))candidates.push(['education_service_access','UMR_ILCE_MEM']);
@@ -120,9 +123,10 @@ export function fallbackDecision(event,snapshot){
   rules.push({code:topic.code,title:topic.display_name,family:'existing_approved',subcategory:topic.display_name,patterns,requireProblem:true,panelCandidates:candidates,serviceAuthority:candidates,mandateVerified:false,risk:'normal',sensitivity:'ordinary'});
  }
  const normal=analyze(event,{rules,...approvals});
- if(normal.tasks.length)return normal;
+ if(['football','advertisement'].includes(normal.reason))return normal;
  const kb=kurumsalBilgiKurali(event);
- if(!kb)return socialInformation(event,snapshot)||normal;
- const bilgi=analyze(event,{rules:[kb],...approvals});
- return bilgi.tasks.length?bilgi:socialInformation(event,snapshot)||normal;
+ const bilgi=kb?analyze(event,{rules:[kb],...approvals}):null;
+ const social=socialInformation(event,snapshot);
+ const tasks=[...new Map([...(normal.tasks||[]),...(bilgi?.tasks||[]),...(social?.tasks||[])].map(t=>[t.institution+'|'+t.topic,t])).values()];
+ return tasks.length?{...normal,tasks,status:'shadow_candidates',reason:'approved_panel_candidates'}:normal;
 }

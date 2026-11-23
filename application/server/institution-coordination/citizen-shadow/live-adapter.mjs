@@ -17,11 +17,19 @@ export function findLegacyCase(db,e,institution,topic){
  const rows=db.prepare(`SELECT c.*,l.data source_data FROM coord_cases c JOIN coord_institutions i ON i.id=c.institution_id JOIN coord_topics t ON t.id=c.topic_id LEFT JOIN lab_items l ON l.id=c.source_event_id WHERE i.code=? AND t.code=? AND NOT(c.status='dismissed' AND EXISTS(SELECT 1 FROM coord_audit a WHERE a.target_id=c.id AND a.action='legacy_projection_dismissed') AND NOT EXISTS(SELECT 1 FROM coord_case_history h WHERE h.coord_case_id=c.id AND h.action='status_change' AND h.to_value='dismissed'))`).all(institution,topic);
  return rows.find(c=>{if(c.source_event_id===e.id)return true;try{return adaptEvent(JSON.parse(c.source_data)).eventIdentity===e.eventIdentity;}catch{return false;}});
 }
+// A specific catalog subtype and its broad legacy topic describe one duty.
+// Keep separate subtypes, but suppress a parallel generic assignment/email.
+const legacyDuty={ 'CIT-WATER-001':'water_outage','CIT-POWER-001':'power_outage','CIT-GAS-002':'gas_outage' };
+export function distinctDutyTasks(tasks){
+ const normalized=tasks.map(t=>legacyDuty[t.topic]&&!t.legacyTopic?{...t,legacyTopic:legacyDuty[t.topic]}:t);
+ const specific=new Set(normalized.filter(t=>t.legacyTopic&&t.topic!==t.legacyTopic).map(t=>t.institution+'|'+t.legacyTopic));
+ return [...new Map(normalized.filter(t=>!specific.has(t.institution+'|'+t.topic)||t.legacyTopic).map(t=>[t.institution+'|'+t.topic,t])).values()];
+}
 export function preview(db,events,options={}){
  const state=snapshot(db),adapted=events.map(adaptEvent),plan=shadowBatch(adapted,state,options);
  for(let i=0;i<plan.results.length;i++){
   const fallback=fallbackDecision(adapted[i],state);
-  const tasks=[...new Map([...(plan.results[i].tasks||[]),...(fallback.tasks||[])].map(t=>[t.institution+'|'+t.topic,t])).values()];
+  const tasks=distinctDutyTasks([...(plan.results[i].tasks||[]),...(fallback.tasks||[])]);
   if(tasks.length)plan.results[i]={...plan.results[i],tasks,status:'shadow_candidates',reason:'approved_panel_candidates'};
  }
  return plan;
