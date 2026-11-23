@@ -103,6 +103,7 @@ export function socialInformation(event,state){
  const collapse=active.some(c=>/\b(?:balkon|bina|cati|iskele|vinc)[a-z]*\b/.test(c)&&/\b(?:coktu|cokmesi|cokme|devrildi|devrilmesi|enkaz|mahsur)\b/.test(c));
  if(fire||collapse)candidates.push(['fire_rescue','ISTANBUL_ITFAIYE']);
  if(collapse&&/\b(?:enkaz|mahsur|yaralandi|yarali)\b/.test(incidentText))candidates.push(['district_emergency_coordination','UMR_AFET']);
+ if(active.some(c=>(/\b(?:tabanca|silah|namlu)[a-z]*\b/.test(c)&&/\bele geciril[a-z]*\b/.test(c))||/\b(?:gozaltina alindi|gozaltina alinirken|gozaltina aldi|supheli yakalandi|supheliler yakalandi)\b/.test(c)))candidates.push(['public_safety','UMR_EMNIYET']);
  if(active.some(c=>/\b(?:tokat atti|tokat|darbetti|darp edildi|silahli saldiri|bicakli saldiri|kavga cikti|kursunlandi|aracina zarar veren|hirsizlik yapti|soygun)\b/.test(c)))candidates.push(['public_safety','UMR_EMNIYET']);
  if(active.some(c=>/\b(?:trafik kazasi|carpisti|zincirleme kaza|arac devrildi|motosiklet kazasi|makas atti|drift yapti)\b/.test(c)))candidates.push(['traffic_safety','UMR_EMNIYET']);
  if((fire||collapse)&&/\b(?:polis|emniyet) ekip[a-z]*\b/.test(incidentText))candidates.push(['public_safety','UMR_EMNIYET']);
