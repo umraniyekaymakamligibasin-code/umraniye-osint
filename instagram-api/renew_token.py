@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 import pathlib
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -21,9 +22,19 @@ def main():
     s = importlib.util.spec_from_file_location('worker', '/opt/umraniye-osint-instagram-api/worker.py')
     w = importlib.util.module_from_spec(s)
     s.loader.exec_module(w)
+    def checked_graph(*args, **kwargs):
+        for attempt in range(3):
+            try:
+                return w.graph(*args, **kwargs)
+            except RuntimeError as error:
+                if str(error) not in ('http_429', 'http_500', 'http_502', 'http_503', 'http_504') or attempt == 2:
+                    raise
+                print('Meta gecici HTTP hatasi; yeniden deneniyor ('+str(attempt+1)+'/2).')
+                time.sleep(2 * (attempt + 1))
+
     stage = 'instagram_hesap_kontrolu'
     try:
-        identity = w.graph(credentials['igUserId'], token, {'fields':'id'})
+        identity = checked_graph(credentials['igUserId'], token, {'fields':'id'})
         if str(identity.get('id')) != str(credentials['igUserId']):
             raise ValueError('identity_mismatch')
         stage = 'yerel_kaynak_listesi'
@@ -31,14 +42,14 @@ def main():
         handles = w.active_handles(targets)
         if handles:
             stage = 'kaynak_okuma_yetkisi'
-            check = w.graph(credentials['igUserId'], token, {'fields':'business_discovery.username('+handles[0]+'){username}'})
+            check = checked_graph(credentials['igUserId'], token, {'fields':'business_discovery.username('+handles[0]+'){username}'})
             if str((check.get('business_discovery') or {}).get('username','')).lower() != handles[0].lower():
                 raise ValueError('discovery_permission_missing')
     except w.MetaError as e:
         raise SystemExit('Dogrulama basarisiz: Meta '+str(e.code)+'/'+str(e.subcode)+'. Degisiklik yapilmadi.')
     except Exception as e:
         # Never display remote messages, URLs, credentials, or arbitrary exception text.
-        reason = str(e) if isinstance(e, ValueError) and str(e) in ('identity_mismatch', 'discovery_permission_missing', 'invalid_source_list', 'invalid_source_handle') else type(e).__name__
+        reason = str(e) if (isinstance(e, ValueError) and str(e) in ('identity_mismatch', 'discovery_permission_missing', 'invalid_source_list', 'invalid_source_handle')) or (isinstance(e, RuntimeError) and re.fullmatch(r'http_[0-9]{3}', str(e))) else type(e).__name__
         detail = getattr(e, 'reason', None)
         if detail is not None:
             reason += '/' + type(detail).__name__
