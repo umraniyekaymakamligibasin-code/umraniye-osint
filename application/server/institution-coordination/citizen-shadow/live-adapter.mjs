@@ -1,5 +1,6 @@
 import {randomUUID,createHash} from 'node:crypto';
-import {shadowBatch} from './integration.mjs';
+import {shadowBatch,approvalSnapshot} from './integration.mjs';
+import{analyze}from'./engine.mjs';
 import {catalog} from './catalog.mjs';
 import {deriveLocality} from './locality.mjs';
 import{canonicalSource,validPublication}from'./source-url.mjs';
@@ -25,11 +26,32 @@ export function distinctDutyTasks(tasks){
  const specific=new Set(normalized.filter(t=>t.legacyTopic&&t.topic!==t.legacyTopic).map(t=>t.institution+'|'+t.legacyTopic));
  return [...new Map(normalized.filter(t=>!specific.has(t.institution+'|'+t.topic)||t.legacyTopic).map(t=>[t.institution+'|'+t.topic,t])).values()];
 }
+const transportDuty=Object.fromEntries([
+ ...Array.from({length:10},(_,n)=>[`CIT-BUS-${String(n+1).padStart(3,'0')}`,n>=3&&n<=5?'bus_stop_infrastructure':'bus_service_disruption']),
+ ...Array.from({length:10},(_,n)=>[`CIT-METRO-${String(n+1).padStart(3,'0')}`,n===3||n>=8?'metro_service_disruption':'metro_station_infrastructure'])
+]);
+// Catalog subtypes are detectors. Persist under existing approved operator duty
+// grants, not the old municipal-only catalog grant. Never mint new grants.
+export function transportDutyTasks(event,state){
+ const a=approvalSnapshot(state),rules=[],grants=[];
+ for(const rule of catalog){
+  const topic=transportDuty[rule.code];if(!topic||!a.approvedTopics.includes(topic))continue;
+  const owners=topic==='bus_stop_infrastructure'?['IETT','UMR_BELEDIYE']:topic.startsWith('bus_')?['IETT']:['METRO_ISTANBUL'];
+  const panels=owners.filter(institution=>a.approvedInstitutions.includes(institution)&&a.grants.some(g=>g.institution===institution&&g.topic===topic&&g.granted&&g.approvalReference));
+  if(!panels.length)continue;
+  rules.push({...rule,panelCandidates:panels});for(const institution of panels)grants.push({institution,topic:rule.code,granted:true,approvalReference:'mapped-existing-grant:'+topic});
+ }
+ const result=analyze(event,{rules,approvedInstitutions:a.approvedInstitutions,approvedTopics:rules.map(r=>r.code),grants});
+ return result.tasks.map(task=>{
+  const topic=transportDuty[task.topic],key=createHash('sha256').update(JSON.stringify([event.eventIdentity||event.id,topic,task.institution])).digest('hex');
+  return{...task,key,issueKey:key,topic,detectedTopic:task.topic};
+ });
+}
 export function preview(db,events,options={}){
  const state=snapshot(db),adapted=events.map(adaptEvent),plan=shadowBatch(adapted,state,options);
  for(let i=0;i<plan.results.length;i++){
   const fallback=fallbackDecision(adapted[i],state);
-  const tasks=distinctDutyTasks([...(plan.results[i].tasks||[]),...(fallback.tasks||[])]);
+  const tasks=distinctDutyTasks([...(plan.results[i].tasks||[]).filter(t=>!transportDuty[t.topic]),...(fallback.tasks||[]),...transportDutyTasks(adapted[i],state)]);
   if(tasks.length)plan.results[i]={...plan.results[i],tasks,status:'shadow_candidates',reason:'approved_panel_candidates'};
  }
  return plan;

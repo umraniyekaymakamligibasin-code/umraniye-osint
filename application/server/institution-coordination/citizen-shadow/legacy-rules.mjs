@@ -5,7 +5,7 @@ import{RESMI_HESAPLAR}from'./locality.mjs';
 // Broad legacy phrases are a fallback only; never a second parallel decision.
 const terms=JSON.parse(readFileSync(new URL('../kurum/topic-terms.json',import.meta.url),'utf8')).konular||{};
 export const legacyCodes=new Set(Object.keys(terms));
-const fixed={street_cleanliness:['UMR_BELEDIYE'],illegal_dumping_public_space:['UMR_BELEDIYE'],waste_container:['UMR_BELEDIYE'],parks_public_space:['UMR_BELEDIYE'],bus_service_disruption:['IETT','UMR_BELEDIYE'],bus_stop_infrastructure:['IETT','UMR_BELEDIYE'],metro_service_disruption:['METRO_ISTANBUL'],metro_station_infrastructure:['METRO_ISTANBUL'],ibb_road_maintenance:['UMR_BELEDIYE'],animal_health_public_agriculture:['UMR_BELEDIYE','UMR_ILCE_TARIM'],urban_animal_welfare:['UMR_BELEDIYE','UMR_ILCE_TARIM'],traffic_safety:['UMR_BELEDIYE','UMR_EMNIYET']};
+const fixed={street_cleanliness:['UMR_BELEDIYE'],illegal_dumping_public_space:['UMR_BELEDIYE'],waste_container:['UMR_BELEDIYE'],parks_public_space:['UMR_BELEDIYE'],bus_service_disruption:['IETT'],bus_stop_infrastructure:['IETT','UMR_BELEDIYE'],metro_service_disruption:['METRO_ISTANBUL'],metro_station_infrastructure:['METRO_ISTANBUL'],ibb_road_maintenance:['UMR_BELEDIYE'],animal_health_public_agriculture:['UMR_BELEDIYE','UMR_ILCE_TARIM'],urban_animal_welfare:['UMR_BELEDIYE','UMR_ILCE_TARIM'],traffic_safety:['UMR_BELEDIYE','UMR_EMNIYET']};
 
 /* ------------------------------------------------------------------ *
  * KURUMSAL BILGI ISTISNASI
