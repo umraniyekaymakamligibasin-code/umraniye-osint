@@ -16,7 +16,8 @@ export function deriveLocality(event){
  // gecmeyen yerel haberler locality_unverified diye kaybolmaz.
  const hedefler=Array.isArray(event.institutionalReference?.targets)?event.institutionalReference.targets.map(x=>String(x).replace(/^@/,'').toLowerCase()):[];
  const resmiHesap=hedefler.some(h=>RESMI_HESAPLAR.has(h));
- const klasik=klasikLocality(resmiHesap?{...event,sourceName:[event.sourceName,'Ümraniye'].filter(Boolean).join(' ')}:event);
+ const resmiKaynak=/(?:kaymakamlığı|kaymakamligi|ilçe mill[iî] eğitim|ilce milli egitim)/iu.test(String(event.sourceName||''));
+ const klasik=(resmiHesap||resmiKaynak)?klasikLocality(resmiHesap?{...event,sourceName:[event.sourceName,'Ümraniye'].filter(Boolean).join(' ')}:event):null;
  if(klasik?.district==='Ümraniye'&&klasik.verified===true&&['district','neighborhood'].includes(klasik.precision))return{district:'Ümraniye',precision:klasik.precision,neighborhood:klasik.neighborhood??null,verified:true,routingEligible:true,evidence:klasik.kaynak==='kaynak-adi'?'legacy_source_verified':'legacy_verified'};
  const raw=[event.title,event.fullText||event.description].filter(Boolean).join('\n');const text=fold(raw);
  if(/\b(ankara|izmir|kadikoy|uskudar|atasehir|beykoz|sancaktepe|cekmekoy|pendik|kartal)(?:da|de|dan|den|daki|deki)?\b/.test(text))return null;
