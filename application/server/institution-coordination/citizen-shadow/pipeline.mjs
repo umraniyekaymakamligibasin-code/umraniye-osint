@@ -17,7 +17,7 @@ export function initDelivery(db){
  }
 }
 export function currentPolicy(db){
- const files=['engine.mjs','language.mjs','locality.mjs','catalog.mjs','domain-catalog.mjs','extended-catalog.mjs','incident-rules.mjs','live-adapter.mjs','legacy-rules.mjs','../kurum/topic-terms.json','routing-revision.mjs','pipeline.mjs'];
+ const files=['engine.mjs','language.mjs','locality.mjs','catalog.mjs','domain-catalog.mjs','extended-catalog.mjs','incident-rules.mjs','live-adapter.mjs','legacy-rules.mjs','../kurum/topic-terms.json','routing-revision.mjs','pipeline.mjs','notice-queue.mjs'];
  let dictionary='';try{dictionary=db.prepare("SELECT data FROM workspace_settings WHERE id='location-dictionary'").get()?.data||'';}catch{}
  const approvals=snapshot(db);for(const rows of Object.values(approvals))rows.sort((a,b)=>String(a.id||a.institution_id+'|'+a.topic_id).localeCompare(String(b.id||b.institution_id+'|'+b.topic_id)));
  return hash(files.map(f=>readFileSync(new URL(f,import.meta.url),'utf8')).join('\n')+JSON.stringify(approvals)+dictionary);
@@ -138,7 +138,7 @@ export function runBatch(db,{now=Date.now(),limit=25,policyVersion=currentPolicy
    const synced=synchronize(db,e,plan,revision,now),decision=plan.results[0];
    // Panel yazimindan sonra bildirim kuyrugu (ayni islem icinde, idempotent).
    let notices={queued:0,skipped:0};
-   try{notices=queueNotices(db,{caseIds:eventCaseIds(db,event.id),event,now});}catch{notices={queued:0,skipped:0};}
+   notices=queueNotices(db,{caseIds:eventCaseIds(db,event.id),event,now});
    if(beforeAck)beforeAck(db,job);
    db.prepare('INSERT INTO cit_delivery_meta VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(fingerprintKey,meaningful);
    const unassigned=!decision.tasks.length;
@@ -151,14 +151,6 @@ export function runBatch(db,{now=Date.now(),limit=25,policyVersion=currentPolicy
    db.prepare("UPDATE cit_delivery_jobs SET state='retry',attempts=?,available_at=?,lease_until=NULL,claim_token=NULL,error_code=?,updated_at=? WHERE event_id=? AND claim_token=?").run(attempt,now+delay,code,now,job.event_id,token);report.failed++;
   }
  }
- // Queue fresh assignments for every currently verified recipient, once per case.
- const stamp=new Date(now).toISOString();
- report.mailQueued=Number(db.prepare(`INSERT INTO coord_mail_outbox(id,coord_case_id,institution_id,recipient_id,recipient_hash,template_code,dedupe_key,state,attempts,next_attempt_at,created_at,provider_idempotency_key)
- SELECT c.id||':'||r.id,c.id,c.institution_id,r.id,r.address_fingerprint,'initial-assignment',c.id||':'||r.id,'queued',0,?,?,c.id||':'||r.id
- FROM coord_cases c JOIN coord_institutions i ON i.id=c.institution_id AND i.enabled=1 AND i.approval_status='approved' AND i.email_enabled=1
- JOIN coord_mail_recipients r ON r.institution_id=i.id AND r.active=1 AND r.verified_at IS NOT NULL AND r.verified_by IS NOT NULL
- WHERE c.status<>'dismissed' AND c.created_at>=? AND EXISTS(SELECT 1 FROM cit_case_links k WHERE k.case_id=c.id AND k.active=1)
- ON CONFLICT(dedupe_key) DO NOTHING`).run(stamp,stamp,new Date(now-3600000).toISOString()).changes);
  report.queue=db.prepare('SELECT state,count(*) count FROM cit_delivery_jobs GROUP BY state').all();
  db.prepare("INSERT INTO cit_delivery_meta VALUES('last_run',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(JSON.stringify(report));
  return report;
