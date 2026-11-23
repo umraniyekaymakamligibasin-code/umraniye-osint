@@ -16,11 +16,19 @@ def main():
         raise SystemExit('Run with sudo in an interactive SSH terminal.')
     path = pathlib.Path('/etc/umraniye-osint-instagram-api/credentials.json')
     credentials = json.loads(path.read_text())
-    token = getpass.getpass('Yeni Meta erisim anahtari (ekranda gorunmez): ').strip()
-    if not token or any(c.isspace() for c in token):
-        raise SystemExit('Bos/gecersiz giris; degisiklik yapilmadi.')
-    if len(token) > 8192 or not token.isascii() or not re.fullmatch(r'[A-Za-z0-9._|~-]+', token):
-        raise SystemExit('Kopyalama bicimi uygun degil: yalniz anahtar kutusundaki metni kopyalayin; tirnak, baslik veya gorunmez karakter eklemeyin. Kayit yapilmadi.')
+    token = getpass.getpass('Yeni Meta erisim anahtari (ekranda gorunmez): ')
+    token = token.strip()
+    # Some terminals include bracketed-paste delimiters in getpass input.
+    if token.startswith('\x1b[200~') and token.endswith('\x1b[201~'):
+        token = token[6:-6].strip()
+    # Remove only matching outer quotation marks; never alter internal token bytes.
+    if len(token) >= 2 and token[0] == token[-1] and token[0] in ('"', "'"):
+        token = token[1:-1].strip()
+    if not token or len(token) > 16384 or not token.isascii() or any(ord(c)<33 or ord(c)>126 for c in token):
+        controls = sum(ord(c)<32 or ord(c)==127 for c in token)
+        nonascii = sum(ord(c)>127 for c in token)
+        spaces = sum(c.isspace() for c in token)
+        raise SystemExit('Giris HTTP basligina uygun degil. Uzunluk='+str(len(token))+'; kontrol_karakteri='+str(controls)+'; ascii_disi='+str(nonascii)+'; bosluk='+str(spaces)+'. Anahtar gosterilmedi ve kaydedilmedi.')
     s = importlib.util.spec_from_file_location('worker', '/opt/umraniye-osint-instagram-api/worker.py')
     w = importlib.util.module_from_spec(s)
     s.loader.exec_module(w)
