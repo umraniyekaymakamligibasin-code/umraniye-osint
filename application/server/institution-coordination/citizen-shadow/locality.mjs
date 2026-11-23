@@ -6,7 +6,7 @@ const names=[...new Set(seed.records.flatMap(r=>r.mahalle).map(fold))].sort((a,b
 const neighborhoodAddress=new RegExp('\\bumraniye (?:'+names.join('|')+')(?: meydan avm| avm)?(?: (?:ta|te|da|de|bolgesinde|bolgesindeki)|(?:da|de))\\b');
 // Ilce gorevlilerinin resmi hesaplari: kaynak adinda "Umraniye" gecmese de
 // ilce kaniti sayilir. Liste dar tutulur; yalniz dogrulanmis ilce hesaplari.
-export const RESMI_HESAPLAR=new Set(['yukselcelikmia']);
+export const RESMI_HESAPLAR=new Set(['yukselcelikmia','tc_umraniye','umraniyeilcemem']);
 // Location claim evidence is not independently verified ground truth.
 // A transit line's proper name spans districts; it is not an incident location
 // in those other districts. Separate explicit outside locations still win.
@@ -17,15 +17,17 @@ export function deriveLocality(event){
  // Kaynak adi / yapisal alan kaniti: eski, olculmus yerellik motoru.
  // Boylece "Umraniye Kaymakamligi" gibi kaynaklarda metinde ilce adi
  // gecmeyen yerel haberler locality_unverified diye kaybolmaz.
- const hedefler=Array.isArray(event.institutionalReference?.targets)?event.institutionalReference.targets.map(x=>String(x).replace(/^@/,'').toLowerCase()):[];
- const resmiHesap=hedefler.some(h=>RESMI_HESAPLAR.has(h));
- const resmiKaynak=/(?:kaymakamlığı|kaymakamligi|ilçe mill[iî] eğitim|ilce milli egitim)/iu.test(String(event.sourceName||''));
+ let sourceAuthor='';try{const u=new URL(event.url);if(['x.com','www.x.com','twitter.com','www.twitter.com'].includes(u.hostname))sourceAuthor=u.pathname.split('/')[1].toLowerCase();}catch{}
+ const resmiHesap=RESMI_HESAPLAR.has(sourceAuthor);
+ const sourceFold=fold(event.sourceName||'');
+ const resmiKaynak=/\bumraniye (?:kaymakamligi|ilce milli egitim)\b/.test(sourceFold);
  const klasik=(resmiHesap||resmiKaynak)?klasikLocality(resmiHesap?{...event,sourceName:[event.sourceName,'Ümraniye'].filter(Boolean).join(' ')}:event):null;
- if(klasik?.district==='Ümraniye'&&klasik.verified===true&&['district','neighborhood'].includes(klasik.precision))return{district:'Ümraniye',precision:klasik.precision,neighborhood:klasik.neighborhood??null,verified:true,routingEligible:true,evidence:klasik.kaynak==='kaynak-adi'?'legacy_source_verified':'legacy_verified'};
  const raw=[event.title,event.fullText||event.description].filter(Boolean).join('\n');const originalText=fold(raw),text=localityConflictText(raw);
  const localLine=/\bumraniye (?:atasehir )?goztepe\b/.test(originalText)&&/\b(?:metro|metrosu|metrosunun|hatti|hattinin|istasyonu)\b/.test(originalText);
  if(/\b(ankara|izmir|kadikoy|uskudar|atasehir|beykoz|sancaktepe|cekmekoy|pendik|kartal)(?:da|de|dan|den|daki|deki)?\b/.test(text))return null;
  if(/\b(umraniye beykoz|beykoz umraniye|umraniye kavacik|kavacik umraniye)\b/.test(text))return null;
+ if(klasik?.district==='Ümraniye'&&klasik.verified===true&&['district','neighborhood'].includes(klasik.precision))return{district:'Ümraniye',precision:klasik.precision,neighborhood:klasik.neighborhood??null,verified:true,routingEligible:true,evidence:'official_source_scope'};
+ if(/\bumraniye belediyesi istihdam merkezi\b/.test(originalText)||/\bumraniye belediyesine tesekkur\b/.test(originalText))return{district:'Ümraniye',precision:'district',verified:false,routingEligible:true,evidence:'institution_service_scope'};
  if(localLine)return{district:'Ümraniye',precision:'district',verified:false,routingEligible:true,evidence:'metropolitan_line_scope'};
  const located=/\bumraniye (?:de|ilcesinde|ilcesi sinirlarinda)\b|\bumraniyede\b|\bumraniye (?:[a-z]+ ){1,4}(?:mahallesi(?:nde| nde| sinirlarinda)?|mah|mh)\b|\bistanbul umraniye (?:[a-z]+ ){1,4}(?:caddesi|sokagi)\b|\bumraniye istanbul\b/.exec(text);
  const neighborhood=neighborhoodAddress.exec(text);
