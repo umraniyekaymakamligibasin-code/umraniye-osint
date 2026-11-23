@@ -111,7 +111,7 @@ export function runBatch(db,{now=Date.now(),limit=25,policyVersion=currentPolicy
  // Rule/grant changes enqueue bounded chunks, rather than reclassifying the archive.
  db.prepare(`UPDATE cit_delivery_jobs SET state='pending',available_at=0,attempts=0 WHERE event_id IN(SELECT event_id FROM cit_delivery_jobs WHERE state IN('done','retry') AND policy_version<>? ORDER BY event_id LIMIT 250)`).run(policyVersion);
  const deliveryAudit=auditDeliveries(db,{now,limit:10});
- const jobs=db.prepare(`SELECT j.* FROM cit_delivery_jobs j WHERE j.state IN('pending','retry') AND j.available_at<=? ORDER BY j.priority DESC,(SELECT published_at FROM lab_items WHERE id=j.event_id) DESC,j.available_at,j.event_id LIMIT ?`).all(now,limit);
+ const jobs=db.prepare(`SELECT j.* FROM cit_delivery_jobs j WHERE j.state IN('pending','retry') AND j.available_at<=? ORDER BY j.priority DESC,(SELECT json_extract(data,'$.publishedAt') FROM lab_items WHERE id=j.event_id) DESC,j.available_at,j.event_id LIMIT ?`).all(now,limit);
  const report={at:new Date(now).toISOString(),examined:0,metadataOnly:0,inserted:0,duplicates:0,updated:0,withdrawn:0,restored:0,verified:0,failed:0,reasons:{},messagesSent:0,messagesQueued:0,policyVersion,deliveryAudit};
  for(const job of jobs){
   const token=randomUUID();if(!db.prepare("UPDATE cit_delivery_jobs SET state='processing',claim_token=?,lease_until=?,policy_version=? WHERE event_id=? AND generation=? AND state IN('pending','retry')").run(token,now+120000,policyVersion,job.event_id,job.generation).changes)continue;
