@@ -71,7 +71,7 @@ function kurumsalBilgiKurali(event){
  if(!resmi)return null;
  if(!(event.locality?.district==='Ümraniye'&&event.locality?.verified===true))return null;
  const baslikFold=fold(event.title??'');
- if(!baslikFold)return null;
+ if(!baslikFold||clauseState(event.title)!=='active'||/\b(?:iptal edildi|yalanlandi|yapilmadi|gerceklesmedi)\b/.test(baslikFold))return null;
  const baslik=duyuruBasligi(event);
  if(!baslik)return null;
  const ozet=duyuruOzeti(event,baslik);
@@ -101,6 +101,7 @@ export function socialInformation(event,state){
  if(/(?:istihdam merkezi|is basvurusu|kariyer gunleri)/.test(text)&&/belediye/.test(text))candidates.push(['employment_service_access','UMR_BELEDIYE'],['employment_service_access','UMR_ISKUR']);
  if(/(?:kitap fuari|kutuphane acilisi)/.test(text))candidates.push(['municipal_service_access','UMR_BELEDIYE']);
  if(/(?:durak|merdiven)/.test(text)&&/(?:merdiven yapan|durak yapimi|durak yenilendi)/.test(text))candidates.push(['bus_stop_infrastructure','IETT'],['bus_stop_infrastructure','UMR_BELEDIYE']);
+ if(event.locality?.evidence==='metropolitan_line_scope'&&/(?:acilis|istasyon|sefer|metro hatt)/.test(text))candidates.push(['metro_station_infrastructure','METRO_ISTANBUL']);
  if(!candidates.length)return null;
  const tasks=[];
  for(const[topic,institution]of candidates){

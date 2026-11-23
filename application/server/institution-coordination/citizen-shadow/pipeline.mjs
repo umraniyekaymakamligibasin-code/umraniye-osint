@@ -9,6 +9,7 @@ const hash=s=>createHash('sha256').update(s).digest('hex');
 const hour=3600000;
 export function initDelivery(db){
  db.exec(readFileSync(new URL('./delivery-queue.sql',import.meta.url),'utf8'));
+ db.exec('CREATE TABLE IF NOT EXISTS coord_source_content(event_id TEXT PRIMARY KEY,data TEXT NOT NULL,updated_at TEXT NOT NULL)');
  if(!db.prepare("SELECT 1 FROM cit_delivery_meta WHERE key='seeded'").get()){
   db.exec('BEGIN IMMEDIATE');try{
    db.exec('INSERT OR IGNORE INTO cit_delivery_jobs(event_id) SELECT id FROM lab_items');
@@ -136,6 +137,7 @@ export function runBatch(db,{now=Date.now(),limit=25,policyVersion=currentPolicy
    const result=persistPlan(db,plan,{allowWrites:true,transaction:false,now:()=>new Date(now).toISOString()});
    if(result.held)throw Error('projection_held');
    const synced=synchronize(db,e,plan,revision,now),decision=plan.results[0];
+   if(decision.tasks.length)db.prepare('INSERT INTO coord_source_content VALUES(?,?,?) ON CONFLICT(event_id) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at').run(event.id,row.data,new Date(now).toISOString());
    // Panel yazimindan sonra bildirim kuyrugu (ayni islem icinde, idempotent).
    let notices={queued:0,skipped:0};
    notices=queueNotices(db,{caseIds:eventCaseIds(db,event.id),event,now});

@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {catalog} from './catalog.mjs';
 import {fold,clauseState,phrasesMatch as phraseMatch} from './language.mjs';
-import{deriveLocality}from'./locality.mjs';
+import{deriveLocality,localityConflictText}from'./locality.mjs';
 export {fold} from './language.mjs';
 const digest=s=>createHash('sha256').update(s).digest('hex');
 // Bounded Turkish suffix recognition; does not invent arbitrary stems.
@@ -14,9 +14,9 @@ export function analyze(event,{rules=catalog,approvedInstitutions=[],approvedTop
  const incident=/yangin cikti|yaralandi|kavga cikti|silahli saldiri/.test(text);
  if(/senetli satis|vade farki|uygun fiyat|siparis|indirim kampanyasi/.test(text)&&!incident)return {...base,status:'excluded',reason:'advertisement'};
  const place=event.locality;
- const textEvidence=place?.routingEligible===true&&['explicit_district_statement','dictionary_address_statement'].includes(place?.evidence);
+ const textEvidence=place?.routingEligible===true&&['explicit_district_statement','dictionary_address_statement','metropolitan_line_scope'].includes(place?.evidence);
  if(place?.district!=='Ümraniye'||!(place.verified===true||textEvidence)||!['district','neighborhood'].includes(place.precision))return {...base,status:'skipped',reason:'locality_unverified'};
- if(/\b(?:ankara|kadikoy|uskudar|izmir|atasehir)(?:da|de|daki|deki)?\b/.test(text))return {...base,status:'skipped',reason:'conflicting_location'};
+ if(/\b(?:ankara|kadikoy|uskudar|izmir|atasehir)(?:da|de|daki|deki)?\b/.test(localityConflictText(raw)))return {...base,status:'skipped',reason:'conflicting_location'};
  const privacyText=text.replace(/hasta cagri|hasta haklari|hasta hayvan/g,'tesis hizmeti');
  const sensitive=Object.values(event.sensitivityFlags||{}).some(Boolean)||['restricted','high','special'].includes(event.sensitivity)||/\b\d{11}\b|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b(?:cocuk kimligi|cocugun adi|hasta|tani|tc kimlik|aile ici siddet|telefon numarasi|daire no|kapi no)\b|(?:\+90|0)[\s()-]*5\d{2}[\s()-]*\d{3}[\s()-]*\d{2}[\s()-]*\d{2}/.test(privacyText);
  const signatures=new Map(),codes=new Set();

@@ -8,6 +8,9 @@ const neighborhoodAddress=new RegExp('\\bumraniye (?:'+names.join('|')+')(?: mey
 // ilce kaniti sayilir. Liste dar tutulur; yalniz dogrulanmis ilce hesaplari.
 export const RESMI_HESAPLAR=new Set(['yukselcelikmia']);
 // Location claim evidence is not independently verified ground truth.
+// A transit line's proper name spans districts; it is not an incident location
+// in those other districts. Separate explicit outside locations still win.
+export function localityConflictText(value){return fold(value).replace(/\bumraniye (?:atasehir )?goztepe\b/g,'umraniye metro hatti');}
 export function deriveLocality(event){
  if(event.locality?.verified===true&&event.locality.district==='Ümraniye')return event.locality;
  if(event.locationVerified===true&&event.districtScope==='local'&&!['review_required','local_indicated'].includes(event.locationStatus))return{district:'Ümraniye',precision:'district',verified:true,evidence:'legacy_verified'};
@@ -19,9 +22,11 @@ export function deriveLocality(event){
  const resmiKaynak=/(?:kaymakamlığı|kaymakamligi|ilçe mill[iî] eğitim|ilce milli egitim)/iu.test(String(event.sourceName||''));
  const klasik=(resmiHesap||resmiKaynak)?klasikLocality(resmiHesap?{...event,sourceName:[event.sourceName,'Ümraniye'].filter(Boolean).join(' ')}:event):null;
  if(klasik?.district==='Ümraniye'&&klasik.verified===true&&['district','neighborhood'].includes(klasik.precision))return{district:'Ümraniye',precision:klasik.precision,neighborhood:klasik.neighborhood??null,verified:true,routingEligible:true,evidence:klasik.kaynak==='kaynak-adi'?'legacy_source_verified':'legacy_verified'};
- const raw=[event.title,event.fullText||event.description].filter(Boolean).join('\n');const text=fold(raw);
+ const raw=[event.title,event.fullText||event.description].filter(Boolean).join('\n');const originalText=fold(raw),text=localityConflictText(raw);
+ const localLine=/\bumraniye (?:atasehir )?goztepe\b/.test(originalText)&&/\b(?:metro|metrosu|metrosunun|hatti|hattinin|istasyonu)\b/.test(originalText);
  if(/\b(ankara|izmir|kadikoy|uskudar|atasehir|beykoz|sancaktepe|cekmekoy|pendik|kartal)(?:da|de|dan|den|daki|deki)?\b/.test(text))return null;
  if(/\b(umraniye beykoz|beykoz umraniye|umraniye kavacik|kavacik umraniye)\b/.test(text))return null;
+ if(localLine)return{district:'Ümraniye',precision:'district',verified:false,routingEligible:true,evidence:'metropolitan_line_scope'};
  const located=/\bumraniye (?:de|ilcesinde|ilcesi sinirlarinda)\b|\bumraniyede\b|\bumraniye (?:[a-z]+ ){1,4}(?:mahallesi(?:nde| nde| sinirlarinda)?|mah|mh)\b|\bistanbul umraniye (?:[a-z]+ ){1,4}(?:caddesi|sokagi)\b|\bumraniye istanbul\b/.exec(text);
  const neighborhood=neighborhoodAddress.exec(text);
  const header=/(?:^|\n)\s*Ümraniye\s*:/iu.test(raw);
