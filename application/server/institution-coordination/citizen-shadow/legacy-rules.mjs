@@ -4,7 +4,7 @@ import{RESMI_HESAPLAR}from'./locality.mjs';
 // Broad legacy phrases are a fallback only; never a second parallel decision.
 const terms=JSON.parse(readFileSync(new URL('../kurum/topic-terms.json',import.meta.url),'utf8')).konular||{};
 export const legacyCodes=new Set(Object.keys(terms));
-const fixed={bus_service_disruption:['UMR_BELEDIYE'],bus_stop_infrastructure:['UMR_BELEDIYE'],metro_service_disruption:['UMR_BELEDIYE'],metro_station_infrastructure:['UMR_BELEDIYE'],ibb_road_maintenance:['UMR_BELEDIYE'],animal_health_public_agriculture:['UMR_BELEDIYE','UMR_ILCE_TARIM'],urban_animal_welfare:['UMR_BELEDIYE','UMR_ILCE_TARIM'],traffic_safety:['UMR_BELEDIYE','UMR_EMNIYET']};
+const fixed={street_cleanliness:['UMR_BELEDIYE'],illegal_dumping_public_space:['UMR_BELEDIYE'],waste_container:['UMR_BELEDIYE'],parks_public_space:['UMR_BELEDIYE'],bus_service_disruption:['UMR_BELEDIYE'],bus_stop_infrastructure:['UMR_BELEDIYE'],metro_service_disruption:['UMR_BELEDIYE'],metro_station_infrastructure:['UMR_BELEDIYE'],ibb_road_maintenance:['UMR_BELEDIYE'],animal_health_public_agriculture:['UMR_BELEDIYE','UMR_ILCE_TARIM'],urban_animal_welfare:['UMR_BELEDIYE','UMR_ILCE_TARIM'],traffic_safety:['UMR_BELEDIYE','UMR_EMNIYET']};
 
 /* ------------------------------------------------------------------ *
  * KURUMSAL BILGI ISTISNASI
@@ -95,7 +95,8 @@ export function fallbackDecision(event,snapshot){
   const candidates=fixed[topic.code]||[...new Set(granted)];
   // Multiple owners without an explicit joint mapping remain unassigned.
   if(!fixed[topic.code]&&candidates.length!==1)continue;
-  const patterns=terms[topic.code].filter(p=>!['iski','ayedas','igdas','iett','metro istanbul','emniyet','belediye'].includes(p));
+  const extra={street_cleanliness:['yaprakların toplanmaması','yaprakların toplanmamasından','sokak temizlenmiyor'],illegal_dumping_public_space:['moloz ve çöp döküldü','moloz döküldü','çöp döküldü']};
+  const patterns=[...(terms[topic.code]||[]),...(extra[topic.code]||[])].filter(p=>!['iski','ayedas','igdas','iett','metro istanbul','emniyet','belediye'].includes(p));
   rules.push({code:topic.code,title:topic.display_name,family:'existing_approved',subcategory:topic.display_name,patterns,requireProblem:true,panelCandidates:candidates,serviceAuthority:candidates,mandateVerified:false,risk:'normal',sensitivity:'ordinary'});
  }
  const normal=analyze(event,{rules,...approvals});
