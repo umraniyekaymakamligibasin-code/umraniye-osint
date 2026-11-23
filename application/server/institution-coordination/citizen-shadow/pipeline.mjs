@@ -85,8 +85,23 @@ export function auditDeliveries(db,{now=Date.now(),limit=10}={}){
  }
  return{checked,requeued,inaccessible};
 }
+export function importSnapshotSources(db){
+ let imported=0;
+ for(const row of db.prepare('SELECT data,updated_at FROM snapshots').all()){
+  let value;try{value=JSON.parse(row.data);}catch{continue;}
+  for(const event of value.events||[]){
+   if(!event||typeof event.id!=='string'||event.scope!=='local'||!canonicalSource(event.url)||!Number.isFinite(Date.parse(event.publishedAt)))continue;
+   if(db.prepare('SELECT 1 FROM lab_items WHERE id=?').get(event.id))continue;
+   const collected=event.firstSeenAt||event.collectedAt||row.updated_at;
+   if(!Number.isFinite(Date.parse(collected)))continue;
+   const data={...event,firstSeenAt:collected,collectedAt:collected,routingSource:'snapshot'};
+   imported+=Number(db.prepare('INSERT OR IGNORE INTO lab_items(id,source_id,data,published_at,collected_at) VALUES(?,?,?,?,?)').run(event.id,'snapshot-routing',JSON.stringify(data),event.publishedAt,collected).changes);
+  }
+ }
+ return imported;
+}
 export function runBatch(db,{now=Date.now(),limit=25,policyVersion=currentPolicy(db),beforeAck=null}={}){
- initDelivery(db);limit=Math.max(1,Math.min(50,limit));
+ initDelivery(db);if(db.prepare("SELECT 1 FROM sqlite_master WHERE name='snapshots'").get())importSnapshotSources(db);limit=Math.max(1,Math.min(50,limit));
  db.prepare("UPDATE cit_delivery_jobs SET state='retry',claim_token=NULL,lease_until=NULL,available_at=? WHERE state='processing' AND lease_until<=?").run(now,now);
  // Rule/grant changes enqueue bounded chunks, rather than reclassifying the archive.
  db.prepare(`UPDATE cit_delivery_jobs SET state='pending',available_at=0,attempts=0 WHERE event_id IN(SELECT event_id FROM cit_delivery_jobs WHERE state IN('done','retry') AND policy_version<>? ORDER BY event_id LIMIT 250)`).run(policyVersion);
