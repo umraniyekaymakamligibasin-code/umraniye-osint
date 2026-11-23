@@ -95,6 +95,18 @@ export function socialInformation(event,state){
  if(!text)return null;
  if(event.locality?.district!=='Ümraniye'||!(event.locality.verified||event.locality.routingEligible))return null;
  const candidates=[];
+ // Public news remains institutionally relevant after the fire was extinguished
+ // or rescue completed. Do not confuse a resolved incident report with a false
+ // incident claim. Simulation, negation and explicit archive clauses were removed.
+ const incidentText=active.join(' ');
+ const fire=active.some(c=>/\b(?:yangin cikti|cikan yangin|yangin cikan|cati yangini|bina yangini|isyeri yangini|yangin sonduruldu|alevlere teslim|alev aldi|alev alev yandi)\b/.test(c)||(/\byangin[a-z]*\b/.test(c)&&/\b(?:itfaiye|sonduruldu|kontrol altina alindi)\b/.test(c)));
+ const collapse=active.some(c=>/\b(?:balkon|bina|cati|iskele|vinc)[a-z]*\b/.test(c)&&/\b(?:coktu|cokmesi|cokme|devrildi|devrilmesi|enkaz|mahsur)\b/.test(c));
+ if(fire||collapse)candidates.push(['fire_rescue','ISTANBUL_ITFAIYE']);
+ if(collapse&&/\b(?:enkaz|mahsur|yaralandi|yarali)\b/.test(incidentText))candidates.push(['district_emergency_coordination','UMR_AFET']);
+ if(active.some(c=>/\b(?:tokat atti|tokat|darbetti|darp edildi|silahli saldiri|bicakli saldiri|kavga cikti|kursunlandi|aracina zarar veren|hirsizlik yapti|soygun)\b/.test(c)))candidates.push(['public_safety','UMR_EMNIYET']);
+ if(active.some(c=>/\b(?:trafik kazasi|carpisti|zincirleme kaza|arac devrildi|motosiklet kazasi|makas atti|drift yapti)\b/.test(c)))candidates.push(['traffic_safety','UMR_EMNIYET']);
+ if((fire||collapse)&&/\b(?:polis|emniyet) ekip[a-z]*\b/.test(incidentText))candidates.push(['public_safety','UMR_EMNIYET']);
+
  if(/(?:bayragin golgesinde|egitime destek platformu|ogrenci meclisi|ogretmenler gunu|okul ziyareti|egitim ogretim)/.test(text))candidates.push(['education_service_access','UMR_ILCE_MEM']);
  if(/(?:ilce emniyet mudurlugunce|emniyet mudurlugu ekip|huzur ve guven icin|asayis uygulamasi|gozaltina alindi|tutuklandi)/.test(text))candidates.push(['public_safety','UMR_EMNIYET']);
  if(/(?:siddetli ruzgar uyarisi|firtina uyarisi|firtinali ruzgar)/.test(text))candidates.push(['storm_damage','UMR_AFET']);
@@ -120,8 +132,9 @@ export function fallbackDecision(event,snapshot){
   // Multiple owners without an explicit joint mapping remain unassigned.
   if(!fixed[topic.code]&&candidates.length!==1)continue;
   const extra={street_cleanliness:['yaprakların toplanmaması','yaprakların toplanmamasından','sokak temizlenmiyor'],illegal_dumping_public_space:['moloz ve çöp döküldü','moloz döküldü','çöp döküldü']};
-  const patterns=[...(terms[topic.code]||[]),...(extra[topic.code]||[])].filter(p=>!['iski','ayedas','igdas','iett','metro istanbul','emniyet','belediye'].includes(p));
-  rules.push({code:topic.code,title:topic.display_name,family:'existing_approved',subcategory:topic.display_name,patterns,requireProblem:true,panelCandidates:candidates,serviceAuthority:candidates,mandateVerified:false,risk:'normal',sensitivity:'ordinary'});
+  const patterns=[...(terms[topic.code]||[]),...(extra[topic.code]||[])].filter(p=>!['iski','ayedas','igdas','iett','metro istanbul','emniyet','belediye'].includes(p)&&!(topic.code==='municipal_roadside_asset'&&['yikim','insaat'].includes(p)));
+  const problemPatterns=topic.code==='municipal_roadside_asset'?['\\b(?:kirik|bozuk|cukur|coktu|isgal|engel|onarim|bakim|yapilmiyor|kapandi|kapanmis|kilitlen)[a-z]*\\b']:undefined;
+  rules.push({problemPatterns,code:topic.code,title:topic.display_name,family:'existing_approved',subcategory:topic.display_name,patterns,requireProblem:true,panelCandidates:candidates,serviceAuthority:candidates,mandateVerified:false,risk:'normal',sensitivity:'ordinary'});
  }
  const normal=analyze(event,{rules,...approvals});
  if(['football','advertisement'].includes(normal.reason))return normal;

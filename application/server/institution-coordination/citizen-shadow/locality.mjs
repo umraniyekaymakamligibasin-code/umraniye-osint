@@ -29,10 +29,11 @@ export function deriveLocality(event){
  if(klasik?.district==='Ümraniye'&&klasik.verified===true&&['district','neighborhood'].includes(klasik.precision))return{district:'Ümraniye',precision:klasik.precision,neighborhood:klasik.neighborhood??null,verified:true,routingEligible:true,evidence:'official_source_scope'};
  if(/\bumraniye belediyesi istihdam merkezi\b/.test(originalText)||/\bumraniye belediyesine tesekkur\b/.test(originalText))return{district:'Ümraniye',precision:'district',verified:false,routingEligible:true,evidence:'institution_service_scope'};
  if(localLine)return{district:'Ümraniye',precision:'district',verified:false,routingEligible:true,evidence:'metropolitan_line_scope'};
- const located=/\bumraniye (?:de|ilcesinde|ilcesi sinirlarinda)\b|\bumraniyede\b|\bumraniye (?:[a-z]+ ){1,4}(?:mahallesi(?:nde| nde| sinirlarinda)?|mah|mh)\b|\bistanbul umraniye (?:[a-z]+ ){1,4}(?:caddesi|sokagi)\b|\bumraniye istanbul\b/.exec(text);
+ const located=/\bumraniye (?:de|deki|ilcesinde|ilcesi sinirlarinda)\b|\bumraniyede\b|\bumraniye (?:[a-z]+ ){1,4}(?:mahallesi(?:nde| nde| sinirlarinda)?|mah|mh)\b|\bistanbul umraniye (?:[a-z]+ ){1,4}(?:caddesi|sokagi)\b|\bumraniye istanbul\b/.exec(text);
  const neighborhood=neighborhoodAddress.exec(text);
+ const namedLocalPlace=/\bumraniye (?:metro istasyonunda|metro istasyonundaki|oto sanayi de|oto sanayide|sanayi sitesinde)\b/.exec(text);
  const header=/(?:^|\n)\s*Ümraniye\s*:/iu.test(raw);
- if(located||neighborhood||header){const hit=located||neighborhood;return{district:'Ümraniye',precision:'district',verified:false,routingEligible:true,evidence:'explicit_district_statement',...(hit?{evidenceRange:[hit.index,hit.index+hit[0].length]}:{})};}
+ if(located||neighborhood||header||namedLocalPlace){const hit=located||neighborhood||namedLocalPlace;return{district:'Ümraniye',precision:'district',verified:false,routingEligible:true,evidence:'explicit_district_statement',...(hit?{evidenceRange:[hit.index,hit.index+hit[0].length]}:{})};}
  // A street name alone is insufficient: require its independent neighborhood
  // in the same bounded address context from the existing sourced dictionary.
  const geo=analyzeGeoText(raw);
