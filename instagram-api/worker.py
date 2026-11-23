@@ -2,6 +2,7 @@
 import datetime as dt
 import fcntl
 import json
+import math
 import os
 import pathlib
 import re
@@ -154,7 +155,7 @@ def normalized(post, handle):
         return None, 'date_missing'
     if published > now() + 300:
         return None, 'future_date'
-    if len(text) < 8:
+    if not text:
         return None, 'text_missing'
     return {'url': url, 'title': re.sub(r'\s+', ' ', text)[:240],
             'description': text[:3000], 'fullText': text[:6000],
@@ -210,7 +211,7 @@ class Worker:
         ordered = sorted(samples)
         metrics['latencySamples'] = len(samples)
         metrics['meanDiscoverySeconds'] = round(sum(samples) / len(samples), 2) if samples else None
-        metrics['p95DiscoverySeconds'] = ordered[int((len(ordered)-1)*.95)] if ordered else None
+        metrics['p95DiscoverySeconds'] = ordered[math.ceil(len(ordered)*.95)-1] if ordered else None
         metrics['requests'] = int(metrics.get('requests', 0)) + row.get('requests', 0)
         metrics['nextScanAt'] = row.get('retryAt') or iso(now() + 300)
         metrics['verificationRequired'] = row.get('code') == 190
@@ -220,7 +221,8 @@ class Worker:
             metrics['healthStatus'] = 'unreadable'
         self.control('metrics:' + row['handle'], metrics)
 
-    def health_snapshot(self):
+    def health_snapshot(self, report=None):
+        report = report or {}
         rows = []
         for handle in self.handles:
             item = dict(self.control('metrics:' + handle) or {}, handle=handle)
@@ -231,6 +233,18 @@ class Worker:
             gate = self.db.execute('SELECT retry_at,code FROM health WHERE handle=?', (handle,)).fetchone()
             if gate and gate[0] > now():
                 item.update(nextScanAt=iso(gate[0]),lastErrorKind=gate[1],healthStatus='unreadable' if gate[1]=='meta_error_110_2207013' else 'transient_error')
+            # Count distinct currently rejected posts, not repeated polling attempts.
+            item['rejectedByReason'] = dict(self.db.execute(
+                "SELECT status,count(*) FROM posts WHERE handle=? AND status NOT IN ('pending','acknowledged','baseline') GROUP BY status",
+                (handle,)).fetchall())
+            samples = sorted(item.get('discoverySamples') or [])
+            if samples:
+                item['p95DiscoverySeconds'] = samples[math.ceil(len(samples)*.95)-1]
+            if report.get('status') in ('token_renewal_required', 'token_expired'):
+                item.update(healthStatus='verification_required', verificationRequired=True,
+                            nextScanAt=None, lastErrorKind='token_renewal_required')
+            elif report.get('status') in ('api_backoff', 'api_rate_limited'):
+                item.update(healthStatus='quota_backoff', nextScanAt=report.get('retryAt'))
             rows.append(item)
         return rows
 
@@ -589,7 +603,7 @@ def main():
             worker = Worker(directory, credentials, key, targets)
             try:
                 report = worker.run()
-                report['sourceHealth'] = worker.health_snapshot()
+                report['sourceHealth'] = worker.health_snapshot(report)
             finally:
                 worker.db.close()
         except Exception as error:

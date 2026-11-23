@@ -11,6 +11,7 @@ export function publicInstagramAPIState(value,now=Date.now()){
  const rows=[...actualRows,...waiting.filter(r=>!seen.has(r.handle)).map(r=>({...r,status:'backoff',read:0}))];
  const completed=date(value.completedAt)||date(value.at);
  const expired=!!date(value.tokenExpiresAt)&&Date.parse(value.tokenExpiresAt)<=now;
+ const authRequired=expired||['token_expired','token_renewal_required'].includes(value.status);
  let status=safe(value.status)||'unknown';
  // Older publishers called a round with no attempted source "completed" too.
  if(status==='completed'&&!actualRows.length&&count(value.activeSources))status=count(value.waitingSources)||waiting.length?'source_backoff':'no_sources_attempted';
@@ -19,7 +20,7 @@ export function publicInstagramAPIState(value,now=Date.now()){
  return {available:true,transport:'instagram_graph_api',status:expired?'token_expired':status,
   at:date(value.at),completedAt:completed,stale:!completed||now-Date.parse(completed)>900000,
   lastContentReadAt:date(value.lastContentReadAt),
-  nextExpectedScanAt:retryAt|| (completed?new Date(Date.parse(completed)+300000).toISOString():null),
+  nextExpectedScanAt:authRequired?null:retryAt|| (completed?new Date(Date.parse(completed)+300000).toISOString():null),
   retryAt,pauseReason:safe(value.pauseReason),pauseCode:Number.isSafeInteger(value.pauseCode)?value.pauseCode:null,sourceBudgetPerRound:count(value.sourceBudgetPerRound),deferredSources:count(value.deferredSources),
   waitingSources:count(value.waitingSources),attemptedSources:count(value.attemptedSources),readSources:count(value.readSources),failedSources:count(value.failedSources),
   intervalSeconds:300,activeSources:count(value.activeSources),pending:count(value.pending),

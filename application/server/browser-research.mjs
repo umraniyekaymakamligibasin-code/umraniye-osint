@@ -43,7 +43,7 @@ export function createBrowserResearch(DB,{now=Date.now}={}){
   const data={accounts,keywords:[...new Set(keywords)],automationEnabled:input.automationEnabled===true},r=await DB.prepare('INSERT INTO lab_config(id,data,revision,updated_at) VALUES(?,?,1,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data,revision=lab_config.revision+1,updated_at=excluded.updated_at WHERE lab_config.revision=?').bind('browser-research',JSON.stringify(data),new Date(now()).toISOString(),input.revision).run();if(!r.meta.changes)throw Error('revision_conflict');
  }
  async function evidence(input){
-  if(!names[input.provider]||typeof input.title!=='string'||input.title.trim().length<8||input.title.length>400||typeof input.description!=='string'||input.description.length>3000||typeof input.sourceName!=='string'||input.sourceName.trim().length<2||input.sourceName.length>100||typeof input.url!=='string'||input.url.length>600)throw Error('invalid');
+  if(!names[input.provider]||typeof input.title!=='string'||input.title.trim().length<(input.provider==='instagram'?1:8)||input.title.length>400||typeof input.description!=='string'||input.description.length>3000||typeof input.sourceName!=='string'||input.sourceName.trim().length<2||input.sourceName.length>100||typeof input.url!=='string'||input.url.length>600)throw Error('invalid');
   if(!osintSocialScope(input.title,input.provider==='x'?(input.fullText||input.description):input.description)&&!canonicalFacebookDisplay(input)&&!institutionalReference(input)&&!institutionalBackfillCandidate(input)&&!sourceNeighborhoodContext(input))throw Error('outside_governor_scope');
   const url=platformURL(input.url,input.provider),time=publicationTime(input.publishedAt,now());if(!time.publishedAt){
   console.log(JSON.stringify({
