@@ -19,6 +19,8 @@ def main():
     token = getpass.getpass('Yeni Meta erisim anahtari (ekranda gorunmez): ').strip()
     if not token or any(c.isspace() for c in token):
         raise SystemExit('Bos/gecersiz giris; degisiklik yapilmadi.')
+    if len(token) > 8192 or not token.isascii() or not re.fullmatch(r'[A-Za-z0-9._|~-]+', token):
+        raise SystemExit('Kopyalama bicimi uygun degil: yalniz anahtar kutusundaki metni kopyalayin; tirnak, baslik veya gorunmez karakter eklemeyin. Kayit yapilmadi.')
     s = importlib.util.spec_from_file_location('worker', '/opt/umraniye-osint-instagram-api/worker.py')
     w = importlib.util.module_from_spec(s)
     s.loader.exec_module(w)
@@ -27,6 +29,30 @@ def main():
             try:
                 return w.graph(*args, **kwargs)
             except RuntimeError as error:
+                if str(error) == 'http_400':
+                    # Inspect only response structure, never print raw remote content or token.
+                    import urllib.request, urllib.error, urllib.parse
+                    url = w.GRAPH + str(args[0]) + '?' + urllib.parse.urlencode(args[2] if len(args)>2 else kwargs.get('params', {}))
+                    request = urllib.request.Request(url, headers={'Authorization':'Bearer '+args[1]})
+                    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), w.NoRedirect())
+                    try:
+                        with opener.open(request, timeout=18) as response:
+                            return json.loads(response.read(4000000))
+                    except urllib.error.HTTPError as response:
+                        raw = response.read(65536)
+                        kind = 'json' if 'json' in response.headers.get('Content-Type','').lower() else 'html' if 'html' in response.headers.get('Content-Type','').lower() else 'other'
+                        try:
+                            obj = json.loads(raw)
+                        except (ValueError, UnicodeError):
+                            obj = {}
+                        err = obj.get('error') if isinstance(obj,dict) else None
+                        if isinstance(err,dict):
+                            raise w.MetaError(err) from None
+                        low = raw.lower()
+                        category = 'header_too_large' if b'header' in low and (b'large' in low or b'long' in low) else 'invalid_request' if b'bad request' in low else 'unclassified'
+                        print('Guvenli tani: HTTP='+str(response.code)+'; yanit='+kind+'; sinif='+category+'; anahtar_uzunlugu='+str(len(token)))
+                        response.close()
+                    raise
                 if str(error) not in ('http_429', 'http_500', 'http_502', 'http_503', 'http_504') or attempt == 2:
                     raise
                 print('Meta gecici HTTP hatasi; yeniden deneniyor ('+str(attempt+1)+'/2).')
