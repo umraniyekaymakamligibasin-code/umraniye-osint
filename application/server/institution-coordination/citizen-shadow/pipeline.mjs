@@ -126,6 +126,14 @@ export function runBatch(db,{now=Date.now(),limit=25,policyVersion=currentPolicy
    db.prepare("UPDATE cit_delivery_jobs SET state='retry',attempts=?,available_at=?,lease_until=NULL,claim_token=NULL,error_code=?,updated_at=? WHERE event_id=? AND claim_token=?").run(attempt,now+delay,code,now,job.event_id,token);report.failed++;
   }
  }
+ // Queue fresh assignments for every currently verified recipient, once per case.
+ const stamp=new Date(now).toISOString();
+ report.mailQueued=Number(db.prepare(`INSERT INTO coord_mail_outbox(id,coord_case_id,institution_id,recipient_id,recipient_hash,template_code,dedupe_key,state,attempts,next_attempt_at,created_at,provider_idempotency_key)
+ SELECT c.id||':'||r.id,c.id,c.institution_id,r.id,r.address_fingerprint,'initial-assignment',c.id||':'||r.id,'queued',0,?,?,c.id||':'||r.id
+ FROM coord_cases c JOIN coord_institutions i ON i.id=c.institution_id AND i.enabled=1 AND i.approval_status='approved' AND i.email_enabled=1
+ JOIN coord_mail_recipients r ON r.institution_id=i.id AND r.active=1 AND r.verified_at IS NOT NULL AND r.verified_by IS NOT NULL
+ WHERE c.status<>'dismissed' AND c.created_at>=? AND EXISTS(SELECT 1 FROM cit_case_links k WHERE k.case_id=c.id AND k.active=1)
+ ON CONFLICT(dedupe_key) DO NOTHING`).run(stamp,stamp,new Date(now-3600000).toISOString()).changes);
  report.queue=db.prepare('SELECT state,count(*) count FROM cit_delivery_jobs GROUP BY state').all();
  db.prepare("INSERT INTO cit_delivery_meta VALUES('last_run',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(JSON.stringify(report));
  return report;

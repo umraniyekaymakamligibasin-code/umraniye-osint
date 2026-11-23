@@ -132,7 +132,7 @@ async function sourcePresentation(db,items){
  return items.map(c=>{let event;try{event=JSON.parse(sources.get(c.source_event_id)||'null')}catch{return c}
   const original=publicEventProjection(c,event);if(!original)return c;
   const topic=c.topic_code==='CIT-POLICE-MINIMIZED-INCIDENT'?'Asayiş':c.topic_code==='CIT-FIRE-MINIMIZED-INCIDENT'?'Yangın ve kurtarma':c.topic_name;
-  return{...c,title:original.title||c.title,summary_redacted:original.text?original.text.slice(0,900)+(original.text.length>900?'…':''):c.summary_redacted,topic_name:topic};
+  return{...c,title:original.title||c.title,summary_redacted:original.text?original.text.slice(0,6000)+(original.text.length>6000?'…':''):c.summary_redacted,topic_name:topic};
  });
 }
 

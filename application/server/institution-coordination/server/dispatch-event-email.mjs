@@ -215,7 +215,7 @@ export async function dispatchDueInstitutionNotices({ db, decryptAddress, sendWi
             .replace(/^[\s:;,.·|\-–—]+/u, '');
         }
       }
-      let govde = piiMaskele(tekrarlariAt(hamMetin, tamBaslik));
+      let govde = tekrarlariAt(hamMetin, tamBaslik);
       if (govde.length > MAIL_METIN_SINIRI) {
         govde = govde.slice(0, MAIL_METIN_SINIRI).replace(/\s+\S*$/u, '') + '\n\n[… haber metni kısaltıldı; tamamı panelde]';
       }
@@ -248,7 +248,7 @@ export async function dispatchDueInstitutionNotices({ db, decryptAddress, sendWi
         tarihTR(stillEligible.case_created_at) ? `Kayıt zamanı: ${tarihTR(stillEligible.case_created_at)}` : null,
         '',
         '— HABER —',
-        caseTitle ? `Başlık: ${piiMaskele(tamBaslik)}` : null,
+        caseTitle ? `Başlık: ${tamBaslik}` : null,
         '',
         govde || null,
         '',
