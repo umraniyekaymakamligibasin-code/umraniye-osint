@@ -13,14 +13,14 @@ export async function watch({dbPath=process.env.OSINT_DB_PATH||'/var/lib/umraniy
  const db=new DatabaseSync(dbPath,{readOnly:true,timeout:1000});db.exec('PRAGMA query_only=ON');
  let stopped=false,lastPass=0,nextAllowed=0;
  const stop=()=>{stopped=true;};process.on('SIGTERM',stop);process.on('SIGINT',stop);
- console.log(JSON.stringify({event:'institution_realtime_started',pollMs:1000,maintenanceMs:60000}));
+ console.log(JSON.stringify({event:'institution_realtime_started',pollMs:1000,maintenanceMs:5000}));
  try{while(!stopped){
   try{
    const now=Date.now();if(now>=nextAllowed&&wakePolicy({now,due:dueWork(db,now),lastPass,nextAllowed})){
     try{
      // The same lock protects legacy/manual/timer entry points. The observer
      // never holds it, so a live sender or router cannot deadlock this worker.
-     execFileSync('/usr/bin/flock',['--nonblock','--conflict-exit-code','75',lock,process.execPath,fileURLToPath(new URL('../kurum/kurum-zamanlayici.mjs',import.meta.url)),'--tek-sefer','--sunucu','/opt/umraniye-osint-deneme','--gonder','--portal-url','https://umraniyeosint.com'],{stdio:'inherit',timeout:45000});
+     execFileSync('/usr/bin/flock',['--nonblock','--conflict-exit-code','75',lock,process.execPath,fileURLToPath(new URL('../kurum/kurum-zamanlayici.mjs',import.meta.url)),'--tek-sefer','--sunucu','/opt/umraniye-osint-deneme','--limit','10','--gonder','--portal-url','https://umraniyeosint.com'],{stdio:'inherit',timeout:180000});
      lastPass=Date.now();nextAllowed=lastPass+1000;
     }catch(error){nextAllowed=Date.now()+(error.status===75?1000:5000);if(error.status!==75)console.error(JSON.stringify({event:'institution_realtime_pass_failed',exitCode:error.status||null}));}
    }
