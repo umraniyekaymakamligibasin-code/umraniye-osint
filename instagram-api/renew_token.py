@@ -21,20 +21,28 @@ def main():
     s = importlib.util.spec_from_file_location('worker', '/opt/umraniye-osint-instagram-api/worker.py')
     w = importlib.util.module_from_spec(s)
     s.loader.exec_module(w)
+    stage = 'instagram_hesap_kontrolu'
     try:
         identity = w.graph(credentials['igUserId'], token, {'fields':'id'})
         if str(identity.get('id')) != str(credentials['igUserId']):
             raise ValueError('identity_mismatch')
+        stage = 'yerel_kaynak_listesi'
         targets = json.loads(pathlib.Path('/opt/umraniye-osint-browser/.instagram-v60/targets.json').read_text())
         handles = w.active_handles(targets)
         if handles:
+            stage = 'kaynak_okuma_yetkisi'
             check = w.graph(credentials['igUserId'], token, {'fields':'business_discovery.username('+handles[0]+'){username}'})
             if str((check.get('business_discovery') or {}).get('username','')).lower() != handles[0].lower():
                 raise ValueError('discovery_permission_missing')
     except w.MetaError as e:
         raise SystemExit('Dogrulama basarisiz: Meta '+str(e.code)+'/'+str(e.subcode)+'. Degisiklik yapilmadi.')
-    except Exception:
-        raise SystemExit('Hesap/API yetkisi dogrulanamadi. Degisiklik yapilmadi.')
+    except Exception as e:
+        # Never display remote messages, URLs, credentials, or arbitrary exception text.
+        reason = str(e) if isinstance(e, ValueError) and str(e) in ('identity_mismatch', 'discovery_permission_missing', 'invalid_source_list', 'invalid_source_handle') else type(e).__name__
+        detail = getattr(e, 'reason', None)
+        if detail is not None:
+            reason += '/' + type(detail).__name__
+        raise SystemExit('Dogrulama durdu. Asama: '+stage+'; hata: '+reason+'. Anahtar kaydedilmedi; mevcut ayarlar degismedi.')
     # Never infer a new token's expiry from the previous token.
     credentials.update(token=token, expiresAt=None)
     subprocess.run(['systemctl','stop','umraniye-osint-instagram-api.timer'],check=True)
