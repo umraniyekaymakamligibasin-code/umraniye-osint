@@ -4,6 +4,7 @@ import{readFileSync}from'node:fs';
 import{preview,persistPlan,snapshot,adaptEvent,findLegacyCase}from'./live-adapter.mjs';
 import{canonicalSource}from'./source-url.mjs';
 import{routingRevision}from'./routing-revision.mjs';
+import{queueNotices,eventCaseIds}from'./notice-queue.mjs';
 const hash=s=>createHash('sha256').update(s).digest('hex');
 const hour=3600000;
 export function initDelivery(db){
@@ -91,7 +92,7 @@ export function runBatch(db,{now=Date.now(),limit=25,policyVersion=currentPolicy
  db.prepare(`UPDATE cit_delivery_jobs SET state='pending',available_at=0,attempts=0 WHERE event_id IN(SELECT event_id FROM cit_delivery_jobs WHERE state IN('done','retry') AND policy_version<>? ORDER BY event_id LIMIT 250)`).run(policyVersion);
  const deliveryAudit=auditDeliveries(db,{now,limit:10});
  const jobs=db.prepare(`SELECT j.* FROM cit_delivery_jobs j WHERE j.state IN('pending','retry') AND j.available_at<=? ORDER BY j.priority DESC,j.available_at,j.event_id LIMIT ?`).all(now,limit);
- const report={at:new Date(now).toISOString(),examined:0,metadataOnly:0,inserted:0,duplicates:0,updated:0,withdrawn:0,restored:0,verified:0,failed:0,reasons:{},messagesSent:0,policyVersion,deliveryAudit};
+ const report={at:new Date(now).toISOString(),examined:0,metadataOnly:0,inserted:0,duplicates:0,updated:0,withdrawn:0,restored:0,verified:0,failed:0,reasons:{},messagesSent:0,messagesQueued:0,policyVersion,deliveryAudit};
  for(const job of jobs){
   const token=randomUUID();if(!db.prepare("UPDATE cit_delivery_jobs SET state='processing',claim_token=?,lease_until=?,policy_version=? WHERE event_id=? AND generation=? AND state IN('pending','retry')").run(token,now+120000,policyVersion,job.event_id,job.generation).changes)continue;
   try{
@@ -110,11 +111,14 @@ export function runBatch(db,{now=Date.now(),limit=25,policyVersion=currentPolicy
    const result=persistPlan(db,plan,{allowWrites:true,transaction:false,now:()=>new Date(now).toISOString()});
    if(result.held)throw Error('projection_held');
    const synced=synchronize(db,e,plan,revision,now),decision=plan.results[0];
+   // Panel yazimindan sonra bildirim kuyrugu (ayni islem icinde, idempotent).
+   let notices={queued:0,skipped:0};
+   try{notices=queueNotices(db,{caseIds:eventCaseIds(db,event.id),event,now});}catch{notices={queued:0,skipped:0};}
    if(beforeAck)beforeAck(db,job);
    db.prepare('INSERT INTO cit_delivery_meta VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(fingerprintKey,meaningful);
    const unassigned=!decision.tasks.length;
    db.prepare(`UPDATE cit_delivery_jobs SET state=?,priority=0,attempts=0,available_at=?,lease_until=NULL,claim_token=NULL,policy_version=?,source_revision=?,outcome=?,error_code=NULL,updated_at=? WHERE event_id=? AND claim_token=? AND generation=?`).run(unassigned?'retry':'done',unassigned?now+6*hour:0,policyVersion,revision,decision.reason,now,job.event_id,token,job.generation);
-   db.exec('COMMIT');report.examined++;report.inserted+=result.inserted;report.duplicates+=result.duplicates;for(const k of ['updated','withdrawn','restored','verified'])report[k]+=synced[k];report.reasons[decision.reason]=(report.reasons[decision.reason]||0)+1;
+   db.exec('COMMIT');report.examined++;report.inserted+=result.inserted;report.duplicates+=result.duplicates;report.messagesQueued=(report.messagesQueued||0)+notices.queued;for(const k of ['updated','withdrawn','restored','verified'])report[k]+=synced[k];report.reasons[decision.reason]=(report.reasons[decision.reason]||0)+1;
   }catch(error){
    if(db.isTransaction)db.exec('ROLLBACK');
    const attempt=job.attempts+1,delay=Math.min(6*hour,30000*2**Math.min(attempt,10));
