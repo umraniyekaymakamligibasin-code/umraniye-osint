@@ -24,7 +24,7 @@ function tazeMi(event, simdi) {
   const sinir = simdi - TAZELIK_SAAT * SAAT;
   for (const alan of ['publishedAt', 'firstSeenAt', 'collectedAt']) {
     const t = Date.parse(event?.[alan] ?? '');
-    if (Number.isFinite(t) && t >= sinir) return true;
+    if (Number.isFinite(t) && t >= sinir && t <= simdi + 300000) return true;
   }
   return false;
 }
@@ -56,13 +56,13 @@ export function queueNotices(db, { caseIds, event, now = Date.now() }) {
     if (!c) { rapor.skipped++; continue; }
     const uygun = c.i_enabled === 1 && c.i_approval === 'approved' && c.email_enabled === 1
       && c.t_enabled === 1 && c.t_approval === 'approved'
-      && c.sensitivity !== 'restricted' && c.t_sensitivity !== 'restricted'
+      && c.status !== 'dismissed' && c.sensitivity !== 'restricted' && c.t_sensitivity !== 'restricted'
       && c.grant_ok === 1;
     if (!uygun) { rapor.skipped++; continue; }
     let eklendi = 0;
     for (const r of alicilar.all(c.institution_id)) {
       const id = `${caseId}:${r.id}`;
-      try {
+      {
         const sonuc = db.prepare(`INSERT OR IGNORE INTO coord_mail_outbox(
             id,coord_case_id,institution_id,recipient_id,recipient_hash,template_code,
             dedupe_key,state,attempts,next_attempt_at,lease_until,
@@ -72,7 +72,7 @@ export function queueNotices(db, { caseIds, event, now = Date.now() }) {
           id, stamp, id, stamp);
         const n = Number(sonuc?.changes ?? sonuc?.meta?.changes ?? 0);
         if (n > 0) eklendi++;
-      } catch { /* kuyruk hatasi vakayi dusurmemeli */ }
+      }
     }
     if (eklendi) rapor.queued += eklendi; else rapor.skipped++;
   }
