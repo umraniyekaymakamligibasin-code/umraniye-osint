@@ -30,7 +30,7 @@ export function persistPlan(db,plan,{allowWrites=false,now=()=>new Date().toISOS
    if(!known.has(task.topic)||!task.sourceEventId||task.locality?.district!=='Ümraniye'){report.held++;continue;}
    const allowed=db.prepare(`SELECT i.id institution_id,t.id topic_id FROM coord_institutions i
     JOIN coord_institution_topic_grants g ON g.institution_id=i.id AND g.granted=1 AND length(trim(g.approval_reference))>0
-    JOIN coord_topics t ON t.id=g.topic_id AND t.enabled=1 AND t.approval_status='approved' AND t.sensitivity='ordinary' AND length(trim(t.approval_reference))>0
+    JOIN coord_topics t ON t.id=g.topic_id AND t.enabled=1 AND t.approval_status='approved' AND t.sensitivity IN ('ordinary','high') AND length(trim(t.approval_reference))>0
     WHERE i.code=? AND t.code=? AND i.enabled=1 AND i.approval_status='approved' AND length(trim(i.approval_reference))>0`).get(task.institution,task.topic);
    if(!allowed){report.held++;continue;}
    const source=db.prepare('SELECT data FROM lab_items WHERE id=?').get(task.sourceEventId);
