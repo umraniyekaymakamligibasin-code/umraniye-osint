@@ -38,7 +38,7 @@ export function queueNotices(db, { caseIds, event, now = Date.now() }) {
   if (!tazeMi(event, now)) { rapor.skipped += caseIds.length; return rapor; }
   const stamp = new Date(now).toISOString();
   const alicilar = db.prepare(`SELECT r.id, r.address_fingerprint
-    FROM coord_mail_recipients 
+    FROM coord_mail_recipients r
     WHERE r.institution_id=? AND r.active=1
       AND r.verified_at IS NOT NULL AND r.verified_by IS NOT NULL`);
 
