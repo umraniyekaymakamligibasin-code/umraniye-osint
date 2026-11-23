@@ -11,7 +11,7 @@ const ELIGIBILITY = `SELECT o.id,o.coord_case_id,o.institution_id,o.recipient_id
   t.display_name AS topic_name,t.code AS topic_code,
   r.address_ciphertext,r.key_version,r.address_fingerprint
   FROM coord_mail_outbox o
-  JOIN coord_cases c ON c.id=o.coord_case_id AND c.institution_id=o.institution_id AND c.sensitivity<>'restricted'
+  JOIN coord_cases c ON c.id=o.coord_case_id AND c.institution_id=o.institution_id AND c.sensitivity<>'restricted' AND c.status<>'dismissed'
   JOIN coord_institutions i ON i.id=o.institution_id AND i.enabled=1 AND i.approval_status='approved' AND i.email_enabled=1
   JOIN coord_topics t ON t.id=c.topic_id AND t.enabled=1 AND t.approval_status='approved' AND t.sensitivity<>'restricted'
   JOIN coord_institution_topic_grants g ON g.institution_id=i.id AND g.topic_id=t.id AND g.granted=1 AND g.approval_reference IS NOT NULL
@@ -153,6 +153,7 @@ export async function dispatchDueInstitutionNotices({ db, decryptAddress, sendWi
   if (sendWithIdempotency.supportsIdempotency !== true && sendWithIdempotency.durableClaimOnly !== true) throw new Error('Mail provider idempotency support required');
   const parsedPortal = new URL(portalUrl);
   if (parsedPortal.protocol !== 'https:' || parsedPortal.username || parsedPortal.password) throw new Error('A fixed HTTPS portal URL is required');
+  const recoveryDead = await db.prepare(`SELECT count(*) AS n FROM coord_mail_outbox WHERE state='sending' AND lease_until<=? AND (?=0 OR attempts>=5)`).bind(isoNow(),sendWithIdempotency.supportsIdempotency===true?1:0).first();
   // Recover abandoned claims with the same provider idempotency key.
   await db.prepare(`UPDATE coord_mail_outbox SET state=CASE WHEN ?=0 OR attempts>=5 THEN 'dead' ELSE 'queued' END,
     next_attempt_at=?,lease_until=NULL,last_error_code='expired_claim' WHERE state='sending' AND lease_until<=?`)
@@ -160,7 +161,8 @@ export async function dispatchDueInstitutionNotices({ db, decryptAddress, sendWi
   const count = Math.max(1, Math.min(10, Number.isInteger(limit) ? limit : 10));
   const due = await db.prepare(`SELECT id,coord_case_id,institution_id,recipient_id,attempts FROM coord_mail_outbox
     WHERE state IN ('queued') AND next_attempt_at<=? ORDER BY created_at,id LIMIT ?`).bind(isoNow(), count).all();
-  const result = safeResult();
+  const result = safeResult(0,0,0,Number(recoveryDead?.n||0));
+  if(result.dead)onError?.({code:'expired_claim'});
 
   for (const row of due?.results ?? []) {
     const claimAt = isoNow();

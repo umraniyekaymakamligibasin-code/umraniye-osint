@@ -20,7 +20,9 @@ export async function watchMail(){
    const keyPath=join(directory,'institution-recipients.key');const meta=await lstat(keyPath);if(!meta.isFile()||meta.isSymbolicLink())throw Error('recipient_key_unavailable');
    const recipients=createInstitutionRecipients({db,key:await accountKey(keyPath)}),sender=createGmailSender({directory});const errors=[];
    const outcome=await mailPass({db,decryptAddress:recipients.decrypt,sendWithIdempotency:sender.send,portalUrl:'https://umraniyeosint.com/kurum',onError:e=>errors.push(e.code)});
-   status={at,healthy:!outcome.dead&&!errors.length,...outcome,errors};
+   const queue=raw.prepare('SELECT state,count(*) AS count FROM coord_mail_outbox GROUP BY state').all();
+   const unresolved=queue.filter(r=>r.state==='dead').reduce((sum,r)=>sum+r.count,0);
+   status={at,healthy:!outcome.dead&&!errors.length&&!unresolved,...outcome,unresolvedDead:unresolved,queue,errors};
   }catch{status={at,healthy:false,error:'mail_worker_failed'};}
   try{await writeFile(statusPath+'.tmp',JSON.stringify(status),{mode:0o600});await rename(statusPath+'.tmp',statusPath);}catch{console.error(JSON.stringify({event:'institution_mail_status_write_failed'}));}
   if(!status.healthy||status.sent)console.log(JSON.stringify({event:'institution_mail_pass',...status}));
