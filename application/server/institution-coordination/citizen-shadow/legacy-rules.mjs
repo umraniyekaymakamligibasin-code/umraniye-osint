@@ -1,10 +1,11 @@
+import{createHash}from'node:crypto';
 import{readFileSync}from'node:fs';import{analyze}from'./engine.mjs';import{fold}from'./language.mjs';import{approvalSnapshot}from'./integration.mjs';
 import{RESMI_HESAPLAR}from'./locality.mjs';
 // Existing approved topics use the SAME language, location and privacy engine.
 // Broad legacy phrases are a fallback only; never a second parallel decision.
 const terms=JSON.parse(readFileSync(new URL('../kurum/topic-terms.json',import.meta.url),'utf8')).konular||{};
 export const legacyCodes=new Set(Object.keys(terms));
-const fixed={street_cleanliness:['UMR_BELEDIYE'],illegal_dumping_public_space:['UMR_BELEDIYE'],waste_container:['UMR_BELEDIYE'],parks_public_space:['UMR_BELEDIYE'],bus_service_disruption:['UMR_BELEDIYE'],bus_stop_infrastructure:['UMR_BELEDIYE'],metro_service_disruption:['UMR_BELEDIYE'],metro_station_infrastructure:['UMR_BELEDIYE'],ibb_road_maintenance:['UMR_BELEDIYE'],animal_health_public_agriculture:['UMR_BELEDIYE','UMR_ILCE_TARIM'],urban_animal_welfare:['UMR_BELEDIYE','UMR_ILCE_TARIM'],traffic_safety:['UMR_BELEDIYE','UMR_EMNIYET']};
+const fixed={street_cleanliness:['UMR_BELEDIYE'],illegal_dumping_public_space:['UMR_BELEDIYE'],waste_container:['UMR_BELEDIYE'],parks_public_space:['UMR_BELEDIYE'],bus_service_disruption:['IETT','UMR_BELEDIYE'],bus_stop_infrastructure:['IETT','UMR_BELEDIYE'],metro_service_disruption:['METRO_ISTANBUL'],metro_station_infrastructure:['METRO_ISTANBUL'],ibb_road_maintenance:['UMR_BELEDIYE'],animal_health_public_agriculture:['UMR_BELEDIYE','UMR_ILCE_TARIM'],urban_animal_welfare:['UMR_BELEDIYE','UMR_ILCE_TARIM'],traffic_safety:['UMR_BELEDIYE','UMR_EMNIYET']};
 
 /* ------------------------------------------------------------------ *
  * KURUMSAL BILGI ISTISNASI
@@ -87,6 +88,25 @@ function kurumsalBilgiKurali(event){
  return null;
 }
 
+export function socialInformation(event,state){
+ const approvals=approvalSnapshot(state),text=fold([event.title,event.fullText||event.description].filter(Boolean).join(' '));
+ if(event.locality?.district!=='Ümraniye'||!(event.locality.verified||event.locality.routingEligible))return null;
+ const candidates=[];
+ if(/(?:bayragin golgesinde|egitime destek platformu|ogrenci meclisi|ogretmenler gunu|okul ziyareti|egitim ogretim)/.test(text))candidates.push(['education_service_access','UMR_ILCE_MEM']);
+ if(/(?:ilce emniyet mudurlugunce|emniyet mudurlugu ekip|huzur ve guven icin|asayis uygulamasi|gozaltina alindi|tutuklandi)/.test(text))candidates.push(['public_safety','UMR_EMNIYET']);
+ if(/(?:siddetli ruzgar uyarisi|firtina uyarisi|firtinali ruzgar)/.test(text))candidates.push(['storm_damage','UMR_AFET']);
+ if(/(?:istihdam merkezi|is basvurusu|kariyer gunleri)/.test(text)&&/belediye/.test(text))candidates.push(['employment_service_access','UMR_BELEDIYE'],['employment_service_access','UMR_ISKUR']);
+ if(/(?:kitap fuari|kutuphane acilisi)/.test(text))candidates.push(['municipal_service_access','UMR_BELEDIYE']);
+ if(/(?:durak|merdiven)/.test(text)&&/(?:merdiven yapan|durak yapimi|durak yenilendi)/.test(text))candidates.push(['bus_stop_infrastructure','IETT'],['bus_stop_infrastructure','UMR_BELEDIYE']);
+ if(!candidates.length)return null;
+ const tasks=[];
+ for(const[topic,institution]of candidates){
+  if(!approvals.approvedInstitutions.includes(institution)||!approvals.approvedTopics.includes(topic)||!approvals.grants.some(g=>g.institution===institution&&g.topic===topic&&g.granted))continue;
+  const key=createHash('sha256').update(JSON.stringify([event.eventIdentity||event.id,topic,institution])).digest('hex');
+  tasks.push({key,issueKey:key,topic,institution,title:event.title||'Kurum bilgilendirmesi',summary:String(event.fullText||event.description||event.title).slice(0,6000),locality:{district:'Ümraniye',precision:'district',neighborhood:null},risk:'normal',sourceEventId:event.id});
+ }
+ return tasks.length?{mode:'shadow',eventId:event.id,tasks,issues:[],status:'shadow_candidates',reason:'approved_panel_candidates'}:null;
+}
 export function fallbackDecision(event,snapshot){
  const approvals=approvalSnapshot(snapshot),rules=[];
  for(const topic of snapshot.topics){
@@ -102,7 +122,7 @@ export function fallbackDecision(event,snapshot){
  const normal=analyze(event,{rules,...approvals});
  if(normal.tasks.length)return normal;
  const kb=kurumsalBilgiKurali(event);
- if(!kb)return normal;
+ if(!kb)return socialInformation(event,snapshot)||normal;
  const bilgi=analyze(event,{rules:[kb],...approvals});
- return bilgi.tasks.length?bilgi:normal;
+ return bilgi.tasks.length?bilgi:socialInformation(event,snapshot)||normal;
 }
