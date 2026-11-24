@@ -4,7 +4,9 @@ export function reconcileMail(db,{now=Date.now(),limit=100}={}){
  const result={examined:0,queued:0,skipped:0};
  db.exec('BEGIN IMMEDIATE');
  try{
-  const rows=db.prepare(`SELECT DISTINCT c.id,c.source_event_id,
+  const hours=Number(process.env.OSINT_MAIL_TAZE_SAAT??24);
+  const lower=new Date(now-(Number.isFinite(hours)?hours:24)*3600000).toISOString(),upper=new Date(now+300000).toISOString();
+  const rows=db.prepare(`WITH candidates AS (SELECT DISTINCT c.id,c.source_event_id,c.created_at,
     CASE WHEN json_valid(l.data) THEN l.data WHEN json_valid(k.data) THEN k.data ELSE NULL END AS data
    FROM coord_cases c
    JOIN coord_institutions i ON i.id=c.institution_id AND i.enabled=1 AND i.approval_status='approved' AND i.email_enabled=1
@@ -16,7 +18,11 @@ export function reconcileMail(db,{now=Date.now(),limit=100}={}){
    AND EXISTS(SELECT 1 FROM coord_mail_recipients r WHERE r.institution_id=i.id AND r.active=1 AND r.verified_at IS NOT NULL AND r.verified_by IS NOT NULL
     AND NOT EXISTS(SELECT 1 FROM coord_mail_outbox o WHERE o.coord_case_id=c.id AND o.recipient_id=r.id AND o.recipient_hash=r.address_fingerprint))
    AND (json_valid(l.data) OR json_valid(k.data))
-   ORDER BY c.created_at DESC,c.id LIMIT ?`).all(Math.max(1,Math.min(500,limit|0)));
+   ) SELECT * FROM candidates WHERE
+    julianday(json_extract(data,'$.publishedAt')) BETWEEN julianday(?) AND julianday(?)
+    OR julianday(json_extract(data,'$.firstSeenAt')) BETWEEN julianday(?) AND julianday(?)
+    OR julianday(json_extract(data,'$.collectedAt')) BETWEEN julianday(?) AND julianday(?)
+   ORDER BY created_at DESC,id LIMIT ?`).all(lower,upper,lower,upper,lower,upper,Math.max(1,Math.min(500,limit|0)));
   for(const row of rows){
    const event=JSON.parse(row.data);
    if(event?.id!==row.source_event_id){result.skipped++;continue;}
