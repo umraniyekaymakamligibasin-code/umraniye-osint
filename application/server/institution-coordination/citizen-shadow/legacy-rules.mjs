@@ -110,6 +110,7 @@ export function socialInformation(event,state){
  if(active.some(c=>/\b(?:carpip kacan|carpip kacti|carparak kacan|carparak kacti|carpmanin etkisiyle|kazaya karisarak olay yerinden ayrilan)\b/.test(c)||(/\bkirmizi isik[a-z]*\b/.test(c)&&/\b(?:kaza|carpisti|carpti)\b/.test(c))))candidates.push(['traffic_safety','UMR_EMNIYET']);
  if(active.some(c=>/\bhirsiz[a-z]*\b/.test(c)&&/\b(?:caldi|calindi|calindigi|calinmasi|calarken)\b/.test(c)))candidates.push(['public_safety','UMR_EMNIYET']);
  if(event.locality?.evidence==='named_district_health_facility'&&/\b(?:kedi kayniyor|hijyen|temizlenmiyor|bocek|fare)\b/.test(text))candidates.push(['public_health_facility','UMR_ILCE_SAGLIK']);
+ if(active.some(c=>/\btrafik guvenligi[a-z]*\b/.test(c)&&/\b(?:tehlike[a-z]*|yasal islem|idari para cezasi|adli islem|trafikten men)\b/.test(text)))candidates.push(['traffic_safety','UMR_EMNIYET']);
  if(active.some(c=>/\b(?:trafik kazasi|carpisti|zincirleme kaza|arac devrildi|motosiklet kazasi|makas atti|drift yapti)\b/.test(c)))candidates.push(['traffic_safety','UMR_EMNIYET']);
  if((fire||collapse)&&/\b(?:polis|emniyet) ekip[a-z]*\b/.test(incidentText))candidates.push(['public_safety','UMR_EMNIYET']);
 
