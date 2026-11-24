@@ -30,3 +30,10 @@ test('named local metro station fault routes operator, not distribution company'
 test('nonlocal incident and commercial fire equipment do not become local news routes',()=>{for(const text of["Kadıköy'de çatı yangını itfaiye ekiplerince söndürüldü.","Ümraniye'de yangın kapısı indirim kampanyası başladı.","Ümraniye'de yangın tatbikatı için bina tahliye edildi."]){assert.equal(fallbackDecision(event(text),newsState()).tasks.length,0,text);}});
 
 test('explicit local weapons seizures and obfuscated local assault police response route Emniyet',()=>{for(const text of["Ümraniye'de durdurulan araçta150 tabanca namlusu ele geçirildi.","Ümraniye'de 150 tabanca namlusu, Bayrampaşa'da 95 tabanca, Edirne'de187 tabanca ele geçirildi.","Ümraniye Namık Kemal Mahallesi'nde bir kişi s*lahla vu*uldu. Ümraniye İlçe Emniyet Müdürlüğü ekipleri şüpheliyi gözaltına aldı."]){const tasks=fallbackDecision(event(text),newsState()).tasks;assert.ok(tasks.some(t=>t.institution==='UMR_EMNIYET'&&t.topic==='public_safety'),text);}});
+
+test('local crime court update remains relevant while negated and other-district reports do not route',()=>{
+ const approved=state();approved.institutions.push({id:'UMR_EMNIYET',code:'UMR_EMNIYET',enabled:1,approval_status:'approved',approval_reference:'test'});approved.topics.push({id:'public_safety',code:'public_safety',enabled:1,approval_status:'approved',approval_reference:'test'});approved.grants.push({institution_id:'UMR_EMNIYET',topic_id:'public_safety',granted:1,approval_reference:'test'});
+ const valid=socialInformation(event("Ümraniye'de cinayet davasında istinaf başvurusu yapıldı."),approved);assert.ok(valid.tasks.some(t=>t.institution==='UMR_EMNIYET'));
+ assert.equal(socialInformation(event("Kadıköy'de cinayet davasında istinaf başvurusu yapıldı."),approved),null);
+ assert.equal(socialInformation(event("Ümraniye'de cinayet davası iddiası doğru değil."),approved),null);
+});

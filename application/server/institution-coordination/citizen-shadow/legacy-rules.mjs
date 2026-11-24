@@ -99,6 +99,7 @@ export function socialInformation(event,state){
  // or rescue completed. Do not confuse a resolved incident report with a false
  // incident claim. Simulation, negation and explicit archive clauses were removed.
  const incidentText=active.join(' ');
+ if(active.some(c=>/\b(?:cinayet[a-z]*|oldurul[a-z]*|silahli saldiri[a-z]*)\b/.test(c)&&/\b(?:dava[a-z]*|istinaf[a-z]*|beraat[a-z]*|itiraz[a-z]*|mahkeme[a-z]*)\b/.test(c)))candidates.push(['public_safety','UMR_EMNIYET']);
  const fire=active.some(c=>/\b(?:yangin cikti|cikan yangin|yangin cikan|cati yangini|bina yangini|isyeri yangini|yangin sonduruldu|alevlere teslim|alev aldi|alev alev yandi)\b/.test(c)||(/\byangin[a-z]*\b/.test(c)&&/\b(?:itfaiye|sonduruldu|kontrol altina alindi)\b/.test(c)));
  const collapse=active.some(c=>/\b(?:balkon|bina|cati|iskele|vinc)[a-z]*\b/.test(c)&&/\b(?:coktu|cokmesi|cokme|devrildi|devrilmesi|enkaz|mahsur)\b/.test(c));
  if(fire||collapse)candidates.push(['fire_rescue','ISTANBUL_ITFAIYE']);
