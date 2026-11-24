@@ -1,6 +1,6 @@
 import{createHash}from'node:crypto';
 import{readFileSync}from'node:fs';import{analyze}from'./engine.mjs';import{fold,clauseState}from'./language.mjs';import{approvalSnapshot}from'./integration.mjs';
-import{RESMI_HESAPLAR}from'./locality.mjs';
+import{RESMI_HESAPLAR,explicitLocalIncidentClauses}from'./locality.mjs';
 // Existing approved topics use the SAME language, location and privacy engine.
 // Broad legacy phrases are a fallback only; never a second parallel decision.
 const terms=JSON.parse(readFileSync(new URL('../kurum/topic-terms.json',import.meta.url),'utf8')).konular||{};
@@ -89,7 +89,8 @@ function kurumsalBilgiKurali(event){
 }
 
 export function socialInformation(event,state){
- const approvals=approvalSnapshot(state),raw=[event.title,event.fullText||event.description].filter(Boolean).join('\n');
+ const approvals=approvalSnapshot(state),fullRaw=[event.title,event.fullText||event.description].filter(Boolean).join('\n');
+ const raw=event.locality?.evidence==='explicit_local_incident_clauses'?explicitLocalIncidentClauses(fullRaw).join('\n'):fullRaw;
  const active=raw.split(/[.!?;\n]+|\s+ama\s+|\s+ancak\s+/iu).filter(c=>clauseState(c)==='active'&&!/\b(?:iptal edildi|yalanlandi|yapilmadi|gerceklesmedi)\b/.test(fold(c))).map(fold);
  const text=active.join(' ');
  if(!text)return null;
@@ -106,6 +107,9 @@ export function socialInformation(event,state){
  if(collapse&&/\b(?:enkaz|mahsur|yaralandi|yarali)\b/.test(incidentText))candidates.push(['district_emergency_coordination','UMR_AFET']);
  if(active.some(c=>(/\b(?:tabanca|silah|namlu)[a-z]*\b/.test(c)&&/\bele geciril[a-z]*\b/.test(c))||/\b(?:gozaltina alindi|gozaltina alinirken|gozaltina aldi|supheli yakalandi|supheliler yakalandi)\b/.test(c)))candidates.push(['public_safety','UMR_EMNIYET']);
  if(active.some(c=>/\b(?:tokat atti|tokat|darbetti|darp edildi|silahli saldiri|bicakli saldiri|kavga cikti|kursunlandi|aracina zarar veren|hirsizlik yapti|soygun)\b/.test(c)))candidates.push(['public_safety','UMR_EMNIYET']);
+ if(active.some(c=>/\b(?:carpip kacan|carpip kacti|carparak kacan|carparak kacti|carpmanin etkisiyle|kazaya karisarak olay yerinden ayrilan)\b/.test(c)||(/\bkirmizi isik[a-z]*\b/.test(c)&&/\b(?:kaza|carpisti|carpti)\b/.test(c))))candidates.push(['traffic_safety','UMR_EMNIYET']);
+ if(active.some(c=>/\bhirsiz[a-z]*\b/.test(c)&&/\b(?:caldi|calindi|calindigi|calinmasi|calarken)\b/.test(c)))candidates.push(['public_safety','UMR_EMNIYET']);
+ if(event.locality?.evidence==='named_district_health_facility'&&/\b(?:kedi kayniyor|hijyen|temizlenmiyor|bocek|fare)\b/.test(text))candidates.push(['public_health_facility','UMR_ILCE_SAGLIK']);
  if(active.some(c=>/\b(?:trafik kazasi|carpisti|zincirleme kaza|arac devrildi|motosiklet kazasi|makas atti|drift yapti)\b/.test(c)))candidates.push(['traffic_safety','UMR_EMNIYET']);
  if((fire||collapse)&&/\b(?:polis|emniyet) ekip[a-z]*\b/.test(incidentText))candidates.push(['public_safety','UMR_EMNIYET']);
 
