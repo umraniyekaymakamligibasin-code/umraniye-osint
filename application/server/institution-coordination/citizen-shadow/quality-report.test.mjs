@@ -1,0 +1,6 @@
+import test from'node:test';import assert from'node:assert/strict';import{DatabaseSync}from'node:sqlite';import{qualitySnapshot}from'./quality-report.mjs';
+test('quality report detects missing panel and never equates unassigned with semantic error',()=>{const db=new DatabaseSync(':memory:');try{db.exec('CREATE TABLE lab_items(id TEXT,data TEXT,published_at TEXT);CREATE TABLE cit_delivery_jobs(event_id TEXT,state TEXT,outcome TEXT,error_code TEXT);CREATE TABLE cit_case_links(event_id TEXT,case_id TEXT,active INTEGER);CREATE TABLE coord_cases(id TEXT,status TEXT)');
+for(const[id,outcome]of[['assigned','approved_panel_candidates'],['review','locality_unverified']]){db.prepare('INSERT INTO lab_items VALUES(?,?,?)').run(id,JSON.stringify({id,platform:'instagram'}),'2026-11-24T10:00:00Z');db.prepare('INSERT INTO cit_delivery_jobs VALUES(?,?,?,NULL)').run(id,id==='assigned'?'done':'retry',outcome);}
+let r=qualitySnapshot(db,{now:Date.parse('2026-11-24T11:00:00Z')});assert.equal(r.received,2);assert.equal(r.missingPanel,1);assert.equal(r.processingErrors,0);assert.equal(r.reviewCandidates.length,1);assert.equal(r.semanticAccuracy,null);
+db.exec("INSERT INTO coord_cases VALUES('case','new');INSERT INTO cit_case_links VALUES('assigned','case',1)");assert.equal(qualitySnapshot(db,{now:Date.parse('2026-11-24T11:00:00Z')}).missingPanel,0);
+}finally{db.close();}});
