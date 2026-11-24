@@ -1,4 +1,4 @@
-import test from'node:test';import assert from'node:assert/strict';import{DatabaseSync}from'node:sqlite';import{readFileSync}from'node:fs';import{initDelivery,runBatch}from'./pipeline.mjs';import{catalog}from'./catalog.mjs';
+import test from'node:test';import assert from'node:assert/strict';import{DatabaseSync}from'node:sqlite';import{readFileSync}from'node:fs';import{initDelivery,runBatch,currentPolicy}from'./pipeline.mjs';import{catalog}from'./catalog.mjs';
 import{createInstitutionCoordination}from'../server/institution-coordination.mjs';
 import{fallbackDecision}from'./legacy-rules.mjs';import{snapshot,adaptEvent}from'./live-adapter.mjs';
 import{mkdtempSync,rmSync}from'node:fs';import{tmpdir}from'node:os';import{join}from'node:path';
@@ -38,3 +38,5 @@ test('queued source reaches authorized portal API and is hidden from another ins
  const second=await api.handle(new Request('https://fixture.invalid/api/institution/cases?institution=ISKI_UMR&limit=1&before='+page.nextBefore));const nextPage=await second.json();assert.equal(nextPage.cases.length,1);assert.notEqual(nextPage.cases[0].id,page.cases[0].id);
  assert.equal((await api.handle(new Request('https://fixture.invalid/api/institution/cases/'+id+'?institution=UMR_EMNIYET'))).status,404);
 }finally{db.close();}});
+
+test('policy hash ignores registry maintenance timestamps but tracks actual routing approvals',()=>{const db=fixture();try{const before=currentPolicy(db);db.exec("UPDATE coord_topics SET updated_at='later';UPDATE coord_institutions SET updated_at='later';UPDATE coord_institution_topic_grants SET updated_at='later'");assert.equal(currentPolicy(db),before);db.exec("UPDATE coord_institutions SET enabled=0 WHERE code='ISKI_UMR'");assert.notEqual(currentPolicy(db),before);}finally{db.close();}});
