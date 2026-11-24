@@ -24,8 +24,11 @@ try{
  AND (julianday(c.first_published_at)>=julianday('now','-1 day') OR julianday(c.first_seen_at)>=julianday('now','-1 day'))
  AND NOT EXISTS(SELECT 1 FROM coord_mail_outbox o WHERE o.coord_case_id=c.id AND o.recipient_id=r.id AND o.recipient_hash=r.address_fingerprint)`).get().n;
  let mailHealthy=false;try{const m=JSON.parse(await readFile(dir+'/mail-status.json','utf8'));mailHealthy=m.healthy===true&&now-Date.parse(m.at)<120000&&active('umraniye-cit-mail.service');}catch{}
+ const mailDecision=recoveryDecision({now,lastRun:0,active:active('umraniye-cit-mail.service'),timerActive:true,attempts:prior.value.mailRecoveryAttempts||[]});
+ let mailRecovery=null;const mailRecoveryAttempts=mailDecision.attempts;
+ if(mailDecision.action==='start_worker'){mailRecoveryAttempts.push(now);try{execFileSync('systemctl',['start','--no-block','umraniye-cit-mail.service'],{stdio:'ignore',timeout:5000});mailRecovery='requested';}catch{mailRecovery='failed';}}
  let recovery=null;const attempts=decision.attempts;
  if(decision.action){attempts.push(now);try{execFileSync('systemctl',['start','--no-block',decision.action==='start_timer'?'umraniye-cit-routing.timer':'umraniye-cit-routing.service'],{stdio:'ignore',timeout:5000});recovery='requested';}catch{recovery='failed';}}
- report={at:new Date(now).toISOString(),healthy:!missingFreshNotices&&mailHealthy&&!missingContent&&!decision.stale&&!overdue&&!errors.length&&!missingCases&&!last?.deliveryAudit?.inaccessible&&!Object.values(sourceUnits).some(v=>!['success',''].includes(v)),queue,errors,overdue,pendingDue,missingContent,missingFreshNotices,mailHealthy,missingCases,lastRunAt:last?.at||null,deliveryAudit:last?.deliveryAudit||null,sourceUnits,recoveryAction:decision.action,recovery,recoveryAttempts:attempts,recoveryLimited:decision.recoveryLimited};
+ report={at:new Date(now).toISOString(),healthy:!missingFreshNotices&&mailHealthy&&!missingContent&&!decision.stale&&!overdue&&!errors.length&&!missingCases&&!last?.deliveryAudit?.inaccessible&&!Object.values(sourceUnits).some(v=>!['success',''].includes(v)),queue,errors,overdue,pendingDue,missingContent,missingFreshNotices,mailHealthy,mailRecovery,mailRecoveryAttempts,missingCases,lastRunAt:last?.at||null,deliveryAudit:last?.deliveryAudit||null,sourceUnits,recoveryAction:decision.action,recovery,recoveryAttempts:attempts,recoveryLimited:decision.recoveryLimited};
  await saveState(dir+'/health.json',report);console.log(JSON.stringify(report));
 }finally{db.close();}
