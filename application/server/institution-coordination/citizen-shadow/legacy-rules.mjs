@@ -149,6 +149,7 @@ const GUNDEM_YANIT=/^\s*@|(?:^|\s)@[a-z0-9_]+/i;
 const GUNDEM_RESMI=/\b(?:umraniye (?:belediyesi|kaymakamligi)|umraniye kultur sanat|umraniye ilce milli egitim|umraniye ilce emniyet)\b/;
 const GUNDEM_EGITIM=/\b(?:okul|egitim|ogrenci|ogretmen|sinif|universite|burs)\b/;
 function yerelGundemKurali(event,approvals,snapshot){
+ console.error('ENTERED yerelGundemKurali');
  if(!event)return null;
  const loc=event.locality||{};
  if(loc.district!=='Ümraniye'||!(loc.verified===true||loc.routingEligible===true)){console.error('DBG1 loc',JSON.stringify(loc));return null;}
