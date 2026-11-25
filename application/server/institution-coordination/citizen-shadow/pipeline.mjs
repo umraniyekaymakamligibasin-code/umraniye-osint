@@ -142,7 +142,7 @@ export function runBatch(db,{now=Date.now(),limit=25,policyVersion=currentPolicy
    // Baslik onekiyle ayni gun tekrar gelen haberde persistPlan insert yapmaz
    // (mukerrer); o durumda synchronize cagrilirsa resolveCase null doner ve
    // tum tur hata verir. Mukerrer olayi sessizce 'done' yap, case zaten var.
-   const isDuplicate=Number(result.inserted||0)===0&&Number(result.duplicates||0)>0;
+   const isDuplicate=Number(result.titleDuplicates||0)>0;
    const synced=isDuplicate?{updated:0,withdrawn:0,restored:0,verified:0}:synchronize(db,e,plan,revision,now),decision=plan.results[0];
    if(decision.tasks.length)db.prepare('INSERT INTO coord_source_content VALUES(?,?,?) ON CONFLICT(event_id) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at').run(event.id,row.data,new Date(now).toISOString());
    // Panel yazimindan sonra bildirim kuyrugu (ayni islem icinde, idempotent).

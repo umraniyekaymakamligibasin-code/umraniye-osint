@@ -62,7 +62,7 @@ export function preview(db,events,options={}){
 export function persistPlan(db,plan,{allowWrites=false,now=()=>new Date().toISOString(),transaction=true}={}){
  if(!allowWrites)throw Error('writes_not_explicitly_enabled');
  if(plan.mode!=='shadow'||!Array.isArray(plan.results))throw Error('invalid_plan');
- const report={inserted:0,duplicates:0,held:0,notifications:0};const legacyCache=new Map();
+ const report={inserted:0,duplicates:0,titleDuplicates:0,held:0,notifications:0};const legacyCache=new Map();
  if(transaction)db.exec('BEGIN IMMEDIATE');else if(!db.isTransaction)throw Error('outer_transaction_required');
  try{
   for(const result of plan.results)for(const task of result.tasks||[]){
@@ -86,7 +86,9 @@ export function persistPlan(db,plan,{allowWrites=false,now=()=>new Date().toISOS
     if(!legacyCache.has(cacheKey)){const prior=db.prepare('SELECT c.source_event_id,c.title,c.first_published_at,l.data FROM coord_cases c JOIN coord_topics t ON t.id=c.topic_id LEFT JOIN lab_items l ON l.id=c.source_event_id WHERE c.institution_id=? AND t.code=? AND NOT(c.status=\'dismissed\' AND EXISTS(SELECT 1 FROM coord_audit a WHERE a.target_id=c.id AND a.action=\'legacy_projection_dismissed\') AND NOT EXISTS(SELECT 1 FROM coord_case_history h WHERE h.coord_case_id=c.id AND h.action=\'status_change\' AND h.to_value=\'dismissed\'))').all(allowed.institution_id,fresh.legacyTopic);const identities=new Set(),basliklar=new Set();for(const p of prior){identities.add(p.source_event_id);if(p.data){try{identities.add(adaptEvent(JSON.parse(p.data)).eventIdentity);}catch{}}if(p.title)basliklar.add(baslikAnahtari(p.title)+'|'+String(p.first_published_at||'').slice(0,10));}legacyCache.set(cacheKey,{identities,basliklar});}
     // Ayni kurum+konuya ayni gun, ayni baslik onekiyle gelen ikinci kaynak
     // (ayni haberin farkli hesaplarda tekrari) yeni vaka acmaz.
-    const onbellek=legacyCache.get(cacheKey);if(onbellek.identities.has(e.id)||onbellek.identities.has(e.eventIdentity)||onbellek.basliklar.has(baslikAnahtari(fresh.title)+'|'+gun)){report.duplicates++;continue;}
+    const onbellek=legacyCache.get(cacheKey);
+    if(onbellek.identities.has(e.id)||onbellek.identities.has(e.eventIdentity)){report.duplicates++;continue;}
+    if(onbellek.basliklar.has(baslikAnahtari(fresh.title)+'|'+gun)){report.titleDuplicates++;continue;}
    }
    const stamp=now(),id=randomUUID(),key=JSON.stringify([allowed.institution_id,e.eventIdentity||task.sourceEventId,allowed.topic_id]);
    const inserted=db.prepare(`INSERT INTO coord_cases(id,institution_id,topic_id,source_event_id,source_revision,idempotency_key,title,summary_redacted,neighborhood,location_precision,first_published_at,first_seen_at,confidence,status,priority,sensitivity,created_at,updated_at)
