@@ -132,6 +132,50 @@ export function socialInformation(event,state){
  }
  return tasks.length?{mode:'shadow',eventId:event.id,tasks,issues:[],status:'shadow_candidates',reason:'approved_panel_candidates'}:null;
 }
+/* ------------------------------------------------------------------ *
+ * YEREL GUNDEM KURALI (son basamak)
+ * Yerel haber niteligi tasiyan ama konu sozlugunde karsiligi olmayan
+ * icerikler (tesis acilisi, kultur-sanat etkinligi, ziyaret, program,
+ * meteoroloji uyarisi) sessizce kaybolmasin. Yalnizca ciddi gurultu
+ * kaynaklari (yanit/mention, reklam, parti propagandasi, vefat-cenaze)
+ * disarida tutulur; ilce kaniti yoksa hic yazilmaz.
+ * ------------------------------------------------------------------ */
+const GUNDEM_OLAY=/\b(?:acildi|acilis|aciliyor|acilacak|duzenlendi|duzenleniyor|gerceklestirildi|gerceklestirilecek|bulustu|bulusuyor|bulusmasi|ziyaret|ziyaret etti|program|toren|etkinlik|festival|kurs|seminer|soylesi|soyleyi|imza|protokol|tesis|salon|kutuphane|park|pazar|fuar|sergi|konser|yarisma|turnuva|basvuru)\b/;
+const GUNDEM_HAVA=/\b(?:hava sicakligi|sicaklik|firtina|saganak|kar yagisi|buzlanma|ruzgar|meteoroloji|don olayi|sel|su baskini)\b/;
+const GUNDEM_REKLAM=/\b(?:satilik|kiralik|fiyat|kampanya fiyati|indirim|siparis|whatsapp|wa\.me|iletisim icin|siparis icin|stoklar|montaj|imalat|uretici|toptan)\b/;
+const GUNDEM_SIYASI=/\b(?:oy |sandik|secim|miting|propaganda|aday|ittifak|parti (?:ilce|il) baskan|genel baskan|milletvekili|divan toplant|nobetteyiz|sahada)\b/;
+const GUNDEM_HASSAS=/\b(?:vefat|bassagligi|cenaze|taziye|rahmet)\b/;
+const GUNDEM_YANIT=/^\s*@|(?:^|\s)@[a-z0-9_]+/i;
+const GUNDEM_RESMI=/\b(?:umraniye (?:belediyesi|kaymakamligi)|umraniye kultur sanat|umraniye ilce milli egitim|umraniye ilce emniyet)\b/;
+const GUNDEM_EGITIM=/\b(?:okul|egitim|ogrenci|ogretmen|sinif|universite|burs)\b/;
+function yerelGundemKurali(event,approvals){
+ if(!event)return null;
+ const loc=event.locality||{};
+ if(loc.district!=='Ümraniye'||!(loc.verified===true||loc.routingEligible===true))return null;
+ const baslik=duyuruBasligi(event);
+ if(!baslik||baslik.length<25)return null;
+ if(GUNDEM_YANIT.test(String(event.title||'')))return null;
+ const f=fold(String(event.title||''));
+ if(!f)return null;
+ if(GUNDEM_REKLAM.test(f)||GUNDEM_SIYASI.test(f)||GUNDEM_HASSAS.test(f))return null;
+ if(/\b(?:iptal edildi|yalanlandi|yapilmadi|gerceklesmedi)\b/.test(f))return null;
+ const resmi=GUNDEM_RESMI.test(fold(event.sourceName||''));
+ if(!(GUNDEM_OLAY.test(f)||GUNDEM_HAVA.test(f)||resmi))return null;
+ const ozet=duyuruOzeti(event,baslik);
+ const hedefler=[];
+ if(GUNDEM_HAVA.test(f))hedefler.push(['district_emergency_coordination','UMR_AFET']);
+ if(GUNDEM_EGITIM.test(f))hedefler.push(['education_service_access','UMR_ILCE_MEM']);
+ hedefler.push(['district_coordination','UMR_BELEDIYE']);
+ const tasks=[];
+ for(const[topic,institution]of hedefler){
+  if(!approvals.approvedInstitutions.includes(institution)||!approvals.approvedTopics.includes(topic))continue;
+  if(!approvals.grants.some(g=>g.institution===institution&&g.topic===topic&&g.granted))continue;
+
+  const key=createHash('sha256').update(JSON.stringify([event.eventIdentity||event.id,topic,institution])).digest('hex');
+  tasks.push({key,issueKey:key,topic,institution,title:baslik,summary:ozet||baslik,locality:{district:'Ümraniye',precision:'district',neighborhood:null},risk:'normal',sourceEventId:event.id,legacyTopic:topic});
+ }
+ return tasks.length?tasks:null;
+}
 export function fallbackDecision(event,snapshot){
  const approvals=approvalSnapshot(snapshot),rules=[];
  for(const topic of snapshot.topics){
@@ -151,5 +195,6 @@ export function fallbackDecision(event,snapshot){
  const bilgi=kb?analyze(event,{rules:[kb],...approvals}):null;
  const social=socialInformation(event,snapshot);
  const tasks=[...new Map([...(normal.tasks||[]),...(bilgi?.tasks||[]),...(social?.tasks||[])].map(t=>[t.institution+'|'+t.topic,t])).values()];
+ if(!tasks.length)tasks.push(...(yerelGundemKurali(event,approvals)||[]));
  return tasks.length?{...normal,tasks,status:'shadow_candidates',reason:'approved_panel_candidates'}:normal;
 }
