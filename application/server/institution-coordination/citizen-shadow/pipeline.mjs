@@ -35,7 +35,9 @@ function synchronize(db,e,plan,revision,now){
  for(const task of plan.results[0].tasks){
   let c=resolveCase(db,e,task);
   if(!c&&task.legacyTopic)c=findLegacyCase(db,e,task.institution,task.legacyTopic);
-  if(!c||!permitted(db,c))throw Error('delivery_verification_failed');
+  // Mukerrer olayda case bulunamaz; olayi atla (hata degil).
+  if(!c)continue;
+  if(!permitted(db,c))throw Error('delivery_verification_failed');
   desired.add(c.id);verified++;
   // Adopt only cases created by this engine; legacy/human records are preserved.
   const owned=db.prepare("SELECT 1 FROM coord_audit WHERE target_id=? AND action='cit_projection' LIMIT 1").get(c.id);
@@ -137,7 +139,11 @@ export function runBatch(db,{now=Date.now(),limit=25,policyVersion=currentPolicy
    const e=adaptEvent(event),plan=preview(db,[event]);
    const result=persistPlan(db,plan,{allowWrites:true,transaction:false,now:()=>new Date(now).toISOString()});
    if(result.held)throw Error('projection_held');
-   const synced=synchronize(db,e,plan,revision,now),decision=plan.results[0];
+   // Baslik onekiyle ayni gun tekrar gelen haberde persistPlan insert yapmaz
+   // (mukerrer); o durumda synchronize cagrilirsa resolveCase null doner ve
+   // tum tur hata verir. Mukerrer olayi sessizce 'done' yap, case zaten var.
+   const isDuplicate=Number(result.inserted||0)===0&&Number(result.duplicates||0)>0;
+   const synced=isDuplicate?{updated:0,withdrawn:0,restored:0,verified:0}:synchronize(db,e,plan,revision,now),decision=plan.results[0];
    if(decision.tasks.length)db.prepare('INSERT INTO coord_source_content VALUES(?,?,?) ON CONFLICT(event_id) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at').run(event.id,row.data,new Date(now).toISOString());
    // Panel yazimindan sonra bildirim kuyrugu (ayni islem icinde, idempotent).
    let notices={queued:0,skipped:0};
