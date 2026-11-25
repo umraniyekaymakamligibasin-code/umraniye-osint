@@ -140,10 +140,10 @@ export function socialInformation(event,state){
  * kaynaklari (yanit/mention, reklam, parti propagandasi, vefat-cenaze)
  * disarida tutulur; ilce kaniti yoksa hic yazilmaz.
  * ------------------------------------------------------------------ */
-const GUNDEM_OLAY=/\b(?:acildi|acilis|aciliyor|acilacak|duzenlendi|duzenleniyor|gerceklestirildi|gerceklestirilecek|bulustu|bulusuyor|bulusmasi|ziyaret|ziyaret etti|program|toren|etkinlik|festival|kurs|seminer|soylesi|soyleyi|imza|protokol|tesis|salon|kutuphane|park|pazar|fuar|sergi|konser|yarisma|turnuva|basvuru)\b/;
+const GUNDEM_OLAY=/\b(?:acildi|acilis|aciliyor|acilacak|duzenlendi|duzenleniyor|gerceklestirildi|gerceklestirilecek|bulustu|bulusuyor|bulusmasi|ziyaret|ziyaret etti|program|toren|etkinlik|festival|kurs|seminer|soylesi|soyleyi|imza|protokol|tesis|salon|kutuphane|park|fuar|sergi|konser|yarisma|turnuva|basvuru)\b/;
 const GUNDEM_HAVA=/\b(?:hava sicakligi|sicaklik|firtina|saganak|kar yagisi|buzlanma|ruzgar|meteoroloji|don olayi|sel|su baskini)\b/;
 const GUNDEM_REKLAM=/\b(?:satilik|kiralik|fiyat|kampanya fiyati|indirim|siparis|whatsapp|wa\.me|iletisim icin|siparis icin|stoklar|montaj|imalat|uretici|toptan)\b/;
-const GUNDEM_SIYASI=/\b(?:oy |sandik|secim|miting|propaganda|aday|ittifak|parti (?:ilce|il) baskan|genel baskan|milletvekili|divan toplant|nobetteyiz|sahada)\b/;
+const GUNDEM_SIYASI=/\b(?:oy |sandik|secim|miting|propaganda|aday|ittifak|parti|chp|akp|akparti|ak parti|iyi parti|mhp|hdp|saadet|deva|gelecek partisi|anahtar parti|ilce baskan|genel baskan|milletvekili|divan toplant|nobetteyiz|sahada)\b/;
 const GUNDEM_HASSAS=/\b(?:vefat|bassagligi|cenaze|taziye|rahmet)\b/;
 const GUNDEM_YANIT=/^\s*@|(?:^|\s)@[a-z0-9_]+/i;
 const GUNDEM_RESMI=/\b(?:umraniye (?:belediyesi|kaymakamligi)|umraniye kultur sanat|umraniye ilce milli egitim|umraniye ilce emniyet)\b/;
