@@ -206,6 +206,7 @@ export function fallbackDecision(event,snapshot){
  const bilgi=kb?analyze(event,{rules:[kb],...approvals}):null;
  const social=socialInformation(event,snapshot);
  const tasks=[...new Map([...(normal.tasks||[]),...(bilgi?.tasks||[]),...(social?.tasks||[])].map(t=>[t.institution+'|'+t.topic,t])).values()];
+ console.error('DBG0 normal.reason=',normal?.reason,'normal.tasks=',normal?.tasks?.length,'bilgi=',!!bilgi,'social=',!!social,'social.tasks=',social?.tasks?.length,'tasks.length=',tasks.length);
  if(!tasks.length)tasks.push(...(yerelGundemKurali(event,approvals,snapshot)||[]));
  return tasks.length?{...normal,tasks,status:'shadow_candidates',reason:'approved_panel_candidates'}:normal;
 }
