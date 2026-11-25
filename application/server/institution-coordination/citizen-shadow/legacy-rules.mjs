@@ -140,7 +140,7 @@ export function socialInformation(event,state){
  * kaynaklari (yanit/mention, reklam, parti propagandasi, vefat-cenaze)
  * disarida tutulur; ilce kaniti yoksa hic yazilmaz.
  * ------------------------------------------------------------------ */
-const GUNDEM_OLAY=/\b(?:acildi|acilis|aciliyor|acilacak|duzenlendi|duzenleniyor|gerceklestirildi|gerceklestirilecek|bulustu|bulusuyor|bulusmasi|ziyaret|ziyaret etti|program|toren|etkinlik|festival|kurs|seminer|soylesi|soyleyi|imza|protokol|tesis|salon|kutuphane|park|fuar|sergi|konser|yarisma|turnuva|basvuru)\b/;
+const GUNDEM_OLAY=/\b(?:acildi|acilis|aciliyor|acilacak|duzenlendi|duzenleniyor|gerceklestirildi|gerceklestirilecek|bulustu|bulusuyor|bulusmasi|ziyaret|ziyaret etti|program|toren|etkinlik|festival|kurs|seminer|soylesi|soyleyi|imza|protokol|tesis|salon|kutuphane|park|fuar|sergi|konser|yarisma|turnuva|basvuru|basliyor|basladi|atolye|atolyesi|fotograf)\b/;
 const GUNDEM_HAVA=/\b(?:hava sicakligi|sicaklik|firtina|saganak|kar yagisi|buzlanma|ruzgar|meteoroloji|don olayi|sel|su baskini)\b/;
 const GUNDEM_REKLAM=/\b(?:satilik|kiralik|fiyat|kampanya fiyati|indirim|siparis|whatsapp|wa\.me|iletisim icin|siparis icin|stoklar|montaj|imalat|uretici|toptan)\b/;
 const GUNDEM_SIYASI=/\b(?:oy |sandik|secim|miting|propaganda|aday|ittifak|parti|chp|akp|akparti|ak parti|iyi parti|mhp|hdp|saadet|deva|gelecek partisi|anahtar parti|ilce baskan|genel baskan|milletvekili|divan toplant|nobetteyiz|sahada)\b/;
@@ -164,7 +164,7 @@ function yerelGundemKurali(event,approvals,snapshot){
  if(!f)return null;
  if(GUNDEM_REKLAM.test(f)||GUNDEM_SIYASI.test(f)||GUNDEM_HASSAS.test(f))return null;
  if(/\b(?:iptal edildi|yalanlandi|yapilmadi|gerceklesmedi)\b/.test(f))return null;
- const resmi=GUNDEM_RESMI.test(fold(event.sourceName||''));
+ const resmi=GUNDEM_RESMI.test(fold((event.sourceName||'')+' '+(event.title||'')));
  if(!(GUNDEM_OLAY.test(f)||GUNDEM_HAVA.test(f)||resmi))return null;
  const ozet=duyuruOzeti(event,baslik);
  const hedefler=[];
