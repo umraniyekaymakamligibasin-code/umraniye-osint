@@ -5,6 +5,7 @@ import {catalog} from './catalog.mjs';
 import {deriveLocality} from './locality.mjs';
 import{canonicalSource,validPublication}from'./source-url.mjs';
 import{legacyCodes,fallbackDecision}from'./legacy-rules.mjs';
+const baslikAnahtari=t=>String(t||'').toLocaleLowerCase('tr-TR').replace(/\s+/g,' ').replace(/[^\p{L}\p{N} ]/gu,'').trim().slice(0,60);
 const known=new Set([...catalog.map(r=>r.code),...legacyCodes]);
 export function adaptEvent(event){
  const locality=deriveLocality(event);
@@ -81,14 +82,18 @@ export function persistPlan(db,plan,{allowWrites=false,now=()=>new Date().toISOS
    if(publication===undefined||seen===undefined){report.held++;continue;}
    if(fresh.legacyTopic){
     const cacheKey=allowed.institution_id+'|'+fresh.legacyTopic;
-    if(!legacyCache.has(cacheKey)){const prior=db.prepare('SELECT c.source_event_id,l.data FROM coord_cases c JOIN coord_topics t ON t.id=c.topic_id LEFT JOIN lab_items l ON l.id=c.source_event_id WHERE c.institution_id=? AND t.code=? AND NOT(c.status=\'dismissed\' AND EXISTS(SELECT 1 FROM coord_audit a WHERE a.target_id=c.id AND a.action=\'legacy_projection_dismissed\') AND NOT EXISTS(SELECT 1 FROM coord_case_history h WHERE h.coord_case_id=c.id AND h.action=\'status_change\' AND h.to_value=\'dismissed\'))').all(allowed.institution_id,fresh.legacyTopic);const identities=new Set();for(const p of prior){identities.add(p.source_event_id);if(p.data){try{identities.add(adaptEvent(JSON.parse(p.data)).eventIdentity);}catch{}}}legacyCache.set(cacheKey,identities);}
-    const prior=legacyCache.get(cacheKey);if(prior.has(e.id)||prior.has(e.eventIdentity)){report.duplicates++;continue;}
+    const gun=String(publication).slice(0,10);
+    if(!legacyCache.has(cacheKey)){const prior=db.prepare('SELECT c.source_event_id,c.title,c.first_published_at,l.data FROM coord_cases c JOIN coord_topics t ON t.id=c.topic_id LEFT JOIN lab_items l ON l.id=c.source_event_id WHERE c.institution_id=? AND t.code=? AND NOT(c.status=\'dismissed\' AND EXISTS(SELECT 1 FROM coord_audit a WHERE a.target_id=c.id AND a.action=\'legacy_projection_dismissed\') AND NOT EXISTS(SELECT 1 FROM coord_case_history h WHERE h.coord_case_id=c.id AND h.action=\'status_change\' AND h.to_value=\'dismissed\'))').all(allowed.institution_id,fresh.legacyTopic);const identities=new Set(),basliklar=new Set();for(const p of prior){identities.add(p.source_event_id);if(p.data){try{identities.add(adaptEvent(JSON.parse(p.data)).eventIdentity);}catch{}}if(p.title)basliklar.add(baslikAnahtari(p.title)+'|'+String(p.first_published_at||'').slice(0,10));}legacyCache.set(cacheKey,{identities,basliklar});}
+    // Ayni kurum+konuya ayni gun, ayni baslik onekiyle gelen ikinci kaynak
+    // (ayni haberin farkli hesaplarda tekrari) yeni vaka acmaz.
+    const onbellek=legacyCache.get(cacheKey);if(onbellek.identities.has(e.id)||onbellek.identities.has(e.eventIdentity)||onbellek.basliklar.has(baslikAnahtari(fresh.title)+'|'+gun)){report.duplicates++;continue;}
    }
    const stamp=now(),id=randomUUID(),key=JSON.stringify([allowed.institution_id,e.eventIdentity||task.sourceEventId,allowed.topic_id]);
    const inserted=db.prepare(`INSERT INTO coord_cases(id,institution_id,topic_id,source_event_id,source_revision,idempotency_key,title,summary_redacted,neighborhood,location_precision,first_published_at,first_seen_at,confidence,status,priority,sensitivity,created_at,updated_at)
     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'new',?,'ordinary',?,?) ON CONFLICT DO NOTHING`).run(id,allowed.institution_id,allowed.topic_id,task.sourceEventId,createHash('sha256').update(source.data).digest('hex'),key,fresh.title,fresh.summary,fresh.locality.neighborhood,fresh.locality.precision,publication,seen||stamp,0.86,fresh.risk==='high'?'important':'normal',stamp,stamp);
    if(!inserted.changes){report.duplicates++;continue;}
    report.inserted++;
+   if(fresh.legacyTopic)legacyCache.get(allowed.institution_id+'|'+fresh.legacyTopic)?.basliklar.add(baslikAnahtari(fresh.title)+'|'+String(publication).slice(0,10));
    for(const s of e.sources?.length?e.sources:[e]){
     const url=canonicalSource(s?.url);if(!url)continue;
      db.prepare('INSERT OR IGNORE INTO coord_case_sources VALUES(?,?,?,?,?,?,?)').run(randomUUID(),id,url,String(s.sourceName||'Kaynak').slice(0,120),String(s.platform||e.platform||'web').slice(0,32),validPublication(s.publishedAt)||publication,stamp);
