@@ -142,9 +142,9 @@ export function socialInformation(event,state){
  * ------------------------------------------------------------------ */
 const GUNDEM_OLAY=/\b(?:acildi|acilis|aciliyor|acilacak|duzenlendi|duzenleniyor|gerceklestirildi|gerceklestirilecek|bulustu|bulusuyor|bulusmasi|ziyaret|ziyaret etti|program|toren|etkinlik|festival|kurs|seminer|soylesi|soyleyi|imza|protokol|tesis|salon|kutuphane|park|fuar|sergi|konser|yarisma|turnuva|basvuru|basliyor|basladi|atolye|atolyesi|fotograf)\b/;
 const GUNDEM_HAVA=/\b(?:hava sicakligi|sicaklik|firtina|saganak|kar yagisi|buzlanma|ruzgar|meteoroloji|don olayi|sel|su baskini)\b/;
-const GUNDEM_REKLAM=/\b(?:satilik|kiralik|fiyat|kampanya fiyati|indirim|siparis|whatsapp|wa\.me|iletisim icin|siparis icin|stoklar|montaj|imalat|uretici|toptan)\b/;
-const GUNDEM_SIYASI=/\b(?:oy |sandik|secim|miting|propaganda|aday|ittifak|parti|chp|akp|akparti|ak parti|iyi parti|mhp|hdp|saadet|deva|gelecek partisi|anahtar parti|ilce baskan|genel baskan|milletvekili|divan toplant|nobetteyiz|sahada)\b/;
-const GUNDEM_HASSAS=/\b(?:vefat|bassagligi|cenaze|taziye|rahmet)\b/;
+const GUNDEM_REKLAM=/\b(?:satilik|kiralik|fiyat|kampanya fiyati|indirim|siparis|whatsapp|wa\.me|iletisim icin|siparis icin|stoklar|montaj|imalat|uretici|toptan|celik kapi|villa kapi|bina giris|sertifikali|premium|otomobil|danismanlik|fiyat icin|dm )\b/;
+const GUNDEM_SIYASI=/\b(?:oy |sandik|secim|miting|propaganda|aday|ittifak|parti|chp|akp|akparti|ak parti|iyi parti|mhp|hdp|saadet|deva|gelecek partisi|anahtar parti|ilce baskan|genel baskan|milletvekili|divan toplant|nobetteyiz|sahada|il baskani|ilce baskani|meclis uyesi|meclis uyemiz)\b/;
+const GUNDEM_HASSAS=/\b(?:vefat|bassagligi|cenaze|taziye|rahmet|hayatini kaybetti|kayip|olmus|vefat etti)\b/;
 const GUNDEM_YANIT=/^\s*@|(?:^|\s)@[a-z0-9_]+/i;
 const GUNDEM_RESMI=/\b(?:umraniye (?:belediyesi|kaymakamligi)|umraniye kultur sanat|umraniye ilce milli egitim|umraniye ilce emniyet)\b/;
 const GUNDEM_EGITIM=/\b(?:okul|egitim|ogrenci|ogretmen|sinif|universite|burs)\b/;
@@ -159,13 +159,14 @@ function yerelGundemKurali(event,approvals,snapshot){
  const yayin=Date.parse(event.publishedAt||''),gorulme=Date.parse(event.firstSeenAt||event.collectedAt||'');
  const yas=Number.isFinite(yayin)?Date.now()-yayin:Number.isFinite(gorulme)?Date.now()-gorulme:Infinity;
  if(!(yas<=3*24*3600000))return null;
- if(GUNDEM_YANIT.test(String(event.title||'')))return null;
+ if(GUNDEM_YANIT.test(String(event.title||'')) && String(event.title||'').trim().length<90)return null;
  const f=fold(String(event.title||''));
  if(!f)return null;
  if(GUNDEM_REKLAM.test(f)||GUNDEM_SIYASI.test(f)||GUNDEM_HASSAS.test(f))return null;
  if(/\b(?:iptal edildi|yalanlandi|yapilmadi|gerceklesmedi)\b/.test(f))return null;
  const resmi=GUNDEM_RESMI.test(fold((event.sourceName||'')+' '+(event.title||'')));
- if(!(GUNDEM_OLAY.test(f)||GUNDEM_HAVA.test(f)||resmi))return null;
+ // Sinyal gereksinimi kaldirildi: dogrulanmis yerel haberin hicbiri
+ // 'no_eligible_task' ile kaybolmaz; hepsi en azindan Belediye'ye gider.
  const ozet=duyuruOzeti(event,baslik);
  const hedefler=[];
  if(GUNDEM_HAVA.test(f))hedefler.push(['district_emergency_coordination','UMR_AFET']);
