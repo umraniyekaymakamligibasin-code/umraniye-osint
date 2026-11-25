@@ -1,3 +1,4 @@
+import{queueAdminHealthAlerts,dispatchAdminHealthMail}from'./admin-health-mail.mjs';
 import {DatabaseSync} from 'node:sqlite';
 import {readFile,lstat,writeFile,rename} from 'node:fs/promises';
 import {join} from 'node:path';
@@ -24,12 +25,14 @@ export async function watchMail(){
    const keyPath=join(directory,'institution-recipients.key');const meta=await lstat(keyPath);if(!meta.isFile()||meta.isSymbolicLink())throw Error('recipient_key_unavailable');
    const recipients=createInstitutionRecipients({db,key:await accountKey(keyPath)}),sender=createGmailSender({directory});const errors=[];
    const outcome=await mailPass({db,decryptAddress:recipients.decrypt,sendWithIdempotency:sender.send,portalUrl:'https://umraniyeosint.com/kurum',onError:e=>errors.push(e.code)});
+   let adminAlerts={configured:false,sent:0,dead:0,queued:0};
+   try{const alerts=JSON.parse(await readFile(join(directory,'citizen-routing','critical-alerts.json'),'utf8'));await queueAdminHealthAlerts({directory,state:alerts});adminAlerts=await dispatchAdminHealthMail({directory});}catch{adminAlerts={configured:true,healthy:false,error:'admin_alert_delivery_failed'};}
    const queue=raw.prepare('SELECT state,count(*) AS count FROM coord_mail_outbox GROUP BY state').all();
    const pending=raw.prepare("SELECT count(*) AS count,min(created_at) AS oldest FROM coord_mail_outbox WHERE state='queued'").get();
    const overdue=raw.prepare("SELECT count(*) AS count FROM coord_mail_outbox WHERE state='queued' AND next_attempt_at<=?").get(new Date(Date.now()-120000).toISOString()).count;
    const oldestPendingAgeSeconds=pending.oldest?Math.max(0,Math.floor((Date.now()-Date.parse(pending.oldest))/1000)):0;
    const unresolved=queue.filter(r=>r.state==='dead').reduce((sum,r)=>sum+r.count,0);
-   status={at,healthy:reconciliation.healthy&&!outcome.dead&&!errors.length&&!unresolved&&!overdue,...outcome,unresolvedDead:unresolved,queued:pending.count,oldestPendingAgeSeconds,overdue,queue,errors,reconciliation};
+   status={at,healthy:adminAlerts.healthy!==false&&!adminAlerts.dead&&reconciliation.healthy&&!outcome.dead&&!errors.length&&!unresolved&&!overdue,...outcome,unresolvedDead:unresolved,queued:pending.count,oldestPendingAgeSeconds,overdue,queue,errors,reconciliation,adminAlerts};
   }catch{status={at,healthy:false,error:'mail_worker_failed'};}
   try{await writeFile(statusPath+'.tmp',JSON.stringify(status),{mode:0o600});await rename(statusPath+'.tmp',statusPath);}catch{console.error(JSON.stringify({event:'institution_mail_status_write_failed'}));}
   if(!status.healthy||status.sent)console.log(JSON.stringify({event:'institution_mail_pass',...status}));
