@@ -148,7 +148,7 @@ const GUNDEM_HASSAS=/\b(?:vefat|bassagligi|cenaze|taziye|rahmet)\b/;
 const GUNDEM_YANIT=/^\s*@|(?:^|\s)@[a-z0-9_]+/i;
 const GUNDEM_RESMI=/\b(?:umraniye (?:belediyesi|kaymakamligi)|umraniye kultur sanat|umraniye ilce milli egitim|umraniye ilce emniyet)\b/;
 const GUNDEM_EGITIM=/\b(?:okul|egitim|ogrenci|ogretmen|sinif|universite|burs)\b/;
-function yerelGundemKurali(event,approvals){
+function yerelGundemKurali(event,approvals,snapshot){
  if(!event)return null;
  const loc=event.locality||{};
  if(loc.district!=='Ümraniye'||!(loc.verified===true||loc.routingEligible===true))return null;
@@ -170,10 +170,14 @@ function yerelGundemKurali(event,approvals){
  const hedefler=[];
  if(GUNDEM_HAVA.test(f))hedefler.push(['district_emergency_coordination','UMR_AFET']);
  if(GUNDEM_EGITIM.test(f))hedefler.push(['education_service_access','UMR_ILCE_MEM']);
- hedefler.push(['district_coordination','UMR_BELEDIYE']);
+ hedefler.push(['neighborhood_service_observation','UMR_BELEDIYE']);
  const tasks=[];
  for(const[topic,institution]of hedefler){
   if(!approvals.approvedInstitutions.includes(institution)||!approvals.approvedTopics.includes(topic))continue;
+  const konuSatiri=(snapshot?.topics||[]).find(t=>t.code===topic);
+  // persistPlan yalniz ordinary/high hassasiyetli konulari yazar; kural da
+  // ayni esigi uygular ki gorev 'projection_held' ile geri donmesin.
+  if(!konuSatiri||!['ordinary','high'].includes(konuSatiri.sensitivity))continue;
   if(!approvals.grants.some(g=>g.institution===institution&&g.topic===topic&&g.granted))continue;
 
   const key=createHash('sha256').update(JSON.stringify([event.eventIdentity||event.id,topic,institution])).digest('hex');
@@ -200,6 +204,6 @@ export function fallbackDecision(event,snapshot){
  const bilgi=kb?analyze(event,{rules:[kb],...approvals}):null;
  const social=socialInformation(event,snapshot);
  const tasks=[...new Map([...(normal.tasks||[]),...(bilgi?.tasks||[]),...(social?.tasks||[])].map(t=>[t.institution+'|'+t.topic,t])).values()];
- if(!tasks.length)tasks.push(...(yerelGundemKurali(event,approvals)||[]));
+ if(!tasks.length)tasks.push(...(yerelGundemKurali(event,approvals,snapshot)||[]));
  return tasks.length?{...normal,tasks,status:'shadow_candidates',reason:'approved_panel_candidates'}:normal;
 }
