@@ -1,4 +1,3 @@
-import{queueAdminHealthAlerts}from'./admin-health-mail.mjs';
 import{createHash}from'node:crypto';
 import{readFile,chmod,chown,stat}from'node:fs/promises';
 import{pathToFileURL}from'node:url';
@@ -32,10 +31,10 @@ export async function updateHealthAlerts({directory='/var/lib/umraniye-osint-den
  const health=await read('health.json'),mail=await read('mail-status.json');
  const previous=await loadState(directory+'/critical-alerts.json',{},s=>s&&typeof s==='object');
  const result=transitionAlerts(previous.value,criticalCodes(health,mail,now),now);
- try{const delivery=await queueAdminHealthAlerts({directory:directory.replace(/\/citizen-routing$/,''),state:result.state,now});if(delivery.configured){result.state.externalDelivery='email_outbox';result.state.externalReason=null;}}catch{result.state.externalDelivery='enqueue_failed';result.state.externalReason='admin_alert_queue_unavailable';}
+ try{const config=JSON.parse(await readFile(directory.replace(/\/citizen-routing$/,'')+'/institution-admin-alert.json','utf8'));if(config.version===1&&config.role==='owner_admin'&&config.enabled===true){result.state.externalDelivery='email_outbox';result.state.externalReason=null;}}catch{}
  await saveState(directory+'/critical-alerts.json',result.state);
  if(process.getuid?.()===0){const group=(await stat(directory+'/mail-status.json')).gid;await chown(directory+'/critical-alerts.json',0,group);await chmod(directory+'/critical-alerts.json',0o640);}
- if(result.entry)console.error(JSON.stringify({event:'institution_health_alert',...result.entry,externalDelivery:'not_configured'}));
+ if(result.entry)console.error(JSON.stringify({event:'institution_health_alert',...result.entry,externalDelivery:result.state.externalDelivery}));
  return result.state;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)await updateHealthAlerts();
