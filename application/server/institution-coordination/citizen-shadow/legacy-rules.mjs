@@ -34,7 +34,7 @@ const PII=[
 function maskele(value){let t=String(value??'');for(const[r,y]of PII)t=t.replace(r,y);return t;}
 function temizMetin(value){return String(value??'').replace(/<[^>]*>/g,' ').replace(/&(?:[a-z]+|#\d+);/giu,' ').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();}
 function kelimeyleKisalt(t,sinir){const s=String(t??'').trim();if(s.length<=sinir)return s;const kes=s.slice(0,sinir);const son=kes.search(/\s+\S*$/u);return (son>sinir*0.6?kes.slice(0,son):kes).trimEnd()+'…';}
-function duyuruBasligi(event){
+export function duyuruBasligi(event){
  let t=temizMetin(event?.title);
  if(!t)return '';
  // Baslik 200 karakterde kirpilmis olabilir; kaynak metnin ilk (kisa) satiri
@@ -46,7 +46,7 @@ function duyuruBasligi(event){
  const sec=ilk.length>=25?ilk:t;
  return kelimeyleKisalt(maskele(sec),180);
 }
-function duyuruOzeti(event,baslik){
+export function duyuruOzeti(event,baslik){
  let t=temizMetin(event?.fullText||'');
  if(t){
   const parcalar=t.split(/\n{2,}/).map(p=>p.trim()).filter(Boolean);
