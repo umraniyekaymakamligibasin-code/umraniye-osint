@@ -154,6 +154,11 @@ function yerelGundemKurali(event,approvals){
  if(loc.district!=='Ümraniye'||!(loc.verified===true||loc.routingEligible===true))return null;
  const baslik=duyuruBasligi(event);
  if(!baslik||baslik.length<25)return null;
+ // Yalniz GUNCEL yerel gundem: 72 saatten eski haber panele 'yeni' diye
+ // dusmez (arsiv geri doldurma yalniz kural tabanli olaylarda kalir).
+ const yayin=Date.parse(event.publishedAt||''),gorulme=Date.parse(event.firstSeenAt||event.collectedAt||'');
+ const yas=Number.isFinite(yayin)?Date.now()-yayin:Number.isFinite(gorulme)?Date.now()-gorulme:Infinity;
+ if(!(yas<=3*24*3600000))return null;
  if(GUNDEM_YANIT.test(String(event.title||'')))return null;
  const f=fold(String(event.title||''));
  if(!f)return null;
