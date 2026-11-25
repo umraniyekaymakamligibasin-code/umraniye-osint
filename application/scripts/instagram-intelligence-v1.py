@@ -118,11 +118,16 @@ def classify(item,now,manual):
     if not p:return 'review','publication_time_unverified',0,p
     age=(now-p).total_seconds()
     if age < -60:return 'review','publication_time_in_future',0,p
-    if age > 10800:return 'archive','older_than_3h_no_replay',0,p
     if item.get('_historicalDateRecovery'):return 'review','historical_date_recovery_no_replay',0,p
-    if len(n)<65 or len(words(text))<9:return 'review','text_insufficient',0,p
     loc=bool(LOC.search(n))
     if NEIGHBOR.search(n) and not re.search(r'\b(?:umraniye|dudullu|yamanevler|serifali|ihlamurkuyu)\b',n):loc=False
+    # Yerel haber gec kesfedildi diye atilmaz: yerel icerik 72 saate kadar
+    # tutulur, 24 saate kadar otomatik kabul edilir; daha eskisi incelemeye
+    # duser. Yerel olmayan icerik 3 saatten sonra arsivlenir.
+    if age > 259200:return 'archive','older_than_72h_no_replay',0,p
+    if age > 10800 and not loc:return 'archive','older_than_3h_no_local',0,p
+    late=age > 10800
+    if len(n)<65 or len(words(text))<9:return 'review','text_insufficient',0,p
     inc=bool(EVENT.search(n));institution=bool(PUBLIC.search(n));development=bool(DEVELOPMENT.search(n))
     if AD.search(n) and not inc and not (institution and development):return 'archive','commercial_without_public_interest',0,p
     if not loc:return 'review','district_location_unverified',0,p
@@ -136,6 +141,7 @@ def classify(item,now,manual):
         if other:sim=max(sim,len(other&wt)/len(other|wt))
     if sim>=0.29:score+=1
     if score<7:return 'review','confidence_below_threshold',score,p
+    if late and age > 86400:return 'review','late_local_news_review',score,p
     return 'auto','local_recent_public_interest',score,p
 
 def candidates(conn):
@@ -248,7 +254,9 @@ if __name__=='__main__':
           'title':'Ümraniye Dudullu bölgesinde trafik kazası meydana geldi',
           'description':'Ümraniye Dudullu bölgesinde trafik kazası meydana geldi. Polis ve sağlık ekipleri olay yerine sevk edildiği bildirildi.'}
         assert classify(base,now,[])[0]=='auto',classify(base,now,[])
-        assert classify({**base,'publishedAt':(now-dt.timedelta(days=1)).isoformat()},now,[])[0]=='archive'
+        assert classify({**base,'publishedAt':(now-dt.timedelta(days=1)).isoformat()},now,[])[0]=='auto'
+        assert classify({**base,'publishedAt':(now-dt.timedelta(days=2)).isoformat()},now,[])[0]=='review'
+        assert classify({**base,'publishedAt':(now-dt.timedelta(days=4)).isoformat()},now,[])[0]=='archive'
         assert classify({**base,'title':'Ümraniyespor futbol kulübü','description':'Ümraniyespor futbol kulübü ' + base['description']},now,[])[0]=='archive'
         assert classify({**base,'publishedAt':''},now,[])[0]=='review'
         assert classify({**base,'title':'Ümraniye alışveriş mağazası kampanyası','description':'Ümraniye mağazasında kampanya indirim kiralık fırsat ve fiyat avantajları duyuruldu.'},now,[])[0]!='auto'
