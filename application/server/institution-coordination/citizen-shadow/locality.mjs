@@ -47,5 +47,19 @@ export function deriveLocality(event){
  // in the same bounded address context from the existing sourced dictionary.
  const geo=analyzeGeoText(raw);
  if(!geo.explicitOutsideDistrict&&geo.matches.some(m=>!m.otherDistrict&&!m.neighborhoodConflict&&m.matchedNeighborhoods.length))return{district:'Ümraniye',precision:'district',verified:false,routingEligible:true,evidence:'dictionary_address_statement'};
+ // Ilce adini tasiyan resmi kurum kaynagi (kaymakamlik, belediye, ilce
+ // mudurlukleri) kendi ilcesinin kurumudur; metinde baska ilce gecmiyorsa
+ // ilce kapsami dogrulanmis sayilir. Okul/toren/duyuru haberleri boylece
+ // MEM ve ilgili kurum panellerine duser.
+ const resmiIlceKaynak=/\bumraniye (?:kaymakamligi|belediyesi|ilce milli egitim|ilce emniyet|ilce saglik|ilce tarim|ilce nufus|muhtarlik|genclik ve spor)\b/.test(sourceFold);
+ if(resmiIlceKaynak)return{district:'Ümraniye',precision:'district',verified:true,routingEligible:true,evidence:'district_source_scope'};
+ // Ilce adini tasiyan yerel hesap/sayfa (parti teskilati, yerel haber):
+ // kendi ilcesinin gundemini yayinlar. Baska ilce adi gecmiyorsa
+ // (yukarida elendi) yonlendirme icin yeterli ilce kanatidir.
+ if(/\bumraniye\b/.test(sourceFold))return{district:'Ümraniye',precision:'district',verified:false,routingEligible:true,evidence:'explicit_district_statement'};
+ // Ilce adi metinde geciyor ama adres kaliplarina uymuyor (manset, etiket,
+ // 'UMRANiYE OLDU' gibi). Baska ilce adi ayni metinde gecmiyorsa acik ilce
+ // beyani sayilir; boylece yerel haber sessizce kaybolmaz.
+ if(/\bumraniye\b/.test(originalText))return{district:'Ümraniye',precision:'district',verified:false,routingEligible:true,evidence:'explicit_district_statement'};
  return null;
 }
