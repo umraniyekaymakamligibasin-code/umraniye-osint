@@ -149,13 +149,11 @@ const GUNDEM_YANIT=/^\s*@|(?:^|\s)@[a-z0-9_]+/i;
 const GUNDEM_RESMI=/\b(?:umraniye (?:belediyesi|kaymakamligi)|umraniye kultur sanat|umraniye ilce milli egitim|umraniye ilce emniyet)\b/;
 const GUNDEM_EGITIM=/\b(?:okul|egitim|ogrenci|ogretmen|sinif|universite|burs)\b/;
 function yerelGundemKurali(event,approvals,snapshot){
- console.error('ENTERED yerelGundemKurali');
  if(!event)return null;
  const loc=event.locality||{};
- if(loc.district!=='Ümraniye'||!(loc.verified===true||loc.routingEligible===true)){console.error('DBG1 loc',JSON.stringify(loc));return null;}
+ if(loc.district!=='Ümraniye'||!(loc.verified===true||loc.routingEligible===true))return null;
  const baslik=duyuruBasligi(event);
- console.error('DBG baslik:',baslik,'len:',baslik and len(baslik));
- if(!baslik||baslik.length<25){console.error('DBG baslik FAIL');return null;}
+ if(!baslik||baslik.length<25)return null;
  // Yalniz GUNCEL yerel gundem: 72 saatten eski haber panele 'yeni' diye
  // dusmez (arsiv geri doldurma yalniz kural tabanli olaylarda kalir).
  const yayin=Date.parse(event.publishedAt||''),gorulme=Date.parse(event.firstSeenAt||event.collectedAt||'');
@@ -164,7 +162,7 @@ function yerelGundemKurali(event,approvals,snapshot){
  if(GUNDEM_YANIT.test(String(event.title||'')) && String(event.title||'').trim().length<90)return null;
  const f=fold(String(event.title||''));
  if(!f)return null;
- if(GUNDEM_REKLAM.test(f)||GUNDEM_SIYASI.test(f)||GUNDEM_HASSAS.test(f)){console.error('DBG5 noise',GUNDEM_REKLAM.test(f),GUNDEM_SIYASI.test(f),GUNDEM_HASSAS.test(f));return null;}
+ if(GUNDEM_REKLAM.test(f)||GUNDEM_SIYASI.test(f)||GUNDEM_HASSAS.test(f))return null;
  if(/\b(?:iptal edildi|yalanlandi|yapilmadi|gerceklesmedi)\b/.test(f))return null;
  const resmi=GUNDEM_RESMI.test(fold((event.sourceName||'')+' '+(event.title||'')));
  // Sinyal gereksinimi kaldirildi: dogrulanmis yerel haberin hicbiri
@@ -186,7 +184,6 @@ function yerelGundemKurali(event,approvals,snapshot){
   const key=createHash('sha256').update(JSON.stringify([event.eventIdentity||event.id,topic,institution])).digest('hex');
   tasks.push({key,issueKey:key,topic,institution,title:baslik,summary:ozet||baslik,locality:{district:'Ümraniye',precision:'district',neighborhood:null},risk:'normal',sourceEventId:event.id,legacyTopic:topic});
  }
- console.error('DBG7 tasks',tasks.length,'hedefler',JSON.stringify(hedefler));
  return tasks.length?tasks:null;
 }
 export function fallbackDecision(event,snapshot){
@@ -208,7 +205,6 @@ export function fallbackDecision(event,snapshot){
  const bilgi=kb?analyze(event,{rules:[kb],...approvals}):null;
  const social=socialInformation(event,snapshot);
  const tasks=[...new Map([...(normal.tasks||[]),...(bilgi?.tasks||[]),...(social?.tasks||[])].map(t=>[t.institution+'|'+t.topic,t])).values()];
- console.error('DBG0 normal.reason=',normal?.reason,'normal.tasks=',normal?.tasks?.length,'bilgi=',!!bilgi,'social=',!!social,'social.tasks=',social?.tasks?.length,'tasks.length=',tasks.length);
  if(!tasks.length)tasks.push(...(yerelGundemKurali(event,approvals,snapshot)||[]));
  return tasks.length?{...normal,tasks,status:'shadow_candidates',reason:'approved_panel_candidates'}:normal;
 }
