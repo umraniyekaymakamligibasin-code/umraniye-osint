@@ -12,7 +12,7 @@ const navigation=el('nav');navigation.className='toolbar';navigation.setAttribut
 async function load(){if(referralPage){await referralWorkspace();return}catalog=await api('catalog');events=(await api('cases')).cases;rows()}
 async function referralWorkspace(){
  document.title='Yönlendirme Takibi — Kurum Yönetimi';document.querySelector('h1').textContent='Yönlendirme Takibi';document.querySelector('header .muted').textContent='Kurumlar arası görev devirlerini ve destek taleplerini merkezi olarak izleyin.';
- $('#search').parentElement.hidden=true;$('#cards').hidden=true;
+ $('#search').parentElement.style.display='none';$('#cards').style.display='none';
  let box=$('#referral-workspace');if(!box){box=el('section');box.id='referral-workspace';document.querySelector('main').append(box)}
  const d=await api('referrals');box.replaceChildren();
  const overview=el('div');overview.className='cards';for(const [name,value] of [['Listelenen yönlendirme',d.referrals.length],['Görev devri',d.referrals.filter(x=>x.mode==='transfer').length],['Destek talebi',d.referrals.filter(x=>x.mode!=='transfer').length]]){const card=el('section');card.className='card';card.append(el('span',name),el('h2',String(value)));overview.append(card)}box.append(overview);
