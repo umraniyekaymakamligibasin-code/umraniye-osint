@@ -1,7 +1,7 @@
 """Minimum intervals inside the existing runner; no new daemon, timer or login retries."""
 import datetime,json,math,pathlib,random,time,uuid
 from social_reader_repair import write_json
-INTERVALS={'x':300,'facebook':420,'instagram':240}
+INTERVALS={'x':300,'facebook':420,'instagram':600}
 def stamp(value):return datetime.datetime.fromtimestamp(value,datetime.timezone.utc).isoformat()
 def load(root,provider):
     if provider not in INTERVALS:raise ValueError('invalid_provider')
