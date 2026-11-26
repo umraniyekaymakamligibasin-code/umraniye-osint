@@ -1,3 +1,4 @@
+import { emptySourceExclusions, parseSourceExclusions, isExcludedSource } from './social-exclusions.mjs';
 import {sourceNeighborhoodContext,sourceContextFields} from './social-source-context.mjs';
 import {scanPacingState} from './scan-pacing-state.mjs';
 import {purgeContent} from './content-retention.mjs';
@@ -38,8 +39,8 @@ function platformURL(value,provider){const u=new URL(value),hosts={x:['x.com','w
    hesaplarin paylasimlari, anahtar kelime aramasiyla geri gelse bile
    panele ve kurum yonlendirmesine alinmaz. Genel mekanizma: saglayici
    bazinda handle ve/veya gorunen ad ile eslesme. */
-async function sourceExclusions(DB){const r=await DB.prepare('SELECT data FROM lab_config WHERE id=?').bind('social-source-exclusions').first();if(!r)return {x:[],instagram:[],facebook:[]};let d;try{d=JSON.parse(r.data)}catch{return {x:[],instagram:[],facebook:[]}}const out={x:[],instagram:[],facebook:[]};for(const provider of ['x','instagram','facebook']){const list=Array.isArray(d[provider])?d[provider]:[];for(const e of list){if(typeof e==='string'){const h=e.toLowerCase().replace(/^@/,'').trim();if(h)out[provider].push({handle:h,label:null});}else if(e&&typeof e.handle==='string'){const h=e.handle.toLowerCase().replace(/^@/,'').trim();const label=typeof e.label==='string'?e.label.toLocaleLowerCase('tr-TR').trim():null;if(h||label)out[provider].push({handle:h||null,label:label||null});}}}return out;}
-function sourceExcluded(post,provider,ex){const rows=ex?.[provider]||[];if(!rows.length)return false;let handle='';try{handle=(new URL(post.url).pathname.split('/').filter(Boolean)[0]||'').toLowerCase()}catch{}const name=String(post.sourceName||'').toLocaleLowerCase('tr-TR');return rows.some(r=>(r.handle&&handle===r.handle)||(r.label&&name.includes(r.label)));}
+async function sourceExclusions(DB){const r=await DB.prepare('SELECT data FROM lab_config WHERE id=?').bind('social-source-exclusions').first();return r?parseSourceExclusions(r.data):emptySourceExclusions();}
+function sourceExcluded(post,provider,ex){return isExcludedSource(ex,{provider,url:post.url,sourceName:post.sourceName});}
 export function createBrowserResearch(DB,{now=Date.now}={}){
  async function config(){const r=await DB.prepare('SELECT * FROM lab_config WHERE id=?').bind('browser-research').first();return {automationEnabled:false,...(r?JSON.parse(r.data):{accounts:[],keywords:['Ümraniye','Ümraniye Kaymakamlığı','Yüksel Çelik']}),revision:r?.revision||0};}
  async function save(input){

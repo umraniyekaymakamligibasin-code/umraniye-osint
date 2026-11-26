@@ -5,7 +5,9 @@ import{preview,persistPlan,snapshot,adaptEvent,findLegacyCase}from'./live-adapte
 import{canonicalSource}from'./source-url.mjs';
 import{routingRevision}from'./routing-revision.mjs';
 import{queueNotices,eventCaseIds}from'./notice-queue.mjs';
+import{parseSourceExclusions,emptySourceExclusions,isExcludedSource}from'../../social-exclusions.mjs';
 const hash=s=>createHash('sha256').update(s).digest('hex');
+function loadSourceExclusions(db){try{const r=db.prepare("SELECT data FROM lab_config WHERE id='social-source-exclusions'").get();return r?parseSourceExclusions(r.data):emptySourceExclusions();}catch{return emptySourceExclusions();}}
 const hour=3600000;
 export function initDelivery(db){
  db.exec(readFileSync(new URL('./delivery-queue.sql',import.meta.url),'utf8'));
@@ -121,6 +123,7 @@ export function runBatch(db,{now=Date.now(),limit=25,policyVersion=currentPolicy
  db.prepare(`UPDATE cit_delivery_jobs SET state='pending',available_at=0,attempts=0 WHERE event_id IN(SELECT event_id FROM cit_delivery_jobs WHERE state IN('done','retry') AND policy_version<>? ORDER BY event_id LIMIT 250)`).run(policyVersion);
  const deliveryAudit=auditDeliveries(db,{now,limit:10});
  const jobs=db.prepare(`SELECT j.* FROM cit_delivery_jobs j WHERE j.state IN('pending','retry') AND j.available_at<=? ORDER BY j.priority DESC,(SELECT json_extract(CASE WHEN json_valid(data) THEN data ELSE '{}' END,'$.publishedAt') FROM lab_items WHERE id=j.event_id) DESC,j.available_at,j.event_id LIMIT ?`).all(now,limit);
+ const exclusions=loadSourceExclusions(db);
  const report={at:new Date(now).toISOString(),examined:0,metadataOnly:0,inserted:0,duplicates:0,updated:0,withdrawn:0,restored:0,verified:0,failed:0,reasons:{},messagesSent:0,messagesQueued:0,policyVersion,deliveryAudit};
  for(const job of jobs){
   const token=randomUUID();if(!db.prepare("UPDATE cit_delivery_jobs SET state='processing',claim_token=?,lease_until=?,policy_version=? WHERE event_id=? AND generation=? AND state IN('pending','retry')").run(token,now+120000,policyVersion,job.event_id,job.generation).changes)continue;
@@ -128,6 +131,21 @@ export function runBatch(db,{now=Date.now(),limit=25,policyVersion=currentPolicy
    db.exec('BEGIN IMMEDIATE');const row=db.prepare('SELECT data FROM lab_items WHERE id=?').get(job.event_id);
    if(!row){db.prepare("UPDATE cit_delivery_jobs SET state='waiting_source',outcome='source_missing',lease_until=NULL,claim_token=NULL WHERE event_id=?").run(job.event_id);db.exec('COMMIT');continue;}
    const event=JSON.parse(row.data);if(!event||typeof event!=='object'||event.id!==job.event_id)throw Error('source_identity_invalid');
+   if(isExcludedSource(exclusions,{provider:event.platform,url:event.url,sourceName:event.sourceName})){
+    // Kaynak takip listesinden cikarildi: panelde gizle, aktif vakalari kapat,
+    // yonlendirme isini tekrar denenmeyecek sekilde bitir.
+    const stamp=new Date(now).toISOString(),itemUrl=canonicalSource(event.url)||String(event.url||'');
+    try{db.prepare(`INSERT INTO osint_content_moderation(key,event_id,url,title,stream,state,actor,reason,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(key) DO NOTHING`).run(hash(itemUrl||event.id),event.id,itemUrl,String(event.title||'').slice(0,1000),'social','hidden','system:source-excluded','Kaynak takip listesinden cikarildi',stamp,stamp);}catch{}
+    const openCases=db.prepare("SELECT id,institution_id FROM coord_cases WHERE source_event_id=? AND status<>'dismissed'").all(event.id);
+    for(const c of openCases){
+      db.prepare("UPDATE coord_cases SET status='dismissed',updated_at=? WHERE id=?").run(stamp,c.id);
+      db.prepare("UPDATE cit_case_links SET active=0,verified_at=? WHERE case_id=?").run(now,c.id);
+      try{db.prepare("INSERT INTO coord_audit VALUES(?,NULL,'system',?,?,'case',?,NULL,?)").run(randomUUID(),c.institution_id,'cit_source_excluded',c.id,stamp);}catch{}
+      try{db.prepare("UPDATE coord_mail_outbox SET state='cancelled',last_error_code='source_excluded' WHERE coord_case_id=? AND state IN('pending','retry','processing')").run(c.id);}catch{}
+    }
+    db.prepare("UPDATE cit_delivery_jobs SET state='done',priority=0,attempts=0,available_at=0,lease_until=NULL,claim_token=NULL,policy_version=?,outcome='source_excluded',error_code=NULL,updated_at=? WHERE event_id=? AND claim_token=?").run(policyVersion,now,event.id,token);
+    db.exec('COMMIT');report.excluded=(report.excluded||0)+1;continue;
+   }
    const revision=hash(row.data),meaningful=routingRevision(event),fingerprintKey='routing_revision:'+event.id;
    const previous=db.prepare('SELECT value FROM cit_delivery_meta WHERE key=?').get(fingerprintKey)?.value;
    if(job.source_revision&&job.source_revision!==revision&&job.policy_version===policyVersion&&previous===meaningful){
