@@ -1,5 +1,5 @@
 """Minimum intervals inside the existing runner; no new daemon, timer or login retries."""
-import datetime,json,math,pathlib,time,uuid
+import datetime,json,math,pathlib,random,time,uuid
 from social_reader_repair import write_json
 INTERVALS={'x':300,'facebook':420,'instagram':240}
 def stamp(value):return datetime.datetime.fromtimestamp(value,datetime.timezone.utc).isoformat()
@@ -15,6 +15,7 @@ def load(root,provider):
 def number(value,default=0):return value if isinstance(value,(int,float)) and not isinstance(value,bool) and math.isfinite(value) else default
 def begin(root,provider,clock=time.time):
     path,state=load(root,provider);current=clock();interval=INTERVALS[provider]
+    if provider=='facebook':interval+=random.randint(0,300)
     last=number(state.get('lastStartedAt'))
     if last>current+300:
         state.update(lastStartedAt=current,nextDue=current+interval,clockAdjusted=True);write_json(path,state)
@@ -30,6 +31,7 @@ def finish(root,ticket,outcome,clock=time.time):
     current=clock();status=outcome.get('status','worker_error');retry=number(outcome.get('retryInSeconds'));failures=int(number(state.get('failures')))
     failure=status in ('worker_error','browser_error','selector_changed','robots_denied') or status=='time_budget' and retry<=0
     failures=failures+1 if failure else 0;delay=INTERVALS[provider]
+    if provider=='facebook' and not failure:delay+=random.randint(0,300)
     if failure:delay=max(delay,min(1800,60*2**min(failures,5)))
     if status in ('login_required','challenge_required','verification_paused'):delay=max(delay,1800)
     if status=='robots_denied':delay=max(delay,3600)
