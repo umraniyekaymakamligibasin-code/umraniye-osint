@@ -980,7 +980,7 @@ async function adminWorkspaceAPI(request,env,user,url){
   if(username===(env.OSINT_ADMIN_USERNAME||'').trim().toLocaleLowerCase('tr-TR'))return json({error:'Bu kullanıcı adı yönetici hesabına ayrılmıştır.'},409);
   const exists=await env.DB.prepare('SELECT id FROM team_accounts WHERE username=?').bind(username).first();if(exists)return json({error:'Bu kullanıcı adı zaten var'},409);
   const salt=crypto.randomUUID(),id=crypto.randomUUID(),hash=await passwordHash(body.password,salt);
-  await env.DB.batch([env.DB.prepare('INSERT INTO team_accounts(id,username,name,email,password_hash,salt,active,created_at) VALUES(?,?,?,?,?,?,?,?)').bind(id,username,name,email,hash,salt,1,new Date().toISOString()),auditStatement(env,user,'Ekip hesabı oluşturuldu',username)]);return json({ok:true,id});
+  await env.DB.batch([env.DB.prepare('INSERT INTO team_accounts(id,username,name,email,password_hash,salt,active,created_at) VALUES(?,?,?,?,?,?,?,?)').bind(id,username,name,email,hash,salt,1,new Date().toISOString()),env.DB.prepare('INSERT INTO coord_portal_viewers(account_id,active,approved_by,updated_at) VALUES(?,1,?,?)').bind(id,user.id||'central_admin',new Date().toISOString()),auditStatement(env,user,'Ekip hesabı oluşturuldu ve ana OSINT erişimi verildi',username)]);return json({ok:true,id});
  }
  return json({error:'Bulunamadı'},404);
 }
