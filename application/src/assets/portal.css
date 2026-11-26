@@ -1,12 +1,12 @@
 @font-face{font-family:Inter;src:url('/assets/InterVariable.woff2') format('woff2');font-style:normal;font-weight:100 900;font-display:swap}
 /* Compact filters retain touch targets and expand only when requested. */
-#filter-form.searchbar{padding:10px 12px;gap:8px;margin-bottom:18px;align-items:center}
-#filter-form>.search-input{min-height:40px;min-width:180px;padding:0 10px;flex:1 1 280px}
-#filter-form .search-input input{padding:9px 0;font-size:13px}
-#filter-form>select,#filter-form>button{min-height:40px;padding:8px 10px;font-size:12px}
+#filter-form.searchbar{padding:6px 8px;gap:6px;margin-bottom:14px;align-items:center;border-radius:9px;box-shadow:none}
+#filter-form>.search-input{min-height:32px;min-width:180px;padding:0 9px;flex:1 1 280px;border-radius:6px}
+#filter-form .search-input input{padding:5px 0;font-size:12px}
+#filter-form>select,#filter-form>button{min-height:32px;height:32px;padding:4px 9px;font-size:12px;border-radius:6px}
 #filter-form>select{max-width:155px}
 #filter-form>.advanced{width:auto;flex:0 0 auto;font-size:12px}
-#filter-form>.advanced>summary{padding:10px 8px;cursor:pointer;white-space:nowrap}
+#filter-form>.advanced>summary{padding:5px 7px;cursor:pointer;white-space:nowrap}
 #filter-form>.advanced[open]{flex-basis:100%;width:100%;border-top:1px solid #e5e8ee;padding-top:6px}
 #filter-form>.advanced[open]>div{display:flex;flex-wrap:wrap;gap:12px;padding:8px 0}
 @media(max-width:700px){#filter-form.searchbar{padding:10px;gap:8px}#filter-form>.search-input{min-width:100%;flex-basis:100%;min-height:44px}#filter-form>select{flex:1;min-width:0;max-width:none;min-height:44px}#filter-form>button{min-height:44px}#filter-form>.advanced{flex-basis:100%;width:100%}#filter-form>.advanced>summary{padding:6px 0}#filter-form>.advanced[open]>div>label{flex:1 1 150px;min-width:0}}
