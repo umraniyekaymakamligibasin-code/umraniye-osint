@@ -2,6 +2,11 @@ import {createInstitutionRecipients} from './institution-recipients.mjs';
 import {createInstitutionCredentials} from './institution-credentials.mjs';
 import {join,resolve} from 'node:path';
 import {readFile} from 'node:fs/promises';
+function institutionBrand(html){return String(html).replace(/<body>/i,`<body><style>
+.institution-brand{background:#fff;border-top:4px solid #b91c24;border-bottom:1px solid #e3e7ed;padding:18px max(20px,calc((100vw - 1200px)/2));display:flex;align-items:center;gap:16px;color:#18212f}
+.institution-brand img{width:72px;height:72px;object-fit:contain;flex:none}.institution-brand strong{display:block;font-size:17px;letter-spacing:.3px}.institution-brand span{display:block;color:#667085;font-size:14px;margin-top:4px}
+@media(max-width:640px){.institution-brand{padding:14px 18px;gap:12px}.institution-brand img{width:54px;height:54px}.institution-brand strong{font-size:14px}.institution-brand span{font-size:12px}button,input,select{min-height:44px}header,main{max-width:100%}}
+</style><div class="institution-brand"><img src="/assets/umraniye-kaymakamligi-logo.png" width="72" height="72" alt="Ümraniye Kaymakamlığı logosu"><div><strong>T.C. ÜMRANİYE KAYMAKAMLIĞI</strong><span>Kurum Koordinasyon ve Olay Takip Sistemi</span></div></div>`)}
 
 import {createInstitutionCoordination} from './institution-coordination.mjs';
 
@@ -66,9 +71,9 @@ export function createInstitutionHost({base,db,origin,actor,serviceRequestAllowe
 
     if(!a)return u.pathname.startsWith('/api/')?Response.json({error:'authentication_required'},{status:401}):Response.redirect(expected+'/giris',302);
 
-    if(u.pathname==='/kurum/yonetim'||u.pathname==='/kurum/admin.js'){if(a.admin!==true)return new Response('Yetki gerekli',{status:403});const js=u.pathname.endsWith('.js');return new Response(await readFile(new URL(js?'../web/admin.js':'../web/admin.html',import.meta.url)),{headers:{'content-type':js?'text/javascript; charset=utf-8':'text/html; charset=utf-8','cache-control':'no-store'}})}
+    if(u.pathname==='/kurum/yonetim'||u.pathname==='/kurum/admin.js'){if(a.admin!==true)return new Response('Yetki gerekli',{status:403});const js=u.pathname.endsWith('.js');const content=await readFile(new URL(js?'../web/admin.js':'../web/admin.html',import.meta.url),'utf8');return new Response(js?content:institutionBrand(content),{headers:{'content-type':js?'text/javascript; charset=utf-8':'text/html; charset=utf-8','cache-control':'no-store'}})}
 
-    if(u.pathname==='/kurum')return new Response(await readFile(new URL('../web/institution.html',import.meta.url)),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
+    if(u.pathname==='/kurum')return new Response(institutionBrand(await readFile(new URL('../web/institution.html',import.meta.url),'utf8')),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
 
     if(u.pathname==='/kurum/institution.js')return new Response(await readFile(new URL('../web/institution.js',import.meta.url)),{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
 
