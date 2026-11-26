@@ -1,4 +1,6 @@
-import {incidentRules} from './incident-rules.mjs';
+import {incidentRules as baseIncidentRules} from './incident-rules.mjs';
+import {institutionServiceRules} from './institution-service-rules.mjs';
+const incidentRules=[...baseIncidentRules,...institutionServiceRules];
 import {extendedCatalog} from './extended-catalog.mjs';
 import {domainCatalog} from './domain-catalog.mjs';
 // Explicit, reviewable subtypes; never a Cartesian product used to inflate counts.
