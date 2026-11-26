@@ -60,8 +60,6 @@ export function deriveLocality(event){
  // Ilce adi metinde geciyor ama adres kaliplarina uymuyor (manset, etiket,
  // 'UMRANiYE OLDU' gibi). Baska ilce adi ayni metinde gecmiyorsa acik ilce
  // beyani sayilir; boylece yerel haber sessizce kaybolmaz.
- const agencyMention=/\bumraniye (?:belediye[a-z]*|kaymakam[a-z]*|ilce [a-z ]*mudurlu[a-z]*)\b/.test(originalText);
- const substantive=/\b(?:ariza|kesinti|yangin|kaza|sikayet|talep|basvuru|egitim|okul|kurs|spor|su|elektrik|yol|park|hizmet|yardim|proje|etkinlik|acilis|ziyaret)[a-z]*\b/.test(originalText);
- if(/\bumraniye\b/.test(originalText)&&(!agencyMention||substantive))return{district:'Ümraniye',precision:'district',verified:false,routingEligible:true,evidence:'explicit_district_statement'};
+ if(/\bumraniye\b/.test(originalText))return{district:'Ümraniye',precision:'district',verified:false,routingEligible:true,evidence:'explicit_district_statement'};
  return null;
 }
