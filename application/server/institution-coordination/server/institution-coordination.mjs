@@ -119,7 +119,7 @@ async function audit(db, actorId, institutionId, action, targetType, targetId, r
 
 const CASE_SORT = `COALESCE(julianday(c.first_published_at),julianday(c.first_seen_at),julianday(c.created_at))`;
 const CASE_SELECT = `SELECT ${CASE_SORT} AS sort_at,c.id,c.source_event_id,c.title,c.summary_redacted,c.neighborhood,c.location_precision,
-  c.first_published_at,c.first_seen_at,c.confidence,c.status,c.priority,c.created_at,c.updated_at,
+  c.first_published_at,c.first_seen_at,c.confidence,c.status,c.priority,c.sensitivity,c.created_at,c.updated_at,
   t.code AS topic_code,t.display_name AS topic_name
   FROM coord_cases c JOIN coord_topics t ON t.id=c.topic_id
   JOIN coord_institution_topic_grants g ON g.institution_id=c.institution_id AND g.topic_id=c.topic_id AND g.granted=1
@@ -232,14 +232,14 @@ export function createInstitutionCoordination(adapters) {
         const targets=await all(db,`SELECT i.id,i.code,i.display_name,t.id topic_id,t.code topic,t.display_name topic_name
           FROM coord_institutions i JOIN coord_institution_topic_grants g ON g.institution_id=i.id AND g.granted=1
           JOIN coord_topics t ON t.id=g.topic_id AND t.enabled=1 AND t.approval_status='approved'
-          WHERE i.id!=? AND i.enabled=1 AND i.approval_status='approved' ORDER BY i.display_name,t.display_name`,tenant.institution_id);
+          WHERE i.id!=? AND i.enabled=1 AND i.approval_status='approved' AND t.sensitivity=? ORDER BY i.display_name,t.display_name`,tenant.institution_id,source.sensitivity||'ordinary');
         if(referralMatch[2]==='referral-targets'&&request.method==='GET')return json({targets:targets.map(({id,topic_id,...r})=>r)});
         if(referralMatch[2]!=='refer'||request.method!=='POST')return json({error:'method_not_allowed'},405);
         if(!await adapters.verifyCsrf(request,actor))return json({error:'csrf_failed'},403);
         const target=targets.find(t=>t.code===body.targetInstitution&&t.topic===body.topic);
         if(!target||!['transfer','support'].includes(body.mode))return json({error:'target_scope_not_available'},409);
         const full=await first(db,'SELECT * FROM coord_cases WHERE id=? AND institution_id=?',source.id,tenant.institution_id);
-        const known=await first(db,'SELECT id FROM coord_cases WHERE source_event_id=? AND institution_id=? ORDER BY created_at LIMIT 1',full.source_event_id,target.id);
+        const known=await first(db,'SELECT id FROM coord_cases WHERE source_event_id=? AND institution_id=? AND topic_id=? ORDER BY created_at LIMIT 1',full.source_event_id,target.id,target.topic_id);
         const targetId=known?.id||id(),at=now(),referralId=id();
         const statements=[];
         if(!known)statements.push(db.prepare(`INSERT INTO coord_cases(id,institution_id,topic_id,source_event_id,source_revision,idempotency_key,title,summary_redacted,neighborhood,location_precision,first_published_at,first_seen_at,confidence,status,priority,sensitivity,created_at,updated_at)
