@@ -319,6 +319,7 @@ export function createInstitutionCoordination(adapters) {
   }
 
   async function adminRoute(path, request, actorKey, requestId) {
+    if(path==='/admin/referrals' && request.method==='GET')return json({referrals:await all(db,`SELECT r.id,r.source_case_id,r.target_case_id,r.mode,r.created_at,s.display_name source_institution,t.display_name target_institution,c.title FROM coord_referrals r JOIN coord_institutions s ON s.id=r.source_institution_id JOIN coord_institutions t ON t.id=r.target_institution_id JOIN coord_cases c ON c.id=r.source_case_id ORDER BY r.created_at DESC,r.id DESC LIMIT 200`)});
     const recipientsMatch=path.match(/^\/admin\/institutions\/([A-Za-z0-9_-]{1,100})\/recipients(?:\/([A-Za-z0-9_-]{1,120})\/disable)?$/);
     if(recipientsMatch){
       if(typeof adapters.recipients!=='function')return json({error:'recipient_store_unavailable'},503);
