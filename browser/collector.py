@@ -356,7 +356,7 @@ def cleaned(posts,provider,word,limit=20,trace=None):
             continue
 
         text=fold(str(title)+' '+str(description))
-        if not any(fold(w) in text for w in words) and not (provider=='x' and institutional_reference(post,word)) and not geographic_candidate(title,description,word):
+        if not any(fold(w) in text for w in words) and not (provider=='x' and institutional_reference(post,word)) and not geographic_candidate(title,description,word) and not (provider=='instagram' and local_context(title,description)):
             reasons['keyword_mismatch']+=1
             if provider in ('x','instagram') and reasons['keyword_reviewed'] < 2 and valid_date(post.get('publishedAt')) and 'umraniyespor' not in text:
                 try:
