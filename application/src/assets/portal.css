@@ -41,6 +41,6 @@ html[data-theme="dark"]{--red:#E4576A;--red-dark:#F07C8B;--ink:#E7ECF5;--text:#B
 html[data-theme="dark"] body{background:var(--bg);color:var(--text)}
 html[data-theme="dark"] .masthead,.sidebar,.metric,.rail-panel,.news-row,.lead-story,.mini-story,.social-card,.empty,.error-box,.loading,.dialog-bar,#toast{background:var(--surface)!important;border-color:var(--border)!important}
 html[data-theme="dark"] .newswire,html[data-theme="dark"] .mobile-toolbar{background:var(--surface)!important;border-color:var(--border)!important}
-.ui-theme-toggle{position:fixed;bottom:18px;right:18px;z-index:150;display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:8px 13px;border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--text);font-size:12px;font-weight:600;box-shadow:0 6px 24px #00000033}
-.ui-theme-toggle svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ui-theme-toggle{position:fixed;bottom:16px;right:16px;z-index:150;display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:5px 10px;border:1px solid var(--border);border-radius:16px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;box-shadow:0 4px 14px #00000026;width:auto;max-width:120px}
+.ui-theme-toggle svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 html[data-theme="dark"] .ui-theme-toggle{color:#F4C95D}
