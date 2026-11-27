@@ -22,7 +22,132 @@ async function readAdminJSON(response){
  }
  try{return JSON.parse(text);}catch{throw Error('Sunucu eksik veya geçersiz veri döndürdü. (HTTP '+response.status+')');}
 }
-</script><link rel="stylesheet" href="/assets/workspace-refresh.css?v=20261113"></head><body class="osint-admin"><header><img src="/favicon.png" alt="Ümraniye Kaymakamlığı"><div><strong>T.C. ÜMRANİYE KAYMAKAMLIĞI</strong><small style="display:block">OSINT TAKİP SİSTEMİ · Basın ve Halkla İlişkiler Müdürlüğü</small><h1>Yönetici Paneli</h1></div></header><main><nav class="app-links" aria-label="Ana gezinme"><a href="/">Haber Gündemi</a><a href="/sosyal-medya">Sosyal Medya</a><a href="/kurumsal-etiketler" class="" data-institutional-nav="">Kurumsal Etiketler</a><a href="/yonetim" aria-current="page">Yönetici Paneli</a><button id="reload">Yenile</button></nav><div id="message" class="message" role="status" hidden></div><div id="legacy-root"><div class="row" style="border:0"><div class="tools"><span id="legacy-session-time" class="session"></span><button id="legacy-lock">Paneli kilitle</button><button id="legacy-logout">Çıkış yap</button></div></div><p id="legacy-identity"></p><div class="card"><h2>Ortak olay masası</h2><p>Görev atama, ortak notlar, bildirimler, brifing arşivi ve raporlar.</p><a class="button primary" href="/ekip">Ortak olay masasına geç</a> <a class="button" href="/ekip#accounts">Kullanıcı hesaplarını yönet</a> </div><p></p><div id="legacy-message" class="message" role="status" hidden></div>
+</script><link rel="stylesheet" href="/assets/workspace-refresh.css?v=20261113">
+<style id="ui-theme-refresh">
+/* ================= A · KURUMSAL / GECE NOBETI ================= */
+@font-face{font-family:Inter;src:url('/assets/InterVariable.woff2') format('woff2');font-style:normal;font-weight:100 900;font-display:swap}
+:root{
+  --ui-bg:#f7f8fa;--ui-surface:#ffffff;--ui-surface-2:#f9fafb;
+  --ui-ink:#101828;--ui-text:#344054;--ui-muted:#667085;
+  --ui-line:#e4e7ec;--ui-line-2:#d0d5dd;
+  --ui-brand:#b01e2e;--ui-brand-h:#8e1626;--ui-brand-soft:#fbeef0;
+  --ui-ok:#127a43;--ui-ok-soft:#e7f6ee;
+  --ui-warn:#b25e09;--ui-warn-soft:#fef3e2;
+  --ui-crit:#b42318;--ui-crit-soft:#feecea;
+  --ui-info:#175cd3;--ui-info-soft:#eaf2ff;
+  color-scheme:light
+}
+html[data-theme="dark"]{
+  --ui-bg:#0b1220;--ui-surface:#111a2c;--ui-surface-2:#16213a;
+  --ui-ink:#e7ecf5;--ui-text:#b9c4d6;--ui-muted:#8b98ae;
+  --ui-line:#233149;--ui-line-2:#2f3f5c;
+  --ui-brand:#e4576a;--ui-brand-h:#f07c8b;--ui-brand-soft:#2a1620;
+  --ui-ok:#4ade80;--ui-ok-soft:#10281c;
+  --ui-warn:#f4b860;--ui-warn-soft:#2c2110;
+  --ui-crit:#f87171;--ui-crit-soft:#2c1414;
+  --ui-info:#7fb0ff;--ui-info-soft:#12213d;
+  color-scheme:dark
+}
+html,body{font-family:Inter,'Segoe UI',system-ui,sans-serif!important;background:var(--ui-bg)!important;color:var(--ui-text)!important}
+body{-webkit-font-smoothing:antialiased}
+body,.card,header,.tabs button,.badge,button,.button,input,select,textarea,details>summary{transition:background-color .18s ease,color .18s ease,border-color .18s ease}
+::selection{background:var(--ui-brand-soft);color:var(--ui-ink)}
+
+/* masthead */
+header{background:var(--ui-surface)!important;color:var(--ui-ink)!important;border-top:3px solid var(--ui-brand);border-bottom:1px solid var(--ui-line);padding:14px max(24px,calc((100vw - 1248px)/2))!important;gap:14px!important}
+header img{width:44px!important;height:44px!important;border:1px solid var(--ui-line);padding:2px;border-radius:50%!important;background:#fff}
+header strong{color:var(--ui-muted)!important;opacity:1!important;font-size:11px!important;letter-spacing:1.2px!important}
+header small{color:var(--ui-muted)!important;font-size:11px!important}
+header h1{color:var(--ui-ink)!important;font-size:22px!important;letter-spacing:-.5px;font-weight:730;line-height:1.2}
+header>div{min-width:0}
+
+/* nav link row */
+.app-links{gap:20px!important;margin:0 0 18px!important;font-size:12.5px;align-items:center}
+.app-links a{color:var(--ui-muted)!important;font-weight:550}
+.app-links a:hover{color:var(--ui-brand)!important}
+.app-links a[aria-current]{color:var(--ui-brand)!important;font-weight:650}
+.app-links button{margin-left:auto}
+a{color:var(--ui-brand)}
+a:hover{color:var(--ui-brand-h)}
+
+/* tabs */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--ui-line)!important;margin-bottom:20px!important;position:sticky;top:0;background:var(--ui-bg);z-index:10;padding-top:4px;overflow:auto}
+.tabs button{border:0!important;border-radius:0!important;background:transparent!important;color:var(--ui-muted)!important;padding:11px 14px!important;min-height:42px;font-size:13px;font-weight:550;border-bottom:2px solid transparent!important;box-shadow:none!important}
+.tabs button:hover{background:transparent!important;color:var(--ui-ink)!important}
+.tabs button[aria-selected="true"]{border-bottom-color:var(--ui-brand)!important;color:var(--ui-brand)!important;font-weight:650!important}
+
+/* cards */
+.card{background:var(--ui-surface)!important;border:1px solid var(--ui-line)!important;border-radius:12px!important;padding:16px!important;margin-bottom:12px!important;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+h2{color:var(--ui-ink)!important;font-size:17px!important;font-weight:660;letter-spacing:-.2px}
+h3{color:var(--ui-ink)!important;font-size:14.5px!important;font-weight:650}
+.panel-heading{margin:6px 0 16px!important}
+.muted,small{color:var(--ui-muted)!important}
+
+/* buttons */
+button,.button{min-height:36px;padding:7px 12px;border:1px solid var(--ui-line-2)!important;border-radius:8px!important;background:var(--ui-surface)!important;color:var(--ui-text)!important;font-size:12.5px;font-weight:600;box-shadow:none;line-height:1.3}
+button:hover,.button:hover{background:var(--ui-surface-2)!important}
+button.primary,.button.primary{background:var(--ui-brand)!important;border-color:var(--ui-brand)!important;color:#fff!important}
+html[data-theme="dark"] button.primary,html[data-theme="dark"] .button.primary{color:#160709!important}
+button.primary:hover,.button.primary:hover{background:var(--ui-brand-h)!important;border-color:var(--ui-brand-h)!important}
+button.danger{color:var(--ui-crit)!important;border-color:var(--ui-line-2)!important;background:var(--ui-surface)!important}
+button.danger:hover{background:var(--ui-crit-soft)!important}
+button:disabled{opacity:.55;cursor:wait}
+
+/* inputs */
+input:not([type=checkbox]):not([type=radio]),select,textarea{background:var(--ui-surface)!important;border:1px solid var(--ui-line-2)!important;border-radius:8px!important;color:var(--ui-text)!important;padding:9px 11px;min-height:36px;font-size:13px}
+input:not([type=checkbox]):not([type=radio]):focus,select:focus,textarea:focus{border-color:var(--ui-brand)!important;outline:3px solid color-mix(in srgb,var(--ui-brand) 22%,transparent);outline-offset:1px}
+input[type=checkbox]{accent-color:var(--ui-brand)}
+label{color:var(--ui-text)}
+
+/* badges */
+.badge{background:var(--ui-surface-2)!important;color:var(--ui-muted)!important;border:1px solid var(--ui-line);font-weight:600;font-size:11px;padding:3px 8px;border-radius:20px}
+.badge.ok{background:var(--ui-ok-soft)!important;color:var(--ui-ok)!important;border-color:transparent}
+.badge.error{background:var(--ui-crit-soft)!important;color:var(--ui-crit)!important;border-color:transparent}
+.badge.warn{background:var(--ui-warn-soft)!important;color:var(--ui-warn)!important;border-color:transparent}
+.badge.brand{background:var(--ui-brand-soft)!important;color:var(--ui-brand)!important;border-color:transparent}
+
+/* tables & lists */
+table{font-size:12.5px}
+th{background:var(--ui-surface-2)!important;color:var(--ui-muted)!important;font-weight:600!important;font-size:11.5px}
+td,th{border-bottom:1px solid var(--ui-line)!important;padding:10px 12px!important}
+td time{color:var(--ui-muted)}
+.source,.keyword-group{border-color:var(--ui-line)!important}
+.source .url{color:var(--ui-muted)!important}
+.source:last-child{border-bottom:0}
+.status-line{color:var(--ui-muted)}
+.scroll{max-height:240px;overflow:auto}
+
+/* details */
+details>summary{color:var(--ui-ink)!important;font-weight:650;padding:6px 0}
+details>summary::marker{color:var(--ui-muted)}
+details[open]>summary{margin-bottom:12px}
+
+/* feedback */
+.message{background:var(--ui-ok-soft)!important;color:var(--ui-ok)!important;border-radius:8px}
+.message.error{background:var(--ui-crit-soft)!important;color:var(--ui-crit)!important}
+.empty{color:var(--ui-muted)}
+footer{color:var(--ui-muted)!important}
+iframe{border-color:var(--ui-line)!important}
+.field-grid{gap:14px}
+
+/* theme toggle */
+.ui-theme-toggle{margin-left:auto;display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:6px 11px!important;border:1px solid var(--ui-line-2)!important;border-radius:20px!important;background:var(--ui-surface)!important;color:var(--ui-text)!important;font-size:12px;font-weight:600;white-space:nowrap}
+.ui-theme-toggle:hover{background:var(--ui-surface-2)!important}
+.ui-theme-toggle svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+html[data-theme="dark"] .ui-theme-toggle{color:#f4c95d!important}
+
+/* responsive */
+@media(max-width:850px){
+  header{padding:12px 15px!important}
+  header h1{font-size:19px!important}
+  .ui-theme-toggle span{display:none}
+  .ui-theme-toggle{min-width:34px;justify-content:center;padding:6px 8px!important}
+  .card{padding:13px!important}
+  .tabs button{padding:10px 11px!important;font-size:12.5px}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<script>try{if(localStorage.getItem('umraniye-ui-theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}</script></head><body class="osint-admin"><header><img src="/favicon.png" alt="Ümraniye Kaymakamlığı"><div><strong>T.C. ÜMRANİYE KAYMAKAMLIĞI</strong><small style="display:block">OSINT TAKİP SİSTEMİ · Basın ve Halkla İlişkiler Müdürlüğü</small><h1>Yönetici Paneli</h1></div><button type="button" id="ui-theme-toggle" class="ui-theme-toggle" aria-pressed="false" title="Gece temasına geç" aria-label="Gece temasına geç"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8Z"/></svg><span>Gece</span></button></header><main><nav class="app-links" aria-label="Ana gezinme"><a href="/">Haber Gündemi</a><a href="/sosyal-medya">Sosyal Medya</a><a href="/kurumsal-etiketler" class="" data-institutional-nav="">Kurumsal Etiketler</a><a href="/yonetim" aria-current="page">Yönetici Paneli</a><button id="reload">Yenile</button></nav><div id="message" class="message" role="status" hidden></div><div id="legacy-root"><div class="row" style="border:0"><div class="tools"><span id="legacy-session-time" class="session"></span><button id="legacy-lock">Paneli kilitle</button><button id="legacy-logout">Çıkış yap</button></div></div><p id="legacy-identity"></p><div class="card"><h2>Ortak olay masası</h2><p>Görev atama, ortak notlar, bildirimler, brifing arşivi ve raporlar.</p><a class="button primary" href="/ekip">Ortak olay masasına geç</a> <a class="button" href="/ekip#accounts">Kullanıcı hesaplarını yönet</a> </div><p></p><div id="legacy-message" class="message" role="status" hidden></div>
 
 
 
@@ -312,4 +437,21 @@ const auditBlock=$('audit')?.closest('details');if(auditBlock)auditBlock.addEven
 <script>document.addEventListener('click',async e=>{const b=e.target.closest('#rss-bridge-check');if(!b)return;b.disabled=true;try{const r=await fetch('http://127.0.0.1:8099/');const t=await r.text();const ok=r.ok&&t.includes('RSS-Bridge');document.getElementById('rss-bridge-status').textContent=ok?'Canlı ve yanıt veriyor ('+t.length+' bayt)':'Yanıt alındı ama beklenen içerik yok';document.getElementById('rss-bridge-badge').textContent=ok?'Canlı':'Hata';document.getElementById('rss-bridge-badge').className='badge '+(ok?'ok':'error');}catch(err){document.getElementById('rss-bridge-status').textContent='Bağlantı hatası: '+err.message;document.getElementById('rss-bridge-badge').textContent='Kapalı';document.getElementById('rss-bridge-badge').className='badge error';}finally{b.disabled=false;}});</script>
 
 <script>document.addEventListener('click',async e=>{const b=e.target.closest('#ig-browser-check');if(!b)return;b.disabled=true;try{const r=await fetch('/api/admin/integrations/browser-status');const d=await r.json();const ba=d.browserAutomation||{};const ok=!!ba.available;document.getElementById('ig-browser-status').textContent=ok?'Tarayıcı açık · '+ (ba.status||'hazır'):'Tarayıcı kapalı';document.getElementById('ig-browser-badge').textContent=ok?'Canlı':'Kapalı';document.getElementById('ig-browser-badge').className='badge '+(ok?'ok':'error');}catch(err){document.getElementById('ig-browser-status').textContent='Bağlantı hatası: '+err.message;document.getElementById('ig-browser-badge').textContent='Hata';document.getElementById('ig-browser-badge').className='badge error';}finally{b.disabled=false;}});</script>
-</body></html>
+<script>
+(function(){
+ var key='umraniye-ui-theme';
+ function sync(){
+  var dark=document.documentElement.dataset.theme==='dark';
+  var b=document.getElementById('ui-theme-toggle');
+  if(b){b.setAttribute('aria-pressed',String(dark));b.title=dark?'Aydınlık temaya geç':'Gece temasına geç';b.setAttribute('aria-label',b.title);var t=b.querySelector('span');if(t)t.textContent=dark?'Aydınlık':'Gece';}
+ }
+ document.addEventListener('click',function(e){
+  var b=e.target.closest('#ui-theme-toggle');if(!b)return;
+  var dark=document.documentElement.dataset.theme==='dark';
+  if(dark)delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme='dark';
+  try{localStorage.setItem(key,dark?'light':'dark')}catch(err){}
+  sync();
+ });
+ sync();
+})();
+</script></body></html>
