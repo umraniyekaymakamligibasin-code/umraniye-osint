@@ -120,7 +120,7 @@ function drawResearch(){
  $('browser-automation-state').textContent=!b?.available?'Tarayıcı kapalı':'Tur hedefi · 90 saniye';
  $('research-keywords').innerHTML=(r.keywordGroups||[]).map(g=>'<div class="keyword-group"><h3>'+esc((g.priority||'')+' · '+g.name+(g.enabled===false?' · Kapalı':''))+'</h3>'+g.terms.map(t=>'<span class="badge">'+esc(t)+'</span>').join('')+'</div>').join('');
  $('research-accounts').innerHTML=Object.entries(researchNames).map(([id,name])=>{
-  if(id==='instagram')return instagramAPICard();
+  if(id==='instagram')return '<details open><summary>Instagram API Okuyucusu</summary>'+instagramAPICard()+'</details>';
   if(id==='facebook'){
    const sources=state.facebookPages?.sources||[],active=sources.filter(s=>s.enabled),ok=active.filter(s=>s.last_success_at),errors=active.filter(s=>s.last_error_code),runs=state.facebookPages?.runs||[],latest=runs[0];
    const success=ok.map(s=>s.last_success_at).sort().at(-1),checked=active.map(s=>s.last_attempt_at).filter(Boolean).sort().at(-1);
