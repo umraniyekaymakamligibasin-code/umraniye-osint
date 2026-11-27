@@ -227,7 +227,7 @@ details[data-ui-group].ui-on{display:block!important}
 .tabs button{padding:10px 10px!important;font-size:12px}
 @media(max-width:1350px){.tabs button{padding:9px 9px!important;font-size:11.8px}}
 .gen-subtabs{scrollbar-width:thin}
-</style><style id="ui-structure-fix2">details[data-ui-group]{display:none!important}details[data-ui-group].ui-on{display:block!important}</style><style id="ui-gen-cross">.gen-subtabs{scrollbar-width:thin}</style></head><body class="osint-admin"><header><img src="/favicon.png" alt="Ümraniye Kaymakamlığı"><div><strong>T.C. ÜMRANİYE KAYMAKAMLIĞI</strong><small style="display:block">OSINT TAKİP SİSTEMİ · Basın ve Halkla İlişkiler Müdürlüğü</small><h1>Yönetici Paneli</h1></div><div class="ui-crumbs">Yönetim <span>›</span> <b id="ui-crumb">Komuta Merkezi</b></div><button type="button" id="ui-theme-toggle" class="ui-theme-toggle" aria-pressed="false" title="Gece temasına geç" aria-label="Gece temasına geç"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8Z"/></svg><span>Gece</span></button></header>
+</style><style id="ui-structure-fix2">details[data-ui-group]{display:none!important}details[data-ui-group].ui-on{display:block!important}</style><style id="ui-gen-cross">.gen-subtabs{scrollbar-width:thin}</style><style id="ov-health-compact">.ov-rows#ov-health .ov-row{padding:7px 0}.ov-rows#ov-health .ico{width:24px;height:24px}.ov-rows#ov-health .ico svg{width:13px;height:13px}.ov-rows#ov-health b{font-size:11.5px}.ov-rows#ov-health small{font-size:9.5px}</style></head><body class="osint-admin"><header><img src="/favicon.png" alt="Ümraniye Kaymakamlığı"><div><strong>T.C. ÜMRANİYE KAYMAKAMLIĞI</strong><small style="display:block">OSINT TAKİP SİSTEMİ · Basın ve Halkla İlişkiler Müdürlüğü</small><h1>Yönetici Paneli</h1></div><div class="ui-crumbs">Yönetim <span>›</span> <b id="ui-crumb">Komuta Merkezi</b></div><button type="button" id="ui-theme-toggle" class="ui-theme-toggle" aria-pressed="false" title="Gece temasına geç" aria-label="Gece temasına geç"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8Z"/></svg><span>Gece</span></button></header>
 <aside class="ui-sidebar" aria-label="Yönetici menüsü">
   <div class="ui-side-label">GÜNDEM MERKEZİ</div>
   <a class="ui-side-link" href="/"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Ana Sayfa</a>
@@ -268,7 +268,7 @@ details[data-ui-group].ui-on{display:block!important}
   </div>
 
   <section class="card">
-    <div class="section-head"><h2>Kaynak sağlığı</h2><span class="sub" id="ov-health-sub">son kontrol</span></div>
+    <div class="section-head"><h2>Kaynak sağlığı</h2><span class="sub" id="ov-health-sub">son kontrol · v3</span></div>
     <div class="ov-rows" id="ov-health"><div class="ov-empty">Yükleniyor…</div></div>
   </section>
 
@@ -688,7 +688,7 @@ const auditBlock=$('audit')?.closest('details');if(auditBlock)auditBlock.addEven
    }).join('')||'<div class="ov-empty">Kayıt yok</div>';
 
    set('ov-health-sub',sources.length+' kaynak');
-   $('ov-health').innerHTML=sources.slice(0,8).map(function(src){
+   $('ov-health').innerHTML=sources.slice(0,5).map(function(src){
      var ok=/ok|healthy|success/i.test(String(src.status||''));
      return row(IC.news,src.id,(src.item_count||0)+' kayıt · '+ago(src.checked_at)+' önce',ok?'ok':'crit',ok?'Sağlıklı':'Hata');
    }).join('')||'<div class="ov-empty">Kayıt yok</div>';
