@@ -102,7 +102,7 @@ label{color:var(--ui-text)}
 /* badges */
 .badge{background:var(--ui-surface-2)!important;color:var(--ui-muted)!important;border:1px solid var(--ui-line);font-weight:600;font-size:11px;padding:3px 8px;border-radius:20px}
 .badge.ok{background:var(--ui-ok-soft)!important;color:var(--ui-ok)!important;border-color:transparent}
-.badge.error{background:var(--ui-crit-soft)!important;color:var(--ui-crit)!important;border-color:transparent}
+.badge.error,.badge.crit{background:var(--ui-crit-soft)!important;color:var(--ui-crit)!important;border-color:transparent}
 .badge.warn{background:var(--ui-warn-soft)!important;color:var(--ui-warn)!important;border-color:transparent}
 .badge.brand{background:var(--ui-brand-soft)!important;color:var(--ui-brand)!important;border-color:transparent}
 
@@ -169,6 +169,7 @@ header small{font-size:10px!important}
 main{margin:0 0 0 var(--ui-sidebar)!important;max-width:1500px!important;padding:20px clamp(16px,2.4vw,32px) 48px!important}
 .app-links{margin-bottom:14px!important}
 .tabs{top:var(--ui-header)!important;background:var(--ui-bg)!important;z-index:60!important;padding-top:4px}
+@media(min-width:901px){.app-links a{display:none!important}.app-links{justify-content:flex-end;margin:0 0 8px!important}.app-links button{margin-left:0!important}}
 /* overview */
 .ov-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
 .ov-metric{display:flex!important;align-items:center;gap:12px;margin-bottom:0!important}
@@ -190,7 +191,8 @@ main{margin:0 0 0 var(--ui-sidebar)!important;max-width:1500px!important;padding
 .ov-empty{padding:18px 0;color:var(--ui-muted);font-size:12px;text-align:center}
 .ov-quick{display:flex;flex-wrap:wrap;gap:8px}
 .ov-quick button{flex:0 0 auto}
-@media(max-width:1180px){.ov-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.ov-cols{grid-template-columns:1fr}}
+@media(max-width:1180px){.ov-metric .ico{display:none}}
+@media(max-width:860px){.ov-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:900px){
   :root{--ui-header:64px}
   header{height:auto!important;min-height:64px;padding:10px 14px!important}
@@ -200,8 +202,8 @@ main{margin:0 0 0 var(--ui-sidebar)!important;max-width:1500px!important;padding
   .ui-sidebar{display:none}
   main{margin-left:0!important;padding:16px 14px 40px!important}
   .tabs{top:64px!important}
+  .ov-cols{grid-template-columns:1fr}
   .ov-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .ov-metric .ico{display:none}
 }
 @media(max-width:560px){.ov-metric strong{font-size:20px}}
 </style>
